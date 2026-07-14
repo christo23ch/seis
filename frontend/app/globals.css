@@ -1,0 +1,21 @@
+@import "leaflet/dist/leaflet.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: light; }
+html { font-size: 15px; }
+body { @apply bg-papel text-tinta antialiased; }
+
+.cifra { @apply font-cifra tabular-nums tracking-tight; }
+.h-display { @apply font-display; }
+
+/* foco visible accesible */
+:focus-visible { outline: 2px solid #2e4b8f; outline-offset: 2px; border-radius: 4px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* la escalera de precios: elemento firma */
+.escalon { @apply relative flex flex-col justify-end rounded-t-md border border-b-0 border-slate-300 bg-white; }
+.escalon-etiqueta { @apply absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] font-medium text-slate-500; }

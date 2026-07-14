@@ -1,0 +1,229 @@
+# ============================================================================
+# SEIS · Parámetros T3 · versión 2026.07
+# Valores iniciales profesionales según la especificación. En producción viven
+# en la tabla `parametro` con vigencia; este fichero es la semilla y el fallback.
+# AVISO (§ gobernanza): los tipos fiscales y reglas legales deben validarse con
+# asesoría jurídico-fiscal y revisarse ante cada cambio normativo.
+# ============================================================================
+version: "2026.07"
+
+fiscal:
+  itp_por_ccaa:            # tipo general TPO vivienda usada (orientativo, VERIFICAR VIGENCIA)
+    andalucia: 0.07
+    aragon: 0.08
+    asturias: 0.08
+    baleares: 0.08
+    canarias: 0.065
+    cantabria: 0.09
+    castilla_la_mancha: 0.09
+    castilla_y_leon: 0.08
+    cataluna: 0.10
+    extremadura: 0.08
+    galicia: 0.08
+    la_rioja: 0.07
+    madrid: 0.06
+    murcia: 0.08
+    navarra: 0.06
+    pais_vasco: 0.07
+    valencia: 0.10
+    ceuta: 0.06
+    melilla: 0.06
+    ejemplo: 0.06
+  iva_vivienda: 0.10
+  iva_general: 0.21
+  ajd_defecto: 0.012
+
+aranceles:
+  adquisicion_fija: 2100          # notaría + registro + gestoría (aprox. función escalonada, tramo típico)
+  procurador: 600
+  variable_pct: 0.004             # componente proporcional a P
+
+financiacion:
+  apertura_pct: 0.01
+  tasacion_banco: 400
+  stress_tipos_pp: 2.0            # +200 pb para DSCR (§7.4)
+  dscr_minimo: 1.2
+
+capital:
+  coste_capital_anual: 0.015      # para el descuento del P_límite (§9.1)
+
+comercializacion:
+  agencia_pct_vs: 0.03
+  marketing_fijo: 1200
+
+tenencia:
+  mensual_defecto: 240            # IBI/12 + comunidad + seguro + suministros si no se informa
+
+valoracion:
+  descuento_oferta_portal: 0.06   # oferta → cierre (§6.3)
+  k_estado: {reformado: 1.00, bueno: 0.92, regular: 0.82, malo: 0.72, ruina: 0.55}
+  delta_base_pp: 2.0
+  delta_dispersion:               # d_dispersion según CV (§9.4)
+    - {max_cv: 0.10, pp: 0.0}
+    - {max_cv: 0.18, pp: 1.0}
+    - {max_cv: 0.25, pp: 2.5}
+    - {max_cv: 99.0, pp: 4.0}
+  delta_max_pct: 0.20
+  n_min_comparables: 6
+  cv_max_ok: 0.20
+  sanidad_vt_vm: {min: 0.5, max: 1.6}   # hecho tasacion_anomala fuera de banda (§6.3)
+
+reforma:
+  baremos_m2: {ninguna: 0, refresco: 120, ligera: 375, media: 560, integral: 875, estructural: 1150}
+  nivel_por_estado: {reformado: ninguna, bueno: refresco, regular: ligera, malo: media, ruina: estructural}
+  niveles_obra_mayor: [media, integral, estructural]
+  pct_tecnico_licencia: {menor: 0.04, mayor: 0.09}
+  spread_p80:
+    con_visita: {ninguna: 0.0, refresco: 0.12, ligera: 0.15, media: 0.18, integral: 0.25, estructural: 0.30}
+    sin_visita: {ninguna: 0.0, refresco: 0.15, ligera: 0.18, media: 0.22, integral: 0.35, estructural: 0.40}
+  plazo_obra_meses: {ninguna: 0, refresco: 1, ligera: 2, media: 3, integral: 5, estructural: 8}
+
+ocupacion:                        # tabla §7.2 (P, I, coste y meses P50/P80)
+  vacio:               {p: 1, i: 2, coste_p50: 800,  coste_p80: 1200, meses_p50: 0.5, meses_p80: 1}
+  propietario:         {p: 3, i: 3, coste_p50: 3000, coste_p80: 4500, meses_p50: 5,   meses_p80: 8}
+  precario:            {p: 4, i: 3, coste_p50: 6500, coste_p80: 9500, meses_p50: 7,   meses_p80: 11}
+  arrendado_posterior: {p: 3, i: 3, coste_p50: 3000, coste_p80: 5000, meses_p50: 6,   meses_p80: 10}
+  arrendado_anterior:  {p: 2, i: 3, coste_p50: 0,    coste_p80: 0,    meses_p50: 0,   meses_p80: 0}
+  renta_antigua:       {p: 4, i: 5, coste_p50: 0,    coste_p80: 0,    meses_p50: 0,   meses_p80: 0}
+  desconocida:         {usa: precario, techo_semaforo: amarillo}
+  flip_arrendado_anterior: {p: 4, i: 4}      # el mismo hecho, distinto riesgo por estrategia (§10)
+  rentista_arrendado_umbral_renta: 0.90      # renta ≥ 90% mercado ⇒ (2,3) para rentista
+
+atrasos:
+  defecto_pct_vt: 0.016           # estimación al alza si no hay certificado (P5)
+  minimo: 1500
+  stress_p80: 1.33
+
+riesgos:
+  pesos: {juridico: 0.16, documental: 0.08, ocupacion: 0.14, urbanistico: 0.10, tecnico: 0.10,
+          financiero: 0.10, comercial: 0.10, liquidez: 0.10, mercado: 0.12}
+  niveles: {bajo: 4, medio: 9, alto: 15, critico: 25}       # límites superiores P×I
+  dominancia: {una_alta: 40, dos_altas: 55, critica_mitigable: 70, critica_no_mitigable: 85}
+  bandas_ra: [{max: 24, banda: bajo}, {max: 45, banda: medio}, {max: 65, banda: alto},
+              {max: 80, banda: muy_alto}, {max: 100, banda: critico}]
+
+primas_ra:                        # tabla única §9.4
+  bajo:     {mult_m: 0.90, stress_mercado: 0.07, delta_mercado_pp: 1.0, conting_pct: 0.05, y_req_pp: 0.25}
+  medio:    {mult_m: 1.00, stress_mercado: 0.09, delta_mercado_pp: 2.0, conting_pct: 0.08, y_req_pp: 0.50}
+  alto:     {mult_m: 1.20, stress_mercado: 0.12, delta_mercado_pp: 4.0, conting_pct: 0.12, y_req_pp: 1.00}
+  muy_alto: {mult_m: 1.45, stress_mercado: 0.16, delta_mercado_pp: 6.0, conting_pct: 0.18, y_req_pp: 1.75}
+  critico:  {mult_m: 1.45, stress_mercado: 0.18, delta_mercado_pp: 8.0, conting_pct: 0.22, y_req_pp: 2.50}   # banda vetada: precios solo informativos
+
+ici:                              # §6.2
+  pesos: {nota_simple: 18, cert_cargas: 14, posesion_verificada: 14, avaluo: 8,
+          fotos_interior_o_visita: 10, fotos_exterior: 4, cert_comunidad: 8,
+          recibo_ibi: 5, ite_cee: 5, catastro_conciliado: 6, comparables_ok: 8}
+  frescura_nota_simple: [{max_dias: 15, factor: 1.0}, {max_dias: 45, factor: 0.6}, {max_dias: 9999, factor: 0.3}]
+  penalizaciones: {superficie_inconsistente: 10, cargas_mismatch: 12, tasacion_anomala: 8, otra: 5}
+  efectos:                        # tramos → (+δ_v pp, +contingencia pp, techo)
+    - {min: 80, delta_pp: 0.0, conting_pp: 0.0, techo: null}
+    - {min: 60, delta_pp: 2.0, conting_pp: 2.0, techo: null}
+    - {min: 40, delta_pp: 5.0, conting_pp: 4.0, techo: amarillo}
+    - {min: 25, delta_pp: 9.0, conting_pp: 7.0, techo: naranja}
+    - {min: 0,  delta_pp: 12.0, conting_pp: 9.0, techo: rojo}
+  multiplicador_ico_umbral: 60    # ICO ×(0.80+0.20·ICI/60) si ICI<60 (§8.5)
+
+icu:                              # §6.4
+  peso_macro: 0.40
+  peso_micro: 0.60
+  pesos_macro: {tendencia: 10, stock: 8, dom_venta: 7, dom_alquiler: 5, poblacion: 5, renta: 5}
+  pesos_micro: {transporte: 10, seguridad: 8, sanidad: 5, educacion: 5, comercio: 4,
+                zonas_verdes: 3, pipeline_urbanistico: 10, potencial_transformacion: 8, entorno_construido: 7}
+  norm:
+    tendencia: {min: -8.0, max: 8.0}
+    stock_meses: {full: 4.0, zero: 18.0}
+    dom_venta: {full: 60.0, zero: 300.0}
+    dom_alquiler: {full: 15.0, zero: 90.0}
+    poblacion: {min: -2.0, max: 3.0}
+    renta: {min: 15000.0, max: 60000.0}
+
+ico:                              # §8.5
+  pesos: {rentabilidad: 25, juridico: 15, urbanistico: 7, financiero: 8,
+          ubicacion: 15, revalorizacion: 10, liquidez: 12, informacion: 8}
+  escalon_alta: 15                # −15 si alguna dimensión del grupo es Alta
+  bonus_equity_financiero: 10
+  liquidez_dom: {full: 45.0, zero: 300.0}
+  utilidad_rentabilidad: {cero_en_frac_min: 0.5, u_objetivo: 60, u_max_frac: 1.6}
+
+semaforo:                         # §8.6
+  verde:    {ico_min: 75, ms_valor_min: 0.15, rvc_min: 1.00, ici_min: 60}
+  amarillo: {ico_min: 60, pes_piso_frac_i: -0.02, rvc_min: 0.90, ici_min: 45}
+  naranja:  {ico_min: 45, rvc_min: 0.80}
+
+escenarios:                       # §7.7
+  prob: {pesimista: 0.25, base: 0.55, optimista: 0.20}
+  prob_ici_bajo: {pesimista: 0.30, base: 0.55, optimista: 0.15}
+  ici_umbral_prob: 60
+  plazo_mult: {pesimista: 1.4, base: 1.0, optimista: 0.85}
+  reforma_opt_mult: 0.97
+  vs_opt_cap: 1.05
+  potencial_divisor: 1000          # VS_p·(1+potencial/1000)
+
+precios:
+  m_exc_mult: 1.35                 # P_ideal (§9.1)
+  meses_comercializacion_min: 2
+
+perfiles:                          # §9.6 / §10
+  flip_ligero:
+    nombre: "Reforma ligera + venta"
+    tipo: venta
+    m_objetivo: 0.16
+    m_minimo: 0.11
+    piso_pesimista_frac_i: 0.0
+    rvc_veto: 0.80
+    nivel_reforma_defecto: ligera
+  flip_integral:
+    nombre: "Reforma integral + venta (flip)"
+    tipo: venta
+    m_objetivo: 0.25
+    m_minimo: 0.17
+    piso_pesimista_frac_i: 0.0
+    rvc_veto: 0.80
+    nivel_reforma_defecto: null
+  cambio_uso:
+    nombre: "Cambio de uso"
+    tipo: venta
+    m_objetivo: 0.30
+    m_minimo: 0.20
+    piso_pesimista_frac_i: 0.0
+    rvc_veto: 0.75
+    riesgo_extra: {urbanistico: {p: 1}}
+  division_horizontal:
+    nombre: "División horizontal"
+    tipo: venta
+    m_objetivo: 0.28
+    m_minimo: 0.19
+    piso_pesimista_frac_i: 0.0
+    rvc_veto: 0.78
+  oportunista:
+    nombre: "Compra oportunista"
+    tipo: venta
+    m_objetivo: 0.35
+    m_minimo: 0.25
+    piso_pesimista_frac_i: 0.0
+    rvc_veto: 0.88
+  rentista:
+    nombre: "Compra para alquilar"
+    tipo: rentista
+    coc_min: 0.07
+    y_suelo_pp_sobre_bono: 2.5
+    y_bono_10a: 3.2
+    rvc_veto: 0.85
+    piso_pesimista_frac_i: 0.0
+
+adjudicacion:                      # M13 capa A (§11.1) — ratios s/VT por segmento
+  ratios:
+    judicial_boe:
+      vivienda: {ocupado: 0.42, vacio: 0.55, desconocida: 0.45}
+      default: 0.50
+    aeat: {default: 0.55}
+    tgss: {default: 0.50}
+    concursal: {default: 0.60}
+    banco: {default: 0.75}
+    notarial: {default: 0.55}
+    privada: {default: 0.80}
+    default: {default: 0.55}
+  ajuste_desierta_pp: -0.08        # cada subasta previa desierta
+  ajuste_chollo_pp: 0.06           # VT/VM < 0.6 atrae competencia
+  rvc_bandas: [{min: 1.05, banda: alcanzable}, {min: 0.90, banda: ajustado},
+               {min: 0.80, banda: improbable}, {min: 0.0, banda: inviable}]

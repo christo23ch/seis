@@ -1,0 +1,225 @@
+# ============================================================================
+# SEIS · Catálogo de reglas T2 · versión 2026.07  (§8.3, §8.4)
+# Semilla del conocimiento: en producción vive en la tabla `regla` con vigencia.
+# Hechos disponibles: ver pizarra construida por engine/pipeline.py
+# ============================================================================
+version: "2026.07"
+
+reglas:
+  # ───────────────────────── VETOS (capa 1, §8.4) ─────────────────────────
+  - codigo: VETO-CARGA-01
+    version: "2026.07"
+    categoria: veto
+    prioridad: 10
+    cuando:
+      all:
+        - {hecho: carga_subsistente_total, op: ">", expr: "0.35 * vs_prudente"}
+    efecto:
+      veto: {motivo: "Cargas anteriores subsistentes superan el 35% del valor de salida prudente",
+             dimension: juridico}
+    evidencias: [carga_subsistente_total, vs_prudente]
+
+  - codigo: VETO-CARGA-02
+    version: "2026.07"
+    categoria: veto
+    prioridad: 10
+    cuando:
+      all:
+        - {hecho: carga_anterior_indeterminada, op: is_true}
+    efecto:
+      veto: {motivo: "Carga anterior de importe no determinable ni verificable antes del cierre",
+             dimension: juridico,
+             subsanable_con: "Obtener certificación de cargas / nota simple con importes actualizados"}
+    evidencias: [cargas]
+
+  - codigo: VETO-OCU-01
+    version: "2026.07"
+    categoria: veto
+    prioridad: 10
+    cuando:
+      all:
+        - {hecho: ocupacion.estado, op: "==", valor: renta_antigua}
+        - {hecho: perfil.tipo, op: "==", valor: venta}
+    efecto:
+      veto: {motivo: "Renta antigua/vitalicia incompatible con estrategia de venta (§7.2)",
+             dimension: ocupacion,
+             subsanable_con: "Reanalizar con perfil rentista capitalizando la renta real"}
+    evidencias: [ocupacion.estado, perfil.tipo]
+
+  - codigo: VETO-URB-01
+    version: "2026.07"
+    categoria: veto
+    prioridad: 10
+    cuando:
+      any:
+        - {hecho: urbanistico.orden_demolicion, op: is_true}
+    efecto:
+      veto: {motivo: "Orden de demolición o expediente de disciplina urbanística no caducado",
+             dimension: urbanistico}
+    evidencias: [urbanistico.orden_demolicion]
+
+  - codigo: VETO-URB-02
+    version: "2026.07"
+    categoria: veto
+    prioridad: 10
+    cuando:
+      all:
+        - {hecho: urbanistico.suelo_protegido, op: is_true}
+        - {hecho: perfil.codigo, op: in, valor: [promocion, cambio_uso, division_horizontal]}
+    efecto:
+      veto: {motivo: "Suelo rústico protegido con estrategia de desarrollo (la expectativa urbanística no puntúa, P5)",
+             dimension: urbanistico}
+    evidencias: [urbanistico.suelo_protegido, perfil.codigo]
+
+  - codigo: VETO-URB-04
+    version: "2026.07"
+    categoria: veto
+    prioridad: 10
+    cuando:
+      all:
+        - {hecho: urbanistico.uso_compatible, op: is_false}
+    efecto:
+      veto: {motivo: "Uso previsto por la estrategia prohibido por la norma zonal sin vía legal de cambio",
+             dimension: urbanistico}
+    evidencias: [urbanistico.uso_compatible]
+
+  - codigo: VETO-VPO-01
+    version: "2026.07"
+    categoria: veto
+    prioridad: 10
+    cuando:
+      all:
+        - {hecho: activo.vpo, op: is_true}
+        - {hecho: vpo_inviable, op: is_true}
+    efecto:
+      veto: {motivo: "VPO: precio máximo legal de venta inferior al coste total previsto",
+             dimension: juridico}
+    evidencias: [activo.vpo, vpo_inviable]
+
+  - codigo: VETO-JUR-02
+    version: "2026.07"
+    categoria: veto
+    prioridad: 10
+    cuando:
+      any:
+        - {hecho: prohibicion_disponer, op: is_true}
+        - {hecho: condicion_resolutoria, op: is_true}
+    efecto:
+      veto: {motivo: "Prohibición de disponer o condición resolutoria vigente sin cancelación viable",
+             dimension: juridico}
+    evidencias: [cargas]
+
+  - codigo: VETO-FIN-01
+    version: "2026.07"
+    categoria: veto
+    prioridad: 10
+    cuando:
+      all:
+        - {hecho: financiacion.tipo, op: "==", valor: hipoteca}
+        - {hecho: financiacion.preaprobada, op: is_false}
+    efecto:
+      veto: {motivo: "El pago del remate depende de financiación no preaprobada: pérdida probable del depósito (§7.4)",
+             dimension: financiero,
+             subsanable_con: "Preaprobación bancaria en firme o plan de pago 100% equity"}
+    evidencias: [financiacion.tipo, financiacion.preaprobada]
+
+  - codigo: VETO-INF-01
+    version: "2026.07"
+    categoria: veto
+    prioridad: 10
+    cuando:
+      all:
+        - {hecho: ici, op: "<", valor: 25}
+        - {hecho: subasta.horas_hasta_cierre, op: "<", valor: 48}
+    efecto:
+      veto: {motivo: "ICI < 25 con cierre en menos de 48h: ininvertible sin subsanar información (§8.4)",
+             dimension: documental,
+             subsanable_con: "Aportar nota simple y verificación posesoria; reanalizar"}
+    evidencias: [ici, subasta.horas_hasta_cierre]
+
+  # VETO-COMP-01 (rojo competitivo) se evalúa tras M13 con el hecho rvc:
+  - codigo: VETO-COMP-01
+    version: "2026.07"
+    categoria: veto
+    prioridad: 15
+    cuando:
+      all:
+        - {hecho: rvc, op: "<", expr: "perfil.rvc_veto"}
+    efecto:
+      veto: {motivo: "Rojo competitivo: P_max queda tan por debajo del precio esperado de adjudicación que la probabilidad de ganar con rentabilidad suficiente es despreciable (§11.2)",
+             dimension: mercado}
+    evidencias: [rvc, p_adj_esperado, p_max]
+
+  # ───────────────────── TECHOS Y CONDICIONES (capa 4) ─────────────────────
+  - codigo: SEM-OCU-02
+    version: "2026.07"
+    categoria: semaforo
+    prioridad: 40
+    cuando:
+      all:
+        - {hecho: riesgo.ocupacion.score, op: ">=", valor: 10}
+        - {hecho: ocupacion.estado, op: not_in, valor: [arrendado_anterior]}
+    efecto:
+      techo_semaforo: amarillo
+      condicion: "Verificar la situación posesoria in situ antes de pujar; dotar provisión de desalojo P80"
+    evidencias: [riesgo.ocupacion.score, ocupacion.estado]
+
+  - codigo: SEM-OCU-03
+    version: "2026.07"
+    categoria: semaforo
+    prioridad: 40
+    cuando:
+      all:
+        - {hecho: ocupacion.estado, op: "==", valor: desconocida}
+    efecto:
+      techo_semaforo: amarillo
+      condicion: "Estado posesorio desconocido: se asume precario (P5). Verificación in situ obligatoria (ítem bloqueante)"
+    evidencias: [ocupacion.estado]
+
+  - codigo: SEM-DOC-01
+    version: "2026.07"
+    categoria: semaforo
+    prioridad: 41
+    cuando:
+      all:
+        - {hecho: documentos.cert_comunidad, op: is_false}
+        - {hecho: activo.tipologia, op: in, valor: [vivienda, garaje, trastero, local, oficina]}
+    efecto:
+      condicion: "Solicitar certificado de deuda de la comunidad antes de la puja (deuda estimada al alza mientras tanto, P5)"
+    evidencias: [documentos.cert_comunidad]
+
+  - codigo: SEM-CARGA-03
+    version: "2026.07"
+    categoria: semaforo
+    prioridad: 42
+    cuando:
+      all:
+        - {hecho: cargas_sin_verificar, op: is_true}
+    efecto:
+      techo_semaforo: naranja
+      condicion: "Existen cargas anteriores sin verificar: contrastar nota simple ≤ 5 días antes del cierre"
+    evidencias: [cargas]
+
+  - codigo: SEM-URB-03
+    version: "2026.07"
+    categoria: semaforo
+    prioridad: 43
+    cuando:
+      all:
+        - {hecho: urbanistico.fuera_ordenacion, op: is_true}
+        - {hecho: reforma.nivel, op: in, valor: [integral, estructural]}
+    efecto:
+      techo_semaforo: naranja
+      condicion: "Fuera de ordenación con obra mayor prevista: confirmar alcance de obras autorizables con el ayuntamiento"
+    evidencias: [urbanistico.fuera_ordenacion, reforma.nivel]
+
+  - codigo: SEM-EJEC-01
+    version: "2026.07"
+    categoria: puja
+    prioridad: 50
+    cuando:
+      all:
+        - {hecho: subasta.fuente, op: "==", valor: judicial_boe}
+    efecto:
+      condicion: "Judicial: depósito del 5% y pago del remate en plazo legal sin condición suspensiva; cesión de remate solo por el ejecutante (§3.2)"
+    evidencias: [subasta.fuente]
