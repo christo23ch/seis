@@ -37,3 +37,20 @@ def require_rol(*roles: str):
                                 f"Se requiere rol {' o '.join(roles)}")
         return user
     return dep
+
+
+def require_superadmin(user: models.Usuario = Depends(get_current_user)) -> models.Usuario:
+    """Rol de plataforma (Fase 9): gobierna el conocimiento T2/T3 global y el alta
+    de usuarios en cualquier organización."""
+    if not user.es_superadmin:
+        raise HTTPException(status.HTTP_403_FORBIDDEN,
+                            "Se requiere rol de superadministrador de plataforma")
+    return user
+
+
+def require_propietario(user: models.Usuario = Depends(get_current_user)) -> models.Usuario:
+    """Gestión de miembros de la propia organización (propietario o superadmin)."""
+    if user.rol_org != "propietario" and not user.es_superadmin:
+        raise HTTPException(status.HTTP_403_FORBIDDEN,
+                            "Se requiere ser propietario de la organización")
+    return user

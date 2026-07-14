@@ -1,4 +1,4 @@
-import type { Detalle, ListItem, Opciones, Resultado, Usuario } from "./types";
+import type { Detalle, ListItem, Miembro, Opciones, Organizacion, Resultado, Usuario } from "./types";
 
 const BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") + "/api/v1";
 
@@ -40,6 +40,13 @@ export const api = {
   me: () => req<Usuario>("/auth/me"),
   crearUsuario: (b: { email: string; password: string; nombre?: string; rol: string }) =>
     req<{ email: string; rol: string }>("/auth/usuarios", { method: "POST", body: JSON.stringify(b) }),
+
+  // Fase 9 — organización y miembros
+  organizacion: () => req<Organizacion>("/organizacion"),
+  crearMiembro: (b: { email: string; password: string; nombre?: string; rol: string }) =>
+    req<Miembro>("/organizacion/miembros", { method: "POST", body: JSON.stringify(b) }),
+  patchMiembro: (id: string, activo: boolean) =>
+    req<Miembro>(`/organizacion/miembros/${id}`, { method: "PATCH", body: JSON.stringify({ activo }) }),
 
   listar: () => req<ListItem[]>("/analisis"),
   detalle: (id: string) => req<Detalle>(`/analisis/${id}`),

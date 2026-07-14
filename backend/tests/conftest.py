@@ -55,7 +55,7 @@ ADMIN = {"username": "admin@seis.local", "password": "admin"}
 
 @pytest.fixture(scope="module")
 def api():
-    """Cliente HTTP con esquema creado, admin sembrado y limpieza al terminar."""
+    """Cliente HTTP con esquema creado, admin superadmin sembrado y limpieza al terminar."""
     from fastapi.testclient import TestClient
     from app.core.db import Base, SessionLocal, engine
     from app.main import app
@@ -65,8 +65,11 @@ def api():
     db = SessionLocal()
     try:
         if not usuario_service.obtener_por_email(db, ADMIN["username"]):
+            # Fase 9: el admin bootstrap es propietario + superadmin de la org por defecto.
+            org = usuario_service.crear_organizacion(db, "Organización por defecto")
             usuario_service.crear_usuario(db, ADMIN["username"], ADMIN["password"],
-                                          "Admin", "admin")
+                                          "Admin", "admin", organizacion_id=org.id,
+                                          rol_org="propietario", es_superadmin=True)
     finally:
         db.close()
     with TestClient(app) as c:
@@ -80,5 +83,12 @@ def api():
 @pytest.fixture(scope="module")
 def headers(api):
     r = api.post("/api/v1/auth/login", data=ADMIN)
+    assert r.status_code == 200, r.text
+    return {"Authorization": f"Bearer {r.json()['access_token']}"}
+
+
+def token_headers(api, email: str, password: str) -> dict:
+    """Atajo: inicia sesión y devuelve la cabecera Authorization."""
+    r = api.post("/api/v1/auth/login", data={"username": email, "password": password})
     assert r.status_code == 200, r.text
     return {"Authorization": f"Bearer {r.json()['access_token']}"}

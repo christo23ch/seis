@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app import models
-from app.api.deps import get_current_user, require_rol
+from app.api.deps import get_current_user, require_superadmin
 from app.core.db import get_db
 from app.services import conocimiento_service as cs
 
@@ -52,7 +52,7 @@ def historial(codigo: str, db: Session = Depends(get_db),
 
 @router.post("/reglas", status_code=201)
 def nueva_version(body: ReglaNueva, db: Session = Depends(get_db),
-                  admin: models.Usuario = Depends(require_rol("admin"))) -> dict:
+                  admin: models.Usuario = Depends(require_superadmin)) -> dict:
     try:
         fila = cs.crear_version_regla(db, body.definicion, admin.email, body.justificacion)
     except ValueError as e:
@@ -69,7 +69,7 @@ def parametros(db: Session = Depends(get_db),
 
 @router.put("/parametros")
 def actualizar_parametro(body: ParametroUpdate, db: Session = Depends(get_db),
-                         admin: models.Usuario = Depends(require_rol("admin"))) -> dict:
+                         admin: models.Usuario = Depends(require_superadmin)) -> dict:
     try:
         cs.set_parametro(db, body.clave, body.valor, body.fuente_legal, admin.email)
     except ValueError as e:
@@ -87,7 +87,7 @@ def perfiles(db: Session = Depends(get_db),
 
 @router.put("/perfiles/{codigo}")
 def actualizar_perfil(codigo: str, body: PerfilUpdate, db: Session = Depends(get_db),
-                      admin: models.Usuario = Depends(require_rol("admin"))) -> dict:
+                      admin: models.Usuario = Depends(require_superadmin)) -> dict:
     try:
         fila = cs.actualizar_perfil(db, codigo, body.parametros, admin.email)
     except LookupError as e:

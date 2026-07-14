@@ -21,8 +21,8 @@ def simular(db: Session, inp: AnalisisInput) -> AnalisisResult:
     return ejecutar_analisis(inp, params=params, reglas=reglas, version_reglas=version_reglas)
 
 
-def crear_analisis(db: Session, inp: AnalisisInput,
-                   quien: str | None = None) -> tuple[str, AnalisisResult]:
+def crear_analisis(db: Session, inp: AnalisisInput, quien: str | None = None,
+                   organizacion_id: str | None = None) -> tuple[str, AnalisisResult]:
     resultado = simular(db, inp)
 
     subasta = models.Subasta(
@@ -54,6 +54,7 @@ def crear_analisis(db: Session, inp: AnalisisInput,
 
     dec = resultado.decision
     analisis = models.Analisis(
+        organizacion_id=organizacion_id,
         activo_id=activo.id, perfil_codigo=inp.perfil,
         version_reglas=dec.version_reglas, version_parametros=dec.version_parametros,
         entrada=_json(inp), hechos={}, resultado=_json(resultado),
@@ -87,11 +88,14 @@ def crear_analisis(db: Session, inp: AnalisisInput,
     return analisis.id, resultado
 
 
-def listar_analisis(db: Session, limit: int = 50) -> list[dict]:
-    filas = (db.query(models.Analisis, models.Decision, models.Activo)
-             .join(models.Decision, models.Decision.analisis_id == models.Analisis.id)
-             .outerjoin(models.Activo, models.Activo.id == models.Analisis.activo_id)
-             .order_by(models.Analisis.creado_en.desc()).limit(limit).all())
+def listar_analisis(db: Session, limit: int = 50,
+                    organizacion_id: str | None = None) -> list[dict]:
+    q = (db.query(models.Analisis, models.Decision, models.Activo)
+         .join(models.Decision, models.Decision.analisis_id == models.Analisis.id)
+         .outerjoin(models.Activo, models.Activo.id == models.Analisis.activo_id))
+    if organizacion_id is not None:                       # Fase 9: aislamiento por tenant
+        q = q.filter(models.Analisis.organizacion_id == organizacion_id)
+    filas = q.order_by(models.Analisis.creado_en.desc()).limit(limit).all()
     out = []
     for a, d, act in filas:
         out.append({
@@ -109,5 +113,12 @@ def listar_analisis(db: Session, limit: int = 50) -> list[dict]:
     return out
 
 
-def obtener_analisis(db: Session, analisis_id: str) -> models.Analisis | None:
-    return db.get(models.Analisis, analisis_id)
+def obtener_analisis(db: Session, analisis_id: str,
+                     organizacion_id: str | None = None) -> models.Analisis | None:
+    a = db.get(models.Analisis, analisis_id)
+    if a is None:
+        return None
+    # Fase 9: un recurso de otra organización se comporta como inexistente (404, no 403).
+    if organizacion_id is not None and a.organizacion_id != organizacion_id:
+        return None
+    return a

@@ -22,6 +22,18 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+class Organizacion(Base):
+    """Tenant (Fase 9): unidad de aislamiento de análisis y resultados reales.
+
+    Los datos históricos se asignan a una organización «por defecto» en el backfill
+    de la migración 0002. El aislamiento efectivo aparece en cuanto existe una segunda.
+    """
+    __tablename__ = "organizacion"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    nombre: Mapped[str] = mapped_column(String(120))
+    creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
 class FuenteSubasta(Base):
     __tablename__ = "fuente_subasta"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -102,6 +114,8 @@ class Analisis(Base):
     """Snapshot inmutable (P1/P2): entrada completa + versiones + índices + salidas."""
     __tablename__ = "analisis"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    organizacion_id: Mapped[str | None] = mapped_column(
+        ForeignKey("organizacion.id"), index=True)     # Fase 9: aislamiento por tenant
     activo_id: Mapped[str | None] = mapped_column(ForeignKey("activo.id"), index=True)
     perfil_codigo: Mapped[str] = mapped_column(String(32), index=True)
     version_reglas: Mapped[str] = mapped_column(String(16))
@@ -224,7 +238,11 @@ class Usuario(Base):
     email: Mapped[str] = mapped_column(String(120), unique=True, index=True)
     nombre: Mapped[str | None] = mapped_column(String(80))
     hash_pwd: Mapped[str] = mapped_column(String(200))
-    rol: Mapped[str] = mapped_column(String(16), default="analista")   # admin | analista | lector
+    rol: Mapped[str] = mapped_column(String(16), default="analista")   # capacidad: admin | analista | lector
+    organizacion_id: Mapped[str | None] = mapped_column(
+        ForeignKey("organizacion.id"), index=True)     # Fase 9: tenant al que pertenece
+    rol_org: Mapped[str] = mapped_column(String(16), default="miembro")  # propietario | miembro
+    es_superadmin: Mapped[bool] = mapped_column(Boolean, default=False)  # plataforma: gobierna T2/T3 global
     activo: Mapped[bool] = mapped_column(Boolean, default=True)
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 

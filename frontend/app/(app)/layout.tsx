@@ -4,25 +4,35 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { Spinner } from "@/components/ui";
-import { BarChart3, FilePlus2, FolderKanban, Gavel, LogOut, Map, Scale, Settings2, SlidersHorizontal, Users } from "lucide-react";
+import { BarChart3, FilePlus2, FolderKanban, Gavel, LogOut, Map, Scale, Settings2, SlidersHorizontal, Users, UsersRound } from "lucide-react";
+import type { Usuario } from "@/lib/types";
 
-const NAV = [
-  { grupo: "Operaciones", items: [
-    { href: "/", etiqueta: "Dashboard", icono: BarChart3 },
-    { href: "/nueva", etiqueta: "Nueva inversión", icono: FilePlus2 },
-    { href: "/inversiones", etiqueta: "Inversiones", icono: FolderKanban },
-    { href: "/comparativa", etiqueta: "Comparativa", icono: Scale },
-    { href: "/mapa", etiqueta: "Mapa", icono: Map },
-  ]},
-  { grupo: "Conocimiento", items: [
-    { href: "/reglas", etiqueta: "Motor de reglas", icono: Gavel },
-    { href: "/parametros", etiqueta: "Parámetros", icono: SlidersHorizontal },
-    { href: "/configuracion", etiqueta: "Perfiles", icono: Settings2 },
-  ]},
-  { grupo: "Sistema", items: [
-    { href: "/administracion", etiqueta: "Administración", icono: Users },
-  ]},
-];
+// El menú se construye según el usuario (Fase 9): «Conocimiento» solo para el
+// superadmin de plataforma; «Mi equipo» solo para el propietario de la organización.
+function construirNav(usuario: Usuario) {
+  const grupos: { grupo: string; items: { href: string; etiqueta: string; icono: any }[] }[] = [
+    { grupo: "Operaciones", items: [
+      { href: "/", etiqueta: "Dashboard", icono: BarChart3 },
+      { href: "/nueva", etiqueta: "Nueva inversión", icono: FilePlus2 },
+      { href: "/inversiones", etiqueta: "Inversiones", icono: FolderKanban },
+      { href: "/comparativa", etiqueta: "Comparativa", icono: Scale },
+      { href: "/mapa", etiqueta: "Mapa", icono: Map },
+    ]},
+  ];
+  if (usuario.es_superadmin) {
+    grupos.push({ grupo: "Conocimiento", items: [
+      { href: "/reglas", etiqueta: "Motor de reglas", icono: Gavel },
+      { href: "/parametros", etiqueta: "Parámetros", icono: SlidersHorizontal },
+      { href: "/configuracion", etiqueta: "Perfiles", icono: Settings2 },
+    ]});
+  }
+  const sistema = [{ href: "/administracion", etiqueta: "Administración", icono: Users }];
+  if (usuario.rol_org === "propietario" || usuario.es_superadmin) {
+    sistema.unshift({ href: "/equipo", etiqueta: "Mi equipo", icono: UsersRound });
+  }
+  grupos.push({ grupo: "Sistema", items: sistema });
+  return grupos;
+}
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { usuario, cargando, salir } = useAuth();
@@ -34,6 +44,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [cargando, usuario, router]);
 
   if (cargando || !usuario) return <Spinner />;
+
+  const NAV = construirNav(usuario);
 
   return (
     <div className="flex min-h-screen">

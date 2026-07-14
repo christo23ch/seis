@@ -45,8 +45,16 @@
 - **PDF de informe**, **Docker Compose** funcional, **manuales** (instalación, pruebas).
 - **Migraciones Alembic**: solo `0001_esquema_inicial.py` existe — a partir de la Fase 9, cada cambio de esquema exige nueva migración con `downgrade` funcional.
 
-### ⏳ No construido (Fases 9-20 del Plan Maestro — ver §5)
-Multi-tenancy, alta self-service, infraestructura de producción real, notificaciones multicanal (email/Telegram/WhatsApp) + scoring de alertas, monetización con Stripe, cumplimiento RGPD, landing pública, endurecimiento de seguridad, escalado de captación (el conector BOE existe pero defensivo, sin ajuste empírico contra el portal real), analítica de negocio, beta cerrada.
+### ✅ Fase 9 — Multi-tenancy por organización (COMPLETADA, 2026-07-14)
+- Entidad `Organizacion`; `Usuario` += `organizacion_id`, `rol_org` (propietario|miembro), `es_superadmin` (plataforma); `Analisis` += `organizacion_id`.
+- **Modelo de roles en dos ejes** (reconciliación): `rol` (admin|analista|lector) = capacidad dentro de la org; `rol_org` = gestión de miembros; `es_superadmin` = gobierno del conocimiento T2/T3 global.
+- Migración **Alembic 0002** idempotente + reversible con backfill (org por defecto para datos históricos; admin bootstrap → propietario+superadmin). Verificada upgrade/downgrade sobre BD real.
+- Aislamiento por `organizacion_id` en todos los endpoints de análisis; acceso a recurso ajeno = **404** (no 403). `require_superadmin` para conocimiento y alta de usuarios de plataforma. Router nuevo `organizacion.py` (GET /organizacion, POST/PATCH miembros por el propietario).
+- Frontend: tipos/api/menú actualizados (oculta «Conocimiento» salvo superadmin), página `/equipo`.
+- Tests: `test_multitenant.py` (10 nuevos, aislamiento + permisos + gestión de miembros). **Suite: 59 verdes** (49 previos + 10). `npm run build` limpio.
+
+### ⏳ No construido (Fases 10-20 del Plan Maestro — ver §5)
+Alta self-service, infraestructura de producción real, notificaciones multicanal (email/Telegram/WhatsApp) + scoring de alertas, monetización con Stripe, cumplimiento RGPD, landing pública, endurecimiento de seguridad, escalado de captación (el conector BOE existe pero defensivo, sin ajuste empírico contra el portal real), analítica de negocio, beta cerrada.
 
 ### 🐛 Gotchas conocidos
 - El motor (`app/engine/`) es la parte más validada del sistema (58/49 tests de regresión) — **NO tocar sin indicación expresa**; cualquier cambio ahí exige entender el "caso dorado §19" primero.

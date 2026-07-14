@@ -37,4 +37,13 @@ export interface ListItem {
 
 export interface Detalle { id: string; creado_en: string; perfil: string; version_reglas: string; version_parametros: string; entrada: any; resultado: Resultado; }
 export interface Opciones { tipologias: string[]; fuentes: string[]; estados_conservacion: string[]; estados_ocupacion: string[]; ccaa: string[]; perfiles: Record<string, string>; }
-export interface Usuario { email: string; rol: string; nombre?: string | null; }
+
+// Fase 9 — multi-tenancy
+export type RolOrg = "propietario" | "miembro";
+export interface Usuario {
+  email: string; rol: string; nombre?: string | null;
+  organizacion_id?: string | null; organizacion_nombre?: string | null;
+  rol_org?: RolOrg; es_superadmin?: boolean;
+}
+export interface Miembro { id: string; email: string; nombre?: string | null; rol: string; rol_org: RolOrg; activo: boolean; }
+export interface Organizacion { id: string; nombre: string; rol_org: RolOrg; puede_gestionar: boolean; miembros: Miembro[]; }

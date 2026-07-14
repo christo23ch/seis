@@ -14,14 +14,17 @@ if settings.celery_task_always_eager:
 
 
 @celery.task(name="seis.analizar")
-def analizar_task(payload: dict) -> dict:
+def analizar_task(payload: dict, organizacion_id: str | None = None,
+                  quien: str | None = None) -> dict:
     from app.core.db import SessionLocal
     from app.engine.contracts import AnalisisInput
     from app.services.analisis_service import crear_analisis
 
     db = SessionLocal()
     try:
-        analisis_id, resultado = crear_analisis(db, AnalisisInput.model_validate(payload))
+        analisis_id, resultado = crear_analisis(
+            db, AnalisisInput.model_validate(payload),
+            quien=quien, organizacion_id=organizacion_id)
         return {"id": analisis_id, "semaforo": resultado.decision.semaforo}
     finally:
         db.close()

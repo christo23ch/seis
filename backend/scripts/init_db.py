@@ -30,9 +30,12 @@ def main() -> None:
                 db.add(models.FuenteSubasta(codigo=codigo, perfil={}))
         db.commit()
         if not db.query(models.Usuario).first():
-            from app.services.usuario_service import crear_usuario
+            from app.services.usuario_service import crear_organizacion, crear_usuario
             s = get_settings()
-            crear_usuario(db, s.admin_email, s.admin_password, "Administrador", "admin")
+            org = (db.query(models.Organizacion).first()
+                   or crear_organizacion(db, "Organización por defecto"))
+            crear_usuario(db, s.admin_email, s.admin_password, "Administrador", "admin",
+                          organizacion_id=org.id, rol_org="propietario", es_superadmin=True)
             print(f"Usuario administrador creado: {s.admin_email} — CAMBIE LA CONTRASEÑA.")
         print("SEIS · esquema creado y conocimiento sembrado (reglas, parámetros, perfiles, fuentes).")
     finally:
