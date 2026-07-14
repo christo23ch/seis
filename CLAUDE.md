@@ -53,6 +53,10 @@
 - Frontend: tipos/api/menú actualizados (oculta «Conocimiento» salvo superadmin), página `/equipo`.
 - Tests: `test_multitenant.py` (10 nuevos, aislamiento + permisos + gestión de miembros). **Suite: 59 verdes** (49 previos + 10). `npm run build` limpio.
 
+> **Backlog vivo:** el trabajo planificado y no implementado se registra en
+> `docs/PENDIENTES.md` (incluye el plan detallado de la Fase 10, ya elaborado y
+> pendiente de arrancar).
+
 ### ⏳ No construido (Fases 10-20 del Plan Maestro — ver §5)
 Alta self-service, infraestructura de producción real, notificaciones multicanal (email/Telegram/WhatsApp) + scoring de alertas, monetización con Stripe, cumplimiento RGPD, landing pública, endurecimiento de seguridad, escalado de captación (el conector BOE existe pero defensivo, sin ajuste empírico contra el portal real), analítica de negocio, beta cerrada.
 
