@@ -1,7 +1,7 @@
 # CLAUDE.md — Contexto maestro del proyecto SEIS
 **Repositorio:** christo23ch/seis
 **Rama de trabajo:** claude/wizardly-wright-nkscpg
-**Última actualización:** 2026-07-14
+**Última actualización:** 2026-07-16
 **Fuente de verdad funcional/técnica:** `SEIS_Especificacion_Funcional_y_Tecnica.md` (no está en el repo; vive en los uploads de la sesión — considerar incorporarla a `docs/`)
 
 ---
@@ -53,18 +53,35 @@
 - Frontend: tipos/api/menú actualizados (oculta «Conocimiento» salvo superadmin), página `/equipo`.
 - Tests: `test_multitenant.py` (10 nuevos, aislamiento + permisos + gestión de miembros). **Suite: 59 verdes** (49 previos + 10). `npm run build` limpio.
 
-> **Backlog vivo:** el trabajo planificado y no implementado se registra en
-> `docs/PENDIENTES.md` (incluye el plan detallado de la Fase 10, ya elaborado y
-> pendiente de arrancar).
+### ✅ Fase 11 — Infraestructura de producción, código (COMPLETADA)
+- `GET /health` ampliado: verifica BD, Redis y versiones de conocimiento; 503 solo si BD (crítica) falla, `degraded` si solo Redis falla.
+- Sentry opcional (backend y frontend), activado solo si `SENTRY_DSN` existe.
+- `render.yaml` (IaC): backend, frontend, worker Celery, beat, Postgres, Redis.
+- CI/CD: `.github/workflows/ci.yml` (lint+test+build) · `deploy-staging.yml` (auto en push a main) · `deploy-production.yml` (manual, con aprobación).
+- `docs/RUNBOOK.md` + `docs/RENDER_DEPLOYMENT.md`; `.env.example` en la raíz del repo.
+- Fail-fast: la app rechaza arrancar en producción con `JWT_SECRET`/`ADMIN_PASSWORD`/`DATABASE_URL` de fábrica.
+- Pendiente (fuera de alcance de código): compra de dominio, alta real en Render/Cloudflare/Sentry/UptimeRobot.
 
-### ⏳ No construido (Fases 10-20 del Plan Maestro — ver §5)
-Alta self-service, infraestructura de producción real, notificaciones multicanal (email/Telegram/WhatsApp) + scoring de alertas, monetización con Stripe, cumplimiento RGPD, landing pública, endurecimiento de seguridad, escalado de captación (el conector BOE existe pero defensivo, sin ajuste empírico contra el portal real), analítica de negocio, beta cerrada.
+### ✅ Fase 10 — Alta self-service (COMPLETADA, 2026-07-16)
+- Registro público (`POST /auth/registro`), verificación de email (24 h, un solo uso), recuperación de contraseña (1 h, un solo uso), anti fuerza-bruta de dos cubos independientes (email + IP) en `/auth/login`.
+- `EmailBackend` (ABC) + `ConsoleEmailBackend` única implementación: loguea, sin proveedor externo, sin buffer global — inyectable por DI/monkeypatch en tests. La integración real (Postmark/SES, Fase 12) se añade como subclase nueva.
+- Tokens de propósito con `jti`+`iat`+`exp`+`proposito` (`app/core/security.py`); consumo de un solo uso vía tabla `token_consumido` (PK = jti, verificado con tests de concurrencia real).
+- Migración Alembic **0003** idempotente + reversible. Se detectó y corrigió en commit aparte un bug preexistente del backfill de **0002** (INSERT sin `creado_en`, bloqueaba `alembic upgrade head` en BD nueva).
+- Login siempre con mensaje genérico (no distingue email inexistente / password incorrecta / cuenta inactiva o sin verificar). `/auth/recuperar` sobre cuenta sin verificar reenvía verificación en vez de token de reseteo.
+- Frontend: `/registro`, `/verificar`, `/resetear`, `/recuperar` (hermanas de `/login`).
+- Tests: **80 verdes** (59 previos + 21 nuevos), incl. verificación/reseteo simultáneos del mismo token con `ThreadPoolExecutor`. `npm run build` limpio.
+- Deuda técnica registrada (no bloqueante, ver `docs/PENDIENTES.md`): `downgrade()` de 0002 falla en SQLite al bajar hasta la base (limitación de Alembic batch mode con FKs); no afecta a Postgres ni al runbook de rollback real.
+
+> **Backlog vivo:** `docs/PENDIENTES.md` registra deuda técnica y el resumen de fases 12-20.
+
+### ⏳ No construido (Fases 12-20 del Plan Maestro — ver §5)
+Notificaciones multicanal (email/Telegram/WhatsApp) + scoring de alertas, monetización con Stripe, cumplimiento RGPD, landing pública, endurecimiento de seguridad, escalado de captación (el conector BOE existe pero defensivo, sin ajuste empírico contra el portal real), analítica de negocio, beta cerrada.
 
 ### 🐛 Gotchas conocidos
 - El motor (`app/engine/`) es la parte más validada del sistema (58/49 tests de regresión) — **NO tocar sin indicación expresa**; cualquier cambio ahí exige entender el "caso dorado §19" primero.
 - El conector de ingesta BOE es "defensivo" (nunca rompe, pero no está ajustado contra el HTML real del portal) — trabajo pendiente de Fase 17.
-- Hoy **no hay multi-tenancy**: cualquier usuario autenticado puede ver los análisis de cualquier otro. Esto es la Fase 9, bloqueante de todo lo demás (Stripe, límites de plan, etc. dependen de que exista `Organizacion`).
 - Credenciales de arranque `admin@seis.local` / `admin` — cambiar antes de cualquier despliegue real.
+- `docs/PENDIENTES.md` §"Deuda técnica registrada": `downgrade()` de la migración 0002 falla en SQLite al bajar hasta la base (no bloqueante en Postgres).
 
 ---
 
@@ -105,7 +122,7 @@ ResultadoReal · Usuario · Auditoria
 | 19 | Analítica y panel de negocio | — | Sonnet/Haiku |
 | 20 | Beta cerrada y lanzamiento | Fin del proyecto | — |
 
-**Siguiente tarea urgente: Fase 9 — Multi-tenancy.** El prompt de ejecución completo (diseño ya cerrado: Organizacion, roles propietario/miembro/superadmin, filtrado por `organizacion_id`, migración con backfill) está en `SEIS_Plan_Maestro_Fases_920.md` §Fase 9. Antes de tocar código: **exigir plan de cambios fichero a fichero y detenerse para aprobación** — es la regla de oro de este proyecto.
+**Siguiente tarea urgente: Fase 12 — Notificaciones multicanal + scoring.** Fases 9, 10 y 11 (código) ya completadas. El prompt de ejecución está en `SEIS_Plan_Maestro_Fases_920.md` §Fase 12; el envío real de email (Postmark/SES) se añade como subclase nueva de `EmailBackend` (Fase 10), sin tocar la abstracción. Antes de tocar código: **exigir plan de cambios fichero a fichero y detenerse para aprobación** — es la regla de oro de este proyecto.
 
 ---
 
@@ -156,4 +173,4 @@ Caso de prueba de referencia: **§19 de la especificación**, guion completo con
 
 ## 9 · Notas para la próxima sesión
 
-**TL;DR:** El motor experto (M01-M14) y el producto de un solo tenant están completos y probados (~40 % del recorrido a SaaS comercial). Lo que falta es todo lo que convierte esto en negocio: multi-tenancy (Fase 9, **bloqueante y siguiente paso**), alta self-service, infraestructura real, monetización, legal, canales de notificación y salida a mercado. Seguir el Plan Maestro fase a fase, con plan-antes-de-código como regla no negociable.
+**TL;DR:** El motor experto (M01-M14), el multi-tenancy (Fase 9), el alta self-service (Fase 10) y el código de infraestructura de producción (Fase 11) están completos y probados. Lo que falta es todo lo que convierte esto en negocio operando: alta real en Render/Cloudflare/Sentry (pasos humanos de Fase 11), notificaciones multicanal (Fase 12, siguiente paso de código), monetización, legal y salida a mercado. Seguir el Plan Maestro fase a fase, con plan-antes-de-código como regla no negociable.
