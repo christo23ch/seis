@@ -15,6 +15,7 @@ del esquema (inspector) antes de actuar. Tests e init_db usan create_all directo
 no Alembic: esta migración es la vía de actualización de BD de producción.
 """
 import uuid
+from datetime import datetime, timezone
 
 import sqlalchemy as sa
 from alembic import op
@@ -68,9 +69,14 @@ def upgrade() -> None:
     org_default = bind.execute(
         sa.text("SELECT id FROM organizacion ORDER BY creado_en LIMIT 1")).first()
     if org_default is None:
+        # `creado_en` es NOT NULL en el esquema real (Mapped[datetime] sin Optional,
+        # y 0001 crea el esquema con Base.metadata.create_all de los modelos
+        # actuales, no un snapshot congelado) — el server_default de la columna no
+        # se aplica en un INSERT crudo por sa.text(), así que hay que darlo explícito.
         bind.execute(
-            sa.text("INSERT INTO organizacion (id, nombre) VALUES (:id, :nombre)"),
-            {"id": org_id, "nombre": "Organización por defecto"})
+            sa.text("INSERT INTO organizacion (id, nombre, creado_en) VALUES (:id, :nombre, :ahora)"),
+            {"id": org_id, "nombre": "Organización por defecto",
+             "ahora": datetime.now(timezone.utc)})
     else:
         org_id = org_default[0]
 
