@@ -29,6 +29,12 @@ class Settings(BaseSettings):
     # Observabilidad (Fase 11)
     sentry_dsn: str = ""
 
+    # Alta self-service (Fase 10)
+    frontend_url: str = "http://localhost:3000"    # base para enlaces de verificación/reseteo
+    email_from: str = "noreply@seis.local"
+    login_max_intentos: int = 5
+    login_ventana_min: int = 15
+
     @property
     def cors_origins(self) -> list[str]:
         return [o.strip() for o in self.seis_cors_origins.split(",") if o.strip()]

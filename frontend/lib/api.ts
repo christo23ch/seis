@@ -41,6 +41,16 @@ export const api = {
   crearUsuario: (b: { email: string; password: string; nombre?: string; rol: string }) =>
     req<{ email: string; rol: string }>("/auth/usuarios", { method: "POST", body: JSON.stringify(b) }),
 
+  // Fase 10 — alta self-service
+  registro: (b: { email: string; password: string; nombre?: string }) =>
+    req<{ email: string; mensaje: string }>("/auth/registro", { method: "POST", body: JSON.stringify(b) }),
+  verificar: (token: string) =>
+    req<{ email: string; mensaje: string }>("/auth/verificar", { method: "POST", body: JSON.stringify({ token }) }),
+  recuperar: (email: string) =>
+    req<{ mensaje: string }>("/auth/recuperar", { method: "POST", body: JSON.stringify({ email }) }),
+  resetear: (token: string, nueva: string) =>
+    req<{ mensaje: string }>("/auth/resetear", { method: "POST", body: JSON.stringify({ token, nueva }) }),
+
   // Fase 9 — organización y miembros
   organizacion: () => req<Organizacion>("/organizacion"),
   crearMiembro: (b: { email: string; password: string; nombre?: string; rol: string }) =>

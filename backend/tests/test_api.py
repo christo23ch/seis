@@ -6,7 +6,10 @@ from tests.conftest import entrada_base
 
 def test_health_publico(api):
     r = api.get("/api/v1/health")
-    assert r.status_code == 200 and r.json()["status"] == "ok"
+    # "degraded" es válido si Redis no está disponible en el entorno de test (Fase 11):
+    # la BD (el componente crítico) sigue "ok" y el status HTTP se mantiene en 200.
+    assert r.status_code == 200 and r.json()["status"] in ("ok", "degraded")
+    assert r.json()["componentes"]["db"]["status"] == "ok"
 
 
 def test_sin_token_401(api):

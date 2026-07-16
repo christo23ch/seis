@@ -244,7 +244,16 @@ class Usuario(Base):
     rol_org: Mapped[str] = mapped_column(String(16), default="miembro")  # propietario | miembro
     es_superadmin: Mapped[bool] = mapped_column(Boolean, default=False)  # plataforma: gobierna T2/T3 global
     activo: Mapped[bool] = mapped_column(Boolean, default=True)
+    email_verificado: Mapped[bool] = mapped_column(Boolean, default=False)  # Fase 10: alta self-service
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class TokenConsumido(Base):
+    """Fase 10: garantiza que un token de propósito (verificar/resetear) se usa una sola vez."""
+    __tablename__ = "token_consumido"
+    jti: Mapped[str] = mapped_column(String(36), primary_key=True)
+    proposito: Mapped[str] = mapped_column(String(16))
+    consumido_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
 class Auditoria(Base):

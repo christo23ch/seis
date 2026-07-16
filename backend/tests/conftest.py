@@ -92,3 +92,13 @@ def token_headers(api, email: str, password: str) -> dict:
     r = api.post("/api/v1/auth/login", data={"username": email, "password": password})
     assert r.status_code == 200, r.text
     return {"Authorization": f"Bearer {r.json()['access_token']}"}
+
+
+@pytest.fixture(autouse=True)
+def _rate_limit_limpio():
+    """Fase 10: evita que los intentos fallidos de un test de fuerza bruta
+    contaminen el siguiente (el cliente `api` es de módulo, no por test)."""
+    from app.core import rate_limit
+    rate_limit.limpiar_todo()
+    yield
+    rate_limit.limpiar_todo()

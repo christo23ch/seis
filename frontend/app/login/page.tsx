@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { Button, Campo, Input } from "@/components/ui";
 import { Gavel } from "lucide-react";
@@ -55,6 +56,10 @@ export default function LoginPage() {
           </Campo>
           {error && <p className="text-sm text-sem-rojo">{error}</p>}
           <Button type="submit" className="w-full" cargando={cargando}>Entrar</Button>
+          <p className="text-[12px] text-slate-400 flex justify-between">
+            <Link href="/registro" className="underline">Crear cuenta</Link>
+            <Link href="/recuperar" className="underline">¿Olvidaste tu contraseña?</Link>
+          </p>
           <p className="text-[12px] text-slate-400">Primer arranque: admin@seis.local / admin (cámbiela de inmediato).</p>
         </form>
       </section>
