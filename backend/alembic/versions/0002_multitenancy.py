@@ -97,16 +97,28 @@ def downgrade() -> None:
     bind = op.get_bind()
     inspector = sa.inspect(bind)
 
+    # batch_alter_table: en SQLite, DROP COLUMN nativo rechaza soltar una columna
+    # que forma parte de una FOREIGN KEY (aquí, analisis.organizacion_id ->
+    # organizacion.id); el modo batch recrea la tabla sin esa columna en vez de
+    # intentar el ALTER TABLE directo. En el resto de dialectos (Postgres en
+    # producción) batch_alter_table ejecuta las mismas sentencias ALTER TABLE
+    # de siempre, sin recrear nada — mismo comportamiento final que antes.
     if _tiene_columna(inspector, "analisis", "organizacion_id"):
-        op.drop_index("ix_analisis_organizacion_id", table_name="analisis")
-        op.drop_column("analisis", "organizacion_id")
+        with op.batch_alter_table("analisis") as batch_op:
+            batch_op.drop_index("ix_analisis_organizacion_id")
+            batch_op.drop_column("organizacion_id")
 
-    for col, idx in (("organizacion_id", "ix_usuario_organizacion_id"),
-                     ("rol_org", None), ("es_superadmin", None)):
-        if _tiene_columna(inspector, "usuario", col):
-            if idx:
-                op.drop_index(idx, table_name="usuario")
-            op.drop_column("usuario", col)
+    columnas_usuario = [c for c in ("organizacion_id", "rol_org", "es_superadmin")
+                       if _tiene_columna(inspector, "usuario", c)]
+    if columnas_usuario:
+        with op.batch_alter_table("usuario") as batch_op:
+            if "organizacion_id" in columnas_usuario:
+                batch_op.drop_index("ix_usuario_organizacion_id")
+                batch_op.drop_column("organizacion_id")
+            if "rol_org" in columnas_usuario:
+                batch_op.drop_column("rol_org")
+            if "es_superadmin" in columnas_usuario:
+                batch_op.drop_column("es_superadmin")
 
     if _tiene_tabla(inspector, "organizacion"):
         op.drop_table("organizacion")
