@@ -2,10 +2,13 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.responses import PlainTextResponse
+from sqlalchemy import text
 from sqlalchemy.orm import Session
+import redis
 
 from app import models
 from app.api.deps import ROLES_ESCRITURA, get_current_user, require_rol
@@ -18,8 +21,46 @@ router = APIRouter(tags=["analisis"])
 
 
 @router.get("/health")
-def health() -> dict:
-    return {"status": "ok", "servicio": "seis-backend"}
+def health(db: Session = Depends(get_db)) -> dict:
+    """Health check ampliado: verifica BD, Redis y versiones de conocimiento (Fase 11)."""
+    settings = get_settings()
+    timestamp = datetime.now(timezone.utc).isoformat()
+    componentes = {}
+    status_general = "ok"
+
+    # Verificar BD
+    try:
+        db.execute(text("SELECT 1"))
+        componentes["db"] = {"status": "ok", "conectado": True}
+    except Exception as e:
+        componentes["db"] = {"status": "error", "conectado": False, "error": str(e)[:100]}
+        status_general = "error"
+
+    # Verificar Redis
+    try:
+        r = redis.from_url(settings.redis_url, decode_responses=True, socket_connect_timeout=1, socket_timeout=1)
+        r.ping()
+        componentes["redis"] = {"status": "ok", "conectado": True}
+    except Exception as e:
+        componentes["redis"] = {"status": "error", "conectado": False, "error": str(e)[:100]}
+        status_general = "degraded" if status_general == "ok" else "error"
+
+    # Versiones de conocimiento
+    componentes["conocimiento"] = {
+        "version_reglas": settings.version_reglas,
+        "version_parametros": settings.version_parametros,
+    }
+
+    respuesta = {
+        "status": status_general,
+        "timestamp": timestamp,
+        "servicio": "seis-backend",
+        "componentes": componentes,
+    }
+
+    if status_general == "error":
+        return Response(content=json.dumps(respuesta), status_code=503, media_type="application/json")
+    return respuesta
 
 
 @router.post("/analisis")

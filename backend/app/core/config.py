@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     version_reglas: str = "2026.07"
     version_parametros: str = "2026.07"
 
+    # Observabilidad (Fase 11)
+    sentry_dsn: str = ""
+
     @property
     def cors_origins(self) -> list[str]:
         return [o.strip() for o in self.seis_cors_origins.split(",") if o.strip()]

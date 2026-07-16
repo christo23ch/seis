@@ -10,6 +10,35 @@ from app.core.config import get_settings
 
 settings = get_settings()
 
+# Validación fail-fast en producción (Fase 11)
+if settings.seis_env == "production":
+    peligros = [
+        (settings.jwt_secret == "cambia-este-secreto-en-produccion", "JWT_SECRET es el de fábrica"),
+        (settings.admin_password == "admin", "ADMIN_PASSWORD es el de fábrica"),
+        (settings.database_url.startswith("sqlite://"), "DATABASE_URL apunta a SQLite, no PostgreSQL"),
+    ]
+    for es_peligro, mensaje in peligros:
+        if es_peligro:
+            raise RuntimeError(
+                f"❌ CONFIGURACIÓN INVÁLIDA EN PRODUCCIÓN: {mensaje}\n"
+                f"   Verifica las variables de entorno antes de desplegar."
+            )
+
+# Integración de Sentry (Fase 11, opcional si SENTRY_DSN existe)
+if settings.sentry_dsn:
+    import sentry_sdk
+    from sentry_sdk.integrations.fastapi import FastApiIntegration
+    from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        integrations=[
+            FastApiIntegration(),
+            SqlalchemyIntegration(),
+        ],
+        environment=settings.seis_env,
+        traces_sample_rate=0.1 if settings.seis_env == "production" else 1.0,
+    )
+
 app = FastAPI(
     title=settings.app_name,
     version="1.0.0-fase1",

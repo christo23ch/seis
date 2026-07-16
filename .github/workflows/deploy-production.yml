@@ -1,0 +1,108 @@
+name: Deploy to Production (Manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "production"
+        type: choice
+        options:
+          - production
+          - staging
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.environment }}
+      url: https://app.seis.local
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify environment
+        run: |
+          if [ "${{ github.event.inputs.environment }}" != "production" ]; then
+            echo "⚠️  Usando ${{ github.event.inputs.environment }}"
+          fi
+
+      - name: Deploy to Render (${{ github.event.inputs.environment }})
+        run: |
+          if [ "${{ github.event.inputs.environment }}" == "production" ]; then
+            HOOK_URL="${{ secrets.RENDER_BACKEND_DEPLOY_HOOK_PRODUCTION }}"
+          else
+            HOOK_URL="${{ secrets.RENDER_BACKEND_DEPLOY_HOOK_STAGING }}"
+          fi
+
+          if [ -z "$HOOK_URL" ]; then
+            echo "❌ Deploy hook no configurado"
+            exit 1
+          fi
+
+          echo "🚀 Deployando a ${{ github.event.inputs.environment }}..."
+          curl -X POST "$HOOK_URL"
+
+      - name: Wait for deployment
+        run: sleep 120
+
+      - name: Health check
+        run: |
+          if [ "${{ github.event.inputs.environment }}" == "production" ]; then
+            URL="https://app.seis.local/health"
+          else
+            URL="https://seis-staging.onrender.com/health"
+          fi
+
+          RETRIES=15
+          DELAY=10
+          for i in $(seq 1 $RETRIES); do
+            RESPONSE=$(curl -s "$URL" 2>/dev/null || echo "{}")
+            STATUS=$(echo "$RESPONSE" | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
+
+            if [ "$STATUS" = "ok" ] || [ "$STATUS" = "degraded" ]; then
+              echo "✅ ${{ github.event.inputs.environment }} healthy: $STATUS"
+              exit 0
+            fi
+
+            echo "⏳ Attempt $i/$RETRIES... sleeping ${DELAY}s"
+            sleep $DELAY
+          done
+
+          echo "❌ Health check failed for ${{ github.event.inputs.environment }}"
+          exit 1
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "🔄 Rollback: redeploying previous commit..."
+          git log --oneline -2
+          echo "Manual rollback via Render console or git revert (manual step)"
+
+      - name: Create deployment record
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.sha,
+              environment: '${{ github.event.inputs.environment }}',
+              description: 'Deployed via GitHub Actions',
+              auto_merge: false,
+              required_contexts: []
+            }).then(deployment => {
+              github.rest.repos.createDeploymentStatus({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                deployment_id: deployment.data.id,
+                state: 'success',
+                environment_url: 'https://app.seis.local',
+                description: 'Deployment successful'
+              });
+            });

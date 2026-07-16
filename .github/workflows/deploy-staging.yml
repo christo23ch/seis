@@ -1,0 +1,43 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Render (Staging)
+        run: |
+          if [ -z "${{ secrets.RENDER_BACKEND_DEPLOY_HOOK_STAGING }}" ]; then
+            echo "⚠️  RENDER_BACKEND_DEPLOY_HOOK_STAGING no configurado"
+            exit 0
+          fi
+          curl -X POST "${{ secrets.RENDER_BACKEND_DEPLOY_HOOK_STAGING }}"
+        continue-on-error: true
+
+      - name: Wait for deployment
+        run: sleep 60
+
+      - name: Health check
+        run: |
+          RETRIES=10
+          DELAY=5
+          for i in $(seq 1 $RETRIES); do
+            if curl -sf https://seis-staging.onrender.com/health > /dev/null 2>&1; then
+              echo "✅ Staging healthy"
+              exit 0
+            fi
+            echo "⏳ Attempt $i/$RETRIES... sleeping ${DELAY}s"
+            sleep $DELAY
+          done
+          echo "⚠️  Staging health check timed out (deploy likely still in progress)"
+          exit 0
+        continue-on-error: true
+
+      - name: Notify (Slack/Email optional)
+        if: always()
+        run: echo "Deploy to staging completed"

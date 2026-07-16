@@ -1,0 +1,110 @@
+services:
+  # Backend FastAPI
+  - type: web
+    name: seis-backend
+    runtime: python
+    pythonVersion: "3.12"
+    buildCommand: |
+      cd backend && pip install -r requirements.txt -q && alembic upgrade head
+    startCommand: "cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    plan: starter
+    healthCheckPath: /health
+    healthCheckInterval: 60
+    healthCheckTimeout: 15
+    envVars:
+      - key: DATABASE_URL
+        scope: run_and_build
+        value: ${{ secrets.DATABASE_URL }}
+      - key: REDIS_URL
+        scope: run
+        value: ${{ secrets.REDIS_URL }}
+      - key: JWT_SECRET
+        scope: run
+        value: ${{ secrets.JWT_SECRET }}
+      - key: SENTRY_DSN
+        scope: run
+        value: ${{ secrets.SENTRY_DSN }}
+      - key: SEIS_ENV
+        value: production
+      - key: SEIS_CORS_ORIGINS
+        value: ${{ env.FRONTEND_URL }}
+      - key: ADMIN_EMAIL
+        value: admin@seis.local
+      - key: ADMIN_PASSWORD
+        value: ${{ secrets.ADMIN_PASSWORD }}
+
+  # Frontend Next.js
+  - type: web
+    name: seis-frontend
+    runtime: node
+    nodeVersion: "22"
+    plan: starter
+    buildCommand: "cd frontend && npm ci --prefer-offline && npm run build"
+    startCommand: "cd frontend && npm run start"
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        value: ${{ env.BACKEND_URL }}
+      - key: NEXT_PUBLIC_SENTRY_DSN
+        value: ${{ secrets.SENTRY_DSN }}
+      - key: NEXT_PUBLIC_ENVIRONMENT
+        value: production
+
+  # Celery Worker
+  - type: background_worker
+    name: seis-worker
+    runtime: python
+    pythonVersion: "3.12"
+    buildCommand: |
+      cd backend && pip install -r requirements.txt -q
+    startCommand: "cd backend && celery -A app.tasks.celery_app worker --loglevel=info --concurrency=2"
+    plan: starter
+    envVars:
+      - key: DATABASE_URL
+        scope: run_and_build
+        value: ${{ secrets.DATABASE_URL }}
+      - key: REDIS_URL
+        scope: run
+        value: ${{ secrets.REDIS_URL }}
+      - key: SEIS_ENV
+        value: production
+      - key: SENTRY_DSN
+        scope: run
+        value: ${{ secrets.SENTRY_DSN }}
+
+  # Celery Beat Scheduler
+  - type: background_worker
+    name: seis-beat
+    runtime: python
+    pythonVersion: "3.12"
+    buildCommand: |
+      cd backend && pip install -r requirements.txt -q
+    startCommand: "cd backend && celery -A app.tasks.celery_app beat --loglevel=info"
+    plan: starter
+    envVars:
+      - key: DATABASE_URL
+        scope: run_and_build
+        value: ${{ secrets.DATABASE_URL }}
+      - key: REDIS_URL
+        scope: run
+        value: ${{ secrets.REDIS_URL }}
+      - key: SEIS_ENV
+        value: production
+      - key: SENTRY_DSN
+        scope: run
+        value: ${{ secrets.SENTRY_DSN }}
+
+databases:
+  # PostgreSQL
+  - name: seis-postgres
+    databaseName: seis_prod
+    plan: starter
+    postgresVersion: "16"
+    region: frankfurt
+    backups:
+      - interval: daily
+        retentionDays: 30
+
+  # Redis
+  - name: seis-redis
+    plan: starter
+    region: frankfurt
