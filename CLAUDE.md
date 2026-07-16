@@ -70,7 +70,7 @@
 - Login siempre con mensaje genérico (no distingue email inexistente / password incorrecta / cuenta inactiva o sin verificar). `/auth/recuperar` sobre cuenta sin verificar reenvía verificación en vez de token de reseteo.
 - Frontend: `/registro`, `/verificar`, `/resetear`, `/recuperar` (hermanas de `/login`).
 - Tests: **80 verdes** (59 previos + 21 nuevos), incl. verificación/reseteo simultáneos del mismo token con `ThreadPoolExecutor`. `npm run build` limpio.
-- Deuda técnica registrada (no bloqueante, ver `docs/PENDIENTES.md`): `downgrade()` de 0002 falla en SQLite al bajar hasta la base (limitación de Alembic batch mode con FKs); no afecta a Postgres ni al runbook de rollback real.
+- El `downgrade()` de 0002 en SQLite (fallaba al bajar hasta la base) quedó corregido en commit aparte (`fix(alembic): repair migration 0002 downgrade on SQLite`, `op.batch_alter_table`); ciclo completo `upgrade head → downgrade base → upgrade head` verificado sobre BD vacía.
 
 > **Backlog vivo:** `docs/PENDIENTES.md` registra deuda técnica y el resumen de fases 12-20.
 
@@ -81,7 +81,6 @@ Notificaciones multicanal (email/Telegram/WhatsApp) + scoring de alertas, moneti
 - El motor (`app/engine/`) es la parte más validada del sistema (58/49 tests de regresión) — **NO tocar sin indicación expresa**; cualquier cambio ahí exige entender el "caso dorado §19" primero.
 - El conector de ingesta BOE es "defensivo" (nunca rompe, pero no está ajustado contra el HTML real del portal) — trabajo pendiente de Fase 17.
 - Credenciales de arranque `admin@seis.local` / `admin` — cambiar antes de cualquier despliegue real.
-- `docs/PENDIENTES.md` §"Deuda técnica registrada": `downgrade()` de la migración 0002 falla en SQLite al bajar hasta la base (no bloqueante en Postgres).
 
 ---
 

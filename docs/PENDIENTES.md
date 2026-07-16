@@ -42,19 +42,19 @@ backfill` + `feat(auth): self service registration`.
 
 ## 🐛 Deuda técnica registrada
 
-- **`downgrade()` de `0002_multitenancy.py` falla en SQLite al bajar hasta la
-  base** (`ALTER TABLE analisis DROP COLUMN organizacion_id` → `OperationalError:
-  unknown column "organizacion_id" in foreign key definition`). Es una
-  limitación conocida del modo *batch* de Alembic con SQLite al soltar una
-  columna referenciada por FKs de otra tabla. **No bloquea nada operativo**: en
-  producción la BD es PostgreSQL (no SQLite) y el procedimiento de rollback del
-  runbook (`docs/RUNBOOK.md`) usa "redeploy del commit anterior en Render", no
-  `alembic downgrade base`. Queda pendiente de arreglo si algún día se necesita
-  un downgrade completo real. Detectado y confirmado no bloqueante durante la
-  verificación de la migración 0003 (Fase 10).
 - Endpoints citados en prompts que aún no existen y que deberán heredar el
   scoping por `organizacion_id` cuando se creen: `export.csv`, `geo`,
   `resultado-real`, `/calibracion`.
+
+## ✅ Deuda técnica resuelta
+
+- ~~`downgrade()` de `0002_multitenancy.py` fallaba en SQLite al bajar hasta la
+  base~~ — corregido en commit aparte `fix(alembic): repair migration 0002
+  downgrade on SQLite` (`op.batch_alter_table` para los `drop_column`/
+  `drop_index` de `analisis` y `usuario`; sin cambio de comportamiento en
+  Postgres). Verificado el ciclo completo `upgrade head → downgrade base →
+  upgrade head` sobre una BD SQLite vacía, con el esquema final idéntico al
+  esperado (mismas tablas, columnas, FKs e índices).
 
 ---
 
