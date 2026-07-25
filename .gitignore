@@ -22,3 +22,6 @@ npm-debug.log*
 .DS_Store
 .idea/
 .vscode/
+
+# Herramientas de análisis (artefactos locales, no versionables)
+graphify-out/
