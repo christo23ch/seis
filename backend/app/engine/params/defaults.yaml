@@ -227,3 +227,20 @@ adjudicacion:                      # M13 capa A (§11.1) — ratios s/VT por seg
   ajuste_chollo_pp: 0.06           # VT/VM < 0.6 atrae competencia
   rvc_bandas: [{min: 1.05, banda: alcanzable}, {min: 0.90, banda: ajustado},
                {min: 0.80, banda: improbable}, {min: 0.0, banda: inviable}]
+
+scoring_expres:                    # Fase 12 — pesos del scoring exprés de captación (orientativo)
+  pesos:                           # suma libre; se normaliza al calcular
+    descuento: 40                  # descuento aparente VS sobre valor de referencia
+    fuente: 15                     # atractivo típico del canal de captación
+    desiertas: 15                  # subastas previas desiertas (menos competencia)
+    informacion: 20                # completitud de datos brutos (P4)
+    plazo: 10                      # margen para due diligence antes del cierre
+  fuentes:                         # atractivo 0-100 por fuente (cf. ratios §11.1)
+    judicial_boe: 70
+    aeat: 65
+    tgss: 60
+    concursal: 75
+    banco: 45
+    notarial: 60
+    privada: 35
+    default: 50

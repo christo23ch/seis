@@ -3,7 +3,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.auth import router as auth_router
+from app.api.captacion import router as captacion_router
 from app.api.conocimiento import router as conocimiento_router
+from app.api.notificaciones import router as notificaciones_router
+from app.api.notificaciones import router_alertas as alertas_router
 from app.api.organizacion import router as organizacion_router
 from app.api.routes import router
 from app.core.config import get_settings
@@ -24,3 +27,6 @@ app.include_router(router, prefix=settings.api_v1_prefix)
 app.include_router(auth_router, prefix=settings.api_v1_prefix)
 app.include_router(conocimiento_router, prefix=settings.api_v1_prefix)
 app.include_router(organizacion_router, prefix=settings.api_v1_prefix)
+app.include_router(captacion_router, prefix=settings.api_v1_prefix)
+app.include_router(notificaciones_router, prefix=settings.api_v1_prefix)
+app.include_router(alertas_router, prefix=settings.api_v1_prefix)

@@ -1,4 +1,4 @@
-import type { Detalle, ListItem, Miembro, Opciones, Organizacion, Resultado, Usuario } from "./types";
+import type { Alerta, CodigoTelegram, Detalle, ListItem, Miembro, Opciones, Organizacion, PreferenciasNotificacion, Resultado, SubastaCaptada, Usuario } from "./types";
 
 const BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") + "/api/v1";
 
@@ -68,6 +68,24 @@ export const api = {
   parametros: () => req<any>("/parametros"),
   putParametro: (b: { clave: string; valor: any; fuente_legal?: string }) =>
     req("/parametros", { method: "PUT", body: JSON.stringify(b) }),
+  // Fase 12 — notificaciones, alertas y captación
+  preferencias: () => req<PreferenciasNotificacion>("/notificaciones/preferencias"),
+  putPreferencias: (b: Partial<PreferenciasNotificacion>) =>
+    req<PreferenciasNotificacion>("/notificaciones/preferencias", { method: "PUT", body: JSON.stringify(b) }),
+  codigoTelegram: () => req<CodigoTelegram>("/notificaciones/telegram/codigo", { method: "POST" }),
+  desvincularTelegram: () => req<{ ok: boolean }>("/notificaciones/telegram", { method: "DELETE" }),
+  baja: (token: string) => req<{ ok: boolean; mensaje: string }>("/notificaciones/baja", { method: "POST", body: JSON.stringify({ token }) }),
+  alertas: () => req<Alerta[]>("/alertas"),
+  crearAlerta: (b: { nombre: string; criterios: Record<string, any>; activa?: boolean }) =>
+    req<Alerta>("/alertas", { method: "POST", body: JSON.stringify(b) }),
+  patchAlerta: (id: string, b: Partial<Pick<Alerta, "nombre" | "criterios" | "activa">>) =>
+    req<Alerta>(`/alertas/${id}`, { method: "PATCH", body: JSON.stringify(b) }),
+  eliminarAlerta: (id: string) => req<void>(`/alertas/${id}`, { method: "DELETE" }),
+  subastas: (scoreMin?: number) =>
+    req<SubastaCaptada[]>(`/subastas${scoreMin != null ? `?score_min=${scoreMin}` : ""}`),
+  captarSubasta: (b: Record<string, any>) =>
+    req<SubastaCaptada & { alertas_disparadas: number }>("/subastas", { method: "POST", body: JSON.stringify(b) }),
+
   reglas: () => req<{ version: string; reglas: any[] }>("/reglas"),
   historialRegla: (codigo: string) => req<any[]>(`/reglas/${codigo}/historial`),
   nuevaRegla: (definicion: any, justificacion: string) =>

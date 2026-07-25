@@ -47,3 +47,18 @@ export interface Usuario {
 }
 export interface Miembro { id: string; email: string; nombre?: string | null; rol: string; rol_org: RolOrg; activo: boolean; }
 export interface Organizacion { id: string; nombre: string; rol_org: RolOrg; puede_gestionar: boolean; miembros: Miembro[]; }
+
+// Fase 12 — notificaciones, alertas y captación
+export interface PreferenciasNotificacion {
+  canales: string[]; modo: "instantaneo" | "digest_diario" | "digest_semanal";
+  hora_digest: number; silencio_inicio?: number | null; silencio_fin?: number | null;
+  telegram_vinculado: boolean; comunicaciones_activas: boolean;
+}
+export interface Alerta { id: string; nombre: string; criterios: Record<string, any>; activa: boolean; }
+export interface CodigoTelegram { codigo: string; expira_en: string; enlace?: string | null; }
+export interface SubastaCaptada {
+  id: string; fuente_codigo: string; identificador_externo?: string | null; url?: string | null;
+  valor_subasta: number; fecha_cierre?: string | null; estado: string;
+  subastas_desiertas_previas: number; score?: number | null;
+  score_desglose?: Record<string, number> | null; creado_en?: string | null;
+}

@@ -40,3 +40,25 @@ def crear_token(email: str, rol: str) -> str:
 def decodificar_token(token: str) -> dict:
     """Devuelve el payload o lanza jwt.PyJWTError."""
     return jwt.decode(token, get_settings().jwt_secret, algorithms=["HS256"])
+
+
+def crear_token_proposito(sub: str, proposito: str, horas: int) -> str:
+    """Token firmado de propósito único (Fase 12: "baja"; Fase 10 lo reutilizará).
+
+    Incluye `jti` para permitir el marcado de un solo uso cuando el propósito
+    lo exija. El propósito viaja en el payload y se verifica al decodificar.
+    """
+    import uuid
+    s = get_settings()
+    ahora = datetime.now(timezone.utc)
+    payload = {"sub": sub, "proposito": proposito, "jti": str(uuid.uuid4()),
+               "iat": ahora, "exp": ahora + timedelta(hours=horas)}
+    return jwt.encode(payload, s.jwt_secret, algorithm="HS256")
+
+
+def decodificar_token_proposito(token: str, proposito: str) -> dict:
+    """Decodifica y exige que el propósito coincida; lanza jwt.PyJWTError si no."""
+    payload = jwt.decode(token, get_settings().jwt_secret, algorithms=["HS256"])
+    if payload.get("proposito") != proposito:
+        raise jwt.InvalidTokenError("Propósito del token incorrecto")
+    return payload

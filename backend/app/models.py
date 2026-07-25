@@ -247,10 +247,56 @@ class Usuario(Base):
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
+class PreferenciasNotificacion(Base):
+    """Fase 12: preferencias de notificación por usuario (1:1 con usuario)."""
+    __tablename__ = "preferencias_notificacion"
+    usuario_id: Mapped[str] = mapped_column(ForeignKey("usuario.id"), primary_key=True)
+    canales: Mapped[list] = mapped_column(PortableJSON, default=list)   # ["email","telegram"]
+    modo: Mapped[str] = mapped_column(String(16), default="instantaneo")  # instantaneo | digest_diario | digest_semanal
+    hora_digest: Mapped[int] = mapped_column(SmallInteger, default=8)     # hora local 0-23
+    silencio_inicio: Mapped[int | None] = mapped_column(SmallInteger)     # franja de silencio (horas)
+    silencio_fin: Mapped[int | None] = mapped_column(SmallInteger)
+    telegram_chat_id: Mapped[str | None] = mapped_column(String(32))
+    comunicaciones_activas: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class CodigoTelegram(Base):
+    """Fase 12: código efímero de vinculación de Telegram (10 min, un solo uso)."""
+    __tablename__ = "codigo_telegram"
+    codigo: Mapped[str] = mapped_column(String(6), primary_key=True)
+    usuario_id: Mapped[str] = mapped_column(ForeignKey("usuario.id"), index=True)
+    expira_en: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    usado: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class Alerta(Base):
+    """Fase 12: alerta de captación privada por usuario (CLAUDE.md §4)."""
+    __tablename__ = "alerta"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    usuario_id: Mapped[str] = mapped_column(ForeignKey("usuario.id"), index=True)
+    nombre: Mapped[str] = mapped_column(String(120))
+    criterios: Mapped[dict] = mapped_column(PortableJSON, default=dict)  # fuente, valor_max, score_min…
+    activa: Mapped[bool] = mapped_column(Boolean, default=True)
+    creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class Notificacion(Base):
+    """Fase 12: notificación generada por el matcher; se envía al instante o en digest."""
+    __tablename__ = "notificacion"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    usuario_id: Mapped[str] = mapped_column(ForeignKey("usuario.id"), index=True)
+    alerta_id: Mapped[str | None] = mapped_column(ForeignKey("alerta.id"))
+    asunto: Mapped[str] = mapped_column(String(200))
+    cuerpo: Mapped[str] = mapped_column(Text)
+    estado: Mapped[str] = mapped_column(String(12), default="pendiente", index=True)  # pendiente | enviada | error
+    creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    enviado_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class Auditoria(Base):
     __tablename__ = "auditoria"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    quien: Mapped[str | None] = mapped_column(String(36))
+    quien: Mapped[str | None] = mapped_column(String(120))  # cierre Fase 12 (P0.4): antes String(36), truncaba emails
     cuando: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     entidad: Mapped[str] = mapped_column(String(32))
     entidad_id: Mapped[str] = mapped_column(String(36))

@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { Spinner } from "@/components/ui";
-import { BarChart3, FilePlus2, FolderKanban, Gavel, LogOut, Map, Scale, Settings2, SlidersHorizontal, Users, UsersRound } from "lucide-react";
+import { BarChart3, Bell, FilePlus2, FolderKanban, Gavel, LogOut, Map, Radar, Scale, Settings2, SlidersHorizontal, Users, UsersRound } from "lucide-react";
 import type { Usuario } from "@/lib/types";
 
 // El menú se construye según el usuario (Fase 9): «Conocimiento» solo para el
@@ -17,6 +17,10 @@ function construirNav(usuario: Usuario) {
       { href: "/inversiones", etiqueta: "Inversiones", icono: FolderKanban },
       { href: "/comparativa", etiqueta: "Comparativa", icono: Scale },
       { href: "/mapa", etiqueta: "Mapa", icono: Map },
+    ]},
+    { grupo: "Captación", items: [
+      { href: "/subastas", etiqueta: "Subastas", icono: Radar },
+      { href: "/alertas", etiqueta: "Alertas", icono: Bell },
     ]},
   ];
   if (usuario.es_superadmin) {

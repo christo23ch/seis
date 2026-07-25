@@ -6,7 +6,9 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-seis}
       POSTGRES_USER: ${POSTGRES_USER:-seis}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-seis_dev_pwd}
+      # Sin valor de respaldo a propósito: un default embebido aquí sería público
+      # (está en el repositorio) y desplegaría la BD con una contraseña conocida.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD en .env antes de arrancar}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -15,7 +17,9 @@ services:
       timeout: 3s
       retries: 10
     ports:
-      - "5432:5432"
+      # Publicado SOLO en loopback: la BD no debe ser alcanzable desde fuera del
+      # host. Los servicios internos la usan por la red de Compose (host `db`).
+      - "127.0.0.1:5432:5432"
 
   redis:
     image: redis:7-alpine
@@ -25,15 +29,29 @@ services:
       timeout: 3s
       retries: 10
     ports:
-      - "6379:6379"
+      # Redis no lleva autenticación: igual que la BD, solo loopback.
+      - "127.0.0.1:6379:6379"
 
   backend:
     build: ./backend
     environment:
-      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-seis}:${POSTGRES_PASSWORD:-seis_dev_pwd}@db:5432/${POSTGRES_DB:-seis}
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-seis}:${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD en .env antes de arrancar}@db:5432/${POSTGRES_DB:-seis}
       REDIS_URL: redis://redis:6379/0
       SEIS_ENV: ${SEIS_ENV:-production}
       SEIS_CORS_ORIGINS: ${SEIS_CORS_ORIGINS:-http://localhost:3000}
+      # Cierre Fase 12 (P0.1): SIN valor por defecto a propósito. Si `.env` no los
+      # define, el backend arranca vacío y la guardia de app/core/config.py aborta
+      # el arranque en vez de usar el secreto público del repositorio.
+      JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET en .env antes de arrancar}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@seis.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Defina ADMIN_PASSWORD en .env antes de arrancar}
+      # Fase 12 — notificaciones (sin valor: el canal queda inactivo, nada rompe)
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-}
+      EMAIL_FROM: ${EMAIL_FROM:-noreply@seis.local}
+      POSTMARK_TOKEN: ${POSTMARK_TOKEN:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_NOMBRE: ${TELEGRAM_BOT_NOMBRE:-}
     command: >
       sh -c "alembic upgrade head &&
              python -m scripts.init_db &&
@@ -46,12 +64,27 @@ services:
     ports:
       - "8000:8000"
 
+  # --beat embebido (Fase 12): programa el digest horario y el polling de Telegram.
+  # Si en la Fase 11 se escala a varias réplicas, extraer el beat a su propio servicio
+  # para no duplicar las tareas programadas.
   worker:
     build: ./backend
-    command: celery -A app.tasks.celery_app.celery worker --loglevel=INFO --concurrency=2
+    command: celery -A app.tasks.celery_app.celery worker --beat --loglevel=INFO --concurrency=2
     environment:
-      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-seis}:${POSTGRES_PASSWORD:-seis_dev_pwd}@db:5432/${POSTGRES_DB:-seis}
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-seis}:${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD en .env antes de arrancar}@db:5432/${POSTGRES_DB:-seis}
       REDIS_URL: redis://redis:6379/0
+      SEIS_ENV: ${SEIS_ENV:-production}
+      # Cierre Fase 12 (P0.1): el worker firma los mismos JWT/enlaces de baja que
+      # el backend — debe compartir el secreto, nunca caer en el default público.
+      JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET en .env antes de arrancar}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@seis.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Defina ADMIN_PASSWORD en .env antes de arrancar}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-}
+      EMAIL_FROM: ${EMAIL_FROM:-noreply@seis.local}
+      POSTMARK_TOKEN: ${POSTMARK_TOKEN:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_NOMBRE: ${TELEGRAM_BOT_NOMBRE:-}
     depends_on:
       db:
         condition: service_healthy
@@ -67,64 +100,6 @@ services:
       - "3000:3000"
     depends_on:
       - backend
-
-volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-seis}"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-    ports:
-      - "5432:5432"
-
-  redis:
-    image: redis:7-alpine
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-    ports:
-      - "6379:6379"
-
-  backend:
-    build: ./backend
-    environment:
-      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-seis}:${POSTGRES_PASSWORD:-seis_dev_pwd}@db:5432/${POSTGRES_DB:-seis}
-      REDIS_URL: redis://redis:6379/0
-      SEIS_ENV: ${SEIS_ENV:-production}
-      SEIS_CORS_ORIGINS: ${SEIS_CORS_ORIGINS:-http://localhost:3000}
-    command: >
-      sh -c "alembic upgrade head &&
-             python -m scripts.init_db &&
-             uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    ports:
-      - "8000:8000"
-
-  worker:
-    build: ./backend
-    command: celery -A app.tasks.celery_app.celery worker --loglevel=INFO --concurrency=2
-    environment:
-      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-seis}:${POSTGRES_PASSWORD:-seis_dev_pwd}@db:5432/${POSTGRES_DB:-seis}
-      REDIS_URL: redis://redis:6379/0
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
-  # frontend: se incorpora en la Fase 3 (Next.js 15). El puerto 3000 queda reservado.
-  # frontend:
-  #   build: ./frontend
-  #   ports: ["3000:3000"]
-  #   environment:
-  #     NEXT_PUBLIC_API_URL: http://localhost:8000
 
 volumes:
   pgdata:

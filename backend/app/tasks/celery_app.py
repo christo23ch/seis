@@ -12,6 +12,13 @@ if settings.celery_task_always_eager:
     celery.conf.task_always_eager = True
     celery.conf.task_eager_propagates = True
 
+# Fase 12 — beat: polling de Telegram (si hay token) y digest horario
+celery.conf.beat_schedule = {
+    "telegram-polling": {"task": "seis.telegram_polling", "schedule": 30.0},
+    "digest-horario": {"task": "seis.digest", "schedule": 3600.0},
+}
+celery.autodiscover_tasks(["app.tasks"], related_name="notificaciones_tasks")
+
 
 @celery.task(name="seis.analizar")
 def analizar_task(payload: dict, organizacion_id: str | None = None,
