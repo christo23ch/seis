@@ -4,7 +4,9 @@ Registro vivo del trabajo planificado y aún no implementado. Cada fase se ejecu
 con el protocolo del proyecto: **plan → aprobación → implementación → tests verdes
 + `npm run build` limpio → PR**. Detalle metodológico en `docs/SEIS_Plan_Maestro_Fases_920.md`.
 
-**Estado del recorrido:** Fase 9 (multi-tenancy) ✅ completada. Siguiente: Fase 10.
+**Estado del recorrido:** Fase 9 (multi-tenancy) ✅ y Fase 12 (notificaciones +
+scoring) ✅ completadas. Siguiente: Fase 10 (alta self-service), que reutiliza
+`crear_token_proposito` y el patrón de email honesto ya introducidos por la 12.
 
 ---
 
@@ -14,13 +16,17 @@ Registro público, verificación de email y recuperación de contraseña.
 Plan aprobado en su estructura; **pendiente de arrancar la implementación.**
 
 ### Punto a confirmar antes de codificar
-- **`email_service.py` como abstracción honesta sin proveedor real** (en dev/test:
-  log + buffer del último email para testear el enlace; en producción sin
-  credenciales: stub documentado). El envío transaccional real (Postmark/SES) es
-  Fase 12; adelantarlo aquí exigiría credenciales inexistentes. → **¿OK?**
+- ~~**`email_service.py` como abstracción honesta sin proveedor real**~~ →
+  **RESUELTO por la Fase 12**: ya existe `app/notificadores/` con esa misma
+  abstracción (interfaz común, Postmark/SES/SMTP y buffer `ultimo_email` sin
+  credenciales). La Fase 10 debe **reutilizarlo**, no crear un `email_service.py`
+  paralelo; las referencias de más abajo a ese fichero quedan obsoletas.
+- `crear_token_proposito` / `decodificar_token_proposito` **ya existen** en
+  `app/core/security.py` (los introdujo la Fase 12 para el enlace de baja).
+  Falta solo la tabla `TokenConsumido` para el uso único por `jti`.
 
 ### Reconciliación con la realidad del repo (el prompt asumía otro estado)
-- Migración nueva = **0003** (no "0005"; solo existen 0001 y 0002).
+- Migración nueva = **0005**. (Esta nota decía "0003" cuando solo existían 0001 y 0002; la Fase 12 consumió 0003 y 0004, así que la siguiente libre es la 0005.)
 - `email_service.py` **no existe** → se crea.
 - Rate-limiting: Redis **con fallback a memoria** en tests.
 
@@ -29,7 +35,7 @@ Plan aprobado en su estructura; **pendiente de arrancar la implementación.**
 **Backend — modelos y migración**
 - `app/models.py`: `Usuario` += `email_verificado: bool` (default False). Nueva tabla
   `TokenConsumido(jti PK, proposito, consumido_en)` (uso único de tokens).
-- `alembic/versions/0003_self_service.py` (idempotente + reversible): add column
+- `alembic/versions/0005_self_service.py` (idempotente + reversible): add column
   `usuario.email_verificado` (backfill: usuarios existentes → `True`); create table
   `token_consumido`. `downgrade` elimina ambos.
 
@@ -83,7 +89,7 @@ Resumen (detalle y prompts de ejecución en `docs/SEIS_Plan_Maestro_Fases_920.md
 | Fase | Nombre | Notas |
 |---|---|---|
 | 11 | Infraestructura de producción | render.yaml, health por componente, Sentry, runbook |
-| 12 | Notificaciones multicanal + scoring | email real (Postmark/SES) detrás de `email_service`, Telegram, digest |
+| ~~12~~ | ~~Notificaciones multicanal + scoring~~ | ✅ **Completada** — ver sección propia más abajo |
 | 13 | Monetización (Stripe) | planes/límites, webhooks idempotentes |
 | 14 | Cumplimiento legal y RGPD | consentimientos, ARCO, textos legales (revisión de abogado) |
 | 15 | Landing pública, onboarding y ayuda | — |
@@ -94,9 +100,46 @@ Resumen (detalle y prompts de ejecución en `docs/SEIS_Plan_Maestro_Fases_920.md
 | 20 | Beta cerrada y lanzamiento | QA guionizado, carga, go-live |
 
 ### Deuda técnica menor detectada
-- No existe `.env.example` en la raíz del repo (el `MANUAL_DE_PRUEBAS.md` y
-  `docker-compose.yml` lo referencian). Conviene crearlo con las variables reales
-  (`DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `ADMIN_PASSWORD`, `SEIS_CORS_ORIGINS`,
-  y las de Fase 10: `FRONTEND_URL`, `EMAIL_FROM`). Solo existe `frontend/.env.example`.
+- ~~No existe `.env.example` en la raíz del repo~~ → **creado en la Fase 12** con
+  todas las variables reales, incluidas las de notificaciones.
 - Endpoints citados en prompts que aún no existen y que deberán heredar el scoping
   por `organizacion_id` cuando se creen: `export.csv`, `geo`, `resultado-real`, `/calibracion`.
+
+### 🐛 Deuda técnica detectada durante la Fase 12 (NO corregida — decisión pendiente)
+- **`pdf_service.py` rompe sin la fuente DejaVu.** `tests/test_pdf_async.py::test_informe_pdf`
+  y `test_multitenant.py::…[/informe.pdf]` fallan con `FPDFUnicodeEncodingException`
+  cuando `DejaVuSans.ttf` no está instalada (p. ej. Windows local). El fallback a
+  *helvetica* llama a `_limpiar(texto, unicode_ok=False)`, que no translitera todos
+  los caracteres del informe. En Docker no se manifiesta porque la imagen incluye
+  `fonts-dejavu-core`. **Preexistente a la Fase 12** (verificado sobre árbol limpio).
+  Arreglo propuesto: completar la tabla de transliteración de `_limpiar`. Toca
+  `pdf_service.py`, fuera del alcance de la 12 → requiere aprobación.
+
+---
+
+## ✅ Fase 12 — Notificaciones multicanal y scoring exprés (COMPLETADA)
+
+**Decisiones tomadas (aprobadas antes de codificar):**
+1. **Telegram por polling** (tarea Celery `seis.telegram_polling`, cada 30 s) en lugar
+   de webhook: no exige URL pública HTTPS, que es Fase 11. El procesado del mensaje
+   vive en `procesar_update(db, update)`, así que migrar a webhook es llamar a esa
+   función desde el endpoint.
+2. **Email honesto sin credenciales**: `EMAIL_PROVIDER=postmark|ses|smtp`; vacío ⇒
+   log + buffer `ultimo_email` (los tests lo inspeccionan). Nunca lanza.
+3. **Scoring fuera del DAG**: `app/engine/scoring_expres.py`, hermano de `pipeline.py`,
+   NO en `modules/`. El caso dorado §19 queda intacto.
+4. **Prerequisitos mínimos creados aquí** (no existían): modelos `Alerta`/`Notificacion`,
+   router `captacion.py`, páginas `/alertas` y `/subastas`.
+
+**Entregado:** migraciones `0003` (4 tablas) y `0004` (amplía `auditoria.quien` a 120), ambas con upgrade/downgrade verificados en SQLite —**no contra PostgreSQL**—;
+`app/notificadores/` (base + email + telegram + registro); `notificaciones_service.py`;
+routers `notificaciones.py` (+ `/alertas`) y `captacion.py`; tareas `seis.digest`
+(beat horario) y `seis.telegram_polling`; parámetros T3 `scoring_expres` editables;
+páginas `/alertas` (Alertas + Preferencias), `/subastas` y `/baja` (pública);
+`test_notificaciones.py` (15 tests).
+
+**Reparado de paso (bloqueaba la fase):** `docker-compose.yml` era **YAML inválido**
+desde el commit de importación inicial — a partir de `volumes:` contenía una copia
+antigua duplicada de db/redis/backend/worker. `docker compose up` nunca pudo funcionar
+pese a estar documentado como vía principal de arranque. Se eliminó el duplicado y se
+añadió `--beat` al worker (sin él, digest y polling nunca se ejecutan).

@@ -13,8 +13,14 @@ Este manual explica, paso a paso, cómo levantar SEIS y probarlo de forma comple
 | C — Online en VPS | Un servidor Linux (Hetzner, DigitalOcean, OVH…) con 2 GB RAM |
 | D — Online en PaaS | Cuenta gratuita en Render/Railway (backend) y Vercel (frontend) |
 
-Credenciales iniciales (se crean solas en el primer arranque):
-**`admin@seis.local` / `admin`** — cámbialas inmediatamente creando otro admin y usa variables de entorno en producción.
+Credenciales iniciales: el usuario administrador se crea en el primer arranque con
+el email y la contraseña que tú definas en `.env` (`ADMIN_EMAIL` / `ADMIN_PASSWORD`).
+
+> **`JWT_SECRET` y `ADMIN_PASSWORD` no traen valor de ejemplo y no son opcionales.**
+> `.env.example` los entrega vacíos a propósito: cualquier valor publicado aquí
+> sería público. Con `SEIS_ENV=production` el arranque **falla** si están vacíos,
+> son cortos o contienen palabras de plantilla. Genéralos con
+> `openssl rand -base64 48`.
 
 ---
 
@@ -22,9 +28,17 @@ Credenciales iniciales (se crean solas en el primer arranque):
 
 ```bash
 cd seis
-cp .env.example .env          # opcional: edita contraseñas
+cp .env.example .env
+# OBLIGATORIO antes de arrancar: rellena JWT_SECRET y ADMIN_PASSWORD en .env.
+# Vienen vacíos a propósito y el arranque falla si no los defines.
+#   JWT_SECRET=$(openssl rand -base64 48)
+#   ADMIN_PASSWORD=$(openssl rand -base64 18)
 docker compose up -d --build  # PostgreSQL+PostGIS, Redis, backend, worker y frontend
 ```
+
+> Si prefieres probar en local sin generar secretos, pon `SEIS_ENV=development`
+> en `.env`: la validación estricta solo se aplica en `production`. **Nunca**
+> expongas a Internet un despliegue arrancado así.
 
 Espera ~2-4 minutos la primera vez (compila el frontend). Después:
 
@@ -34,7 +48,8 @@ Espera ~2-4 minutos la primera vez (compila el frontend). Después:
 | API + Swagger interactivo | http://localhost:8000/docs |
 | Salud del backend | http://localhost:8000/api/v1/health |
 
-Entra en http://localhost:3000 → **Iniciar sesión** con `admin@seis.local` / `admin`.
+Entra en http://localhost:3000 → **Iniciar sesión** con `admin@seis.local` y el
+`ADMIN_PASSWORD` que definiste en `.env` (no hay contraseña por defecto).
 
 Comandos útiles:
 ```bash
@@ -50,7 +65,7 @@ docker compose down -v             # parar y BORRAR la base de datos (reset tota
 Cualquier despliegue del backend expone en **`/docs`** una consola interactiva completa:
 
 1. Abre `https://TU-BACKEND/docs`.
-2. `POST /api/v1/auth/login` → *Try it out* → username `admin@seis.local`, password `admin` → copia el `access_token`.
+2. `POST /api/v1/auth/login` → *Try it out* → username `admin@seis.local`, password: la que definiste en `ADMIN_PASSWORD` → copia el `access_token`.
 3. Pulsa el botón **Authorize** (candado, arriba a la derecha) y pega el token.
 4. Ya puedes ejecutar `POST /api/v1/analisis/simular` con el JSON del §6 de este manual y ver la decisión completa sin tocar el frontend.
 
@@ -69,18 +84,28 @@ scp seis_completo.zip root@TU_IP:/opt/ && ssh root@TU_IP
 cd /opt && apt-get install -y unzip && unzip seis_completo.zip && cd seis
 
 # 3) Configuración de producción
-cp .env.example .env && nano .env
-#   POSTGRES_PASSWORD=una-clave-larga
+cp .env.example .env
+# Los tres secretos vienen VACÍOS y son obligatorios: `docker compose up` aborta
+# si falta cualquiera, y el backend no arranca si son débiles o de plantilla.
+# Genéralos (no los copies de este manual: lo que se publica aquí es público):
+cat >> .env <<FIN
+POSTGRES_PASSWORD=$(openssl rand -base64 24)
+JWT_SECRET=$(openssl rand -base64 48)
+ADMIN_PASSWORD=$(openssl rand -base64 18)
+FIN
+nano .env    # borra las líneas vacías duplicadas y ajusta:
 #   SEIS_CORS_ORIGINS=http://TU_IP:3000        (o https://tu-dominio)
-# añade también:
-#   JWT_SECRET=otra-clave-larga-aleatoria
-#   ADMIN_PASSWORD=clave-inicial-admin
+#   SEIS_ENV=production                        (valores admitidos: development | test | production)
 
 # 4) Arranque (el frontend debe conocer la URL pública del backend)
 NEXT_PUBLIC_API_URL=http://TU_IP:8000 docker compose up -d --build
 ```
 
 Abre en el navegador `http://TU_IP:3000`. Puertos a permitir en el firewall: **3000** y **8000** (o pon delante Caddy/Nginx con HTTPS y expón solo 80/443 — recomendado en producción real).
+
+> PostgreSQL y Redis se publican solo en `127.0.0.1`, así que no son alcanzables
+> desde fuera del host aunque el cortafuegos no los cubra. Sigues pudiendo usar
+> `psql -h localhost -p 5432` en el propio servidor.
 
 ---
 
@@ -185,6 +210,6 @@ cd backend && pip install -r requirements-dev.txt && python -m pytest -q
 
 ## 9 · Seguridad mínima antes de exponerlo a Internet
 
-1. `JWT_SECRET` y `POSTGRES_PASSWORD` largos y únicos; `ADMIN_PASSWORD` propio y cambio de contraseña tras el primer login.
-2. HTTPS con un proxy (Caddy: dos líneas de configuración) y cerrar 8000/5432 al exterior.
+1. `JWT_SECRET`, `POSTGRES_PASSWORD` y `ADMIN_PASSWORD` propios, largos y únicos —el sistema no arranca sin ellos— y cambio de contraseña tras el primer login. Nunca reutilices un valor que aparezca en el repositorio o en esta documentación: es público.
+2. HTTPS con un proxy (Caddy: dos líneas de configuración) y cerrar 8000 al exterior. La BD y Redis ya están limitadas a `127.0.0.1` por `docker-compose.yml`.
 3. Los tipos fiscales y reglas legales del sistema son **parámetros versionados**: valídalos con asesoría profesional antes de operar con dinero real (§20 de la especificación). El sistema recomienda; la decisión de puja es del comité.
