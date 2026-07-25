@@ -136,10 +136,33 @@ Resumen (detalle y prompts de ejecución en `docs/SEIS_Plan_Maestro_Fases_920.md
 routers `notificaciones.py` (+ `/alertas`) y `captacion.py`; tareas `seis.digest`
 (beat horario) y `seis.telegram_polling`; parámetros T3 `scoring_expres` editables;
 páginas `/alertas` (Alertas + Preferencias), `/subastas` y `/baja` (pública);
-`test_notificaciones.py` (15 tests).
+`test_notificaciones.py` (18 tests).
 
 **Reparado de paso (bloqueaba la fase):** `docker-compose.yml` era **YAML inválido**
 desde el commit de importación inicial — a partir de `volumes:` contenía una copia
 antigua duplicada de db/redis/backend/worker. `docker compose up` nunca pudo funcionar
 pese a estar documentado como vía principal de arranque. Se eliminó el duplicado y se
 añadió `--beat` al worker (sin él, digest y polling nunca se ejecutan).
+
+### P1 detectados en Fase 12 (Release Committee)
+
+- **Proveedores SES y SMTP no funcionales vía `docker compose up`.** `docker-compose.yml`
+  propaga `POSTMARK_TOKEN` pero **no propaga** `SES_REGION`, `SES_ACCESS_KEY`, 
+  `SES_SECRET_KEY`, `SMTP_HOST`, `SMTP_PUERTO`, `SMTP_USUARIO`, `SMTP_PASSWORD`. 
+  Con `EMAIL_PROVIDER=ses` o `smtp` dentro del contenedor, las credenciales llegan 
+  vacías y `NotificadorEmail.disponible()` devuelve False; el sistema cae silenciosamente 
+  en la rama sin proveedor. El diagnóstico es engañoso (*«Email sin proveedor configurado»*
+  cuando el operador sí configuró uno). No compromete seguridad ni rompe tests (el 
+  email de prueba funciona), pero notificaciones desaparecen silenciosamente en 
+  producción. **Tarea Fase 11**: detectar y propagar las 7 variables de SES/SMTP 
+  en compose y documentación.
+
+### P2 detectados en Fase 12 (Release Committee)
+
+- **Desglose de tests incorrecto en `CLAUDE.md:40`.** El total es correcto (104), pero
+  dos cifras de desglose están erradas:
+  - `test_seguridad_arranque.py`: documento dice 14, realidad es **27**
+  - `test_multitenant.py`: documento dice 7, realidad es **10**
+  - La suma del desglose total es 88, no 104.
+- **Cifra de `test_notificaciones.py` errónea en `docs/PENDIENTES.md:139` (línea anterior)**:
+  documento decía 15 tests, realidad es **18**. Corregido en esta edición.

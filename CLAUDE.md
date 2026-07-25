@@ -37,7 +37,7 @@
 
 ### ✅ Construido y verificado
 - **Motor experto completo M01–M14** en `backend/app/engine/modules/` (un fichero por módulo, 1:1 con la especificación), **puro y sin I/O**, sobre una pizarra de hechos (`contracts.py`, `pipeline.py` como DAG).
-- **104 tests** en `backend/tests/` — 10 ficheros: `test_notificaciones.py` 18 · `test_golden_caso19.py` 14 · `test_seguridad_arranque.py` 14 · `test_precios.py` 9 · `test_vetos.py` 7 · `test_multitenant.py` 7 · `test_api.py` 6 · `test_conocimiento.py` 6 · `test_auth.py` 5 · `test_pdf_async.py` 2. Incluye el **caso dorado §19** como test de regresión fundacional.
+- **104 tests** en `backend/tests/` — 10 ficheros: `test_notificaciones.py` 18 · `test_golden_caso19.py` 14 · `test_seguridad_arranque.py` 27 · `test_precios.py` 9 · `test_vetos.py` 7 · `test_multitenant.py` 10 · `test_api.py` 6 · `test_conocimiento.py` 6 · `test_auth.py` 5 · `test_pdf_async.py` 2. Incluye el **caso dorado §19** como test de regresión fundacional.
   > Cifra verificada con `python -m pytest tests --collect-only -q` el 2026-07-25 (104 recogidos; parametrizaciones incluidas). Recontar antes de citarla.
 - **API REST completa** con JWT y roles (`backend/app/api/`: `auth.py`, `routes.py`, `conocimiento.py`, `deps.py`), Swagger en `/docs`.
 - **Gobernanza del conocimiento versionada (T2/T3)**: reglas en YAML versionadas con vigencia temporal (`app/engine/rules/`), parámetros legales/fiscales versionados por ámbito (`app/engine/params/`), editables sin desplegar código.
