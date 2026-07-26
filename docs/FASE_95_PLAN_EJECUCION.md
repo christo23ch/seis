@@ -282,11 +282,31 @@ siendo posible, pero deja de ser gratuito porque obliga a repetir la auditoría.
 
 **Riesgos.** Ajustar la batería para que pase en lugar de reparar la causa.
 
+**T3 tras el Bloque D — `skipped` es aceptación válida, no un pendiente.** T3 descubre la cadena de
+revisiones en tiempo de recolección (no cita `0001`-`0004`). Con la revisión fundacional única, no
+hay pares consecutivos que recorrer: los casos parametrizados de T3 se omiten explícitamente con
+motivo *«la cadena vigente tiene una sola revisión»*. **Ese `skipped` cuenta como «T3 en verde» a
+efectos de este bloque y de RC-2** — no es un hueco de cobertura ni un caso a resolver más tarde: no
+hay nada que ejercitar porque no existen saltos entre revisiones. El control del arnés de T3 (sobre
+la revisión más antigua de la cadena) sí debe estar en `passed`, no en `skipped`.
+
+**Retirada del gate — criterio de cierre del bloque, no limpieza posterior.** El módulo lleva
+`pytestmark = pytest.mark.skipif(...)` sobre `SEIS_CALIBRAR_MIGRACIONES` desde el Bloque A. **No
+tiene trinquete propio** (a diferencia de `xfail(strict=True)`, que se descartó precisamente por
+esto): nada impide que, reparada la cadena, el gate quede olvidado y la batería siga oculta de la
+ejecución por defecto. **Retirar esa línea es parte del criterio de aceptación de este bloque**, no
+un paso de limpieza aplazable. El Bloque E no se da por cerrado con la batería en verde y el gate
+todavía en su sitio.
+
 **Criterios de aceptación.** `upgrade head` desde vacío y `downgrade base` verdes · idempotencia
-verde · **el texto de las aserciones de toda la batería (T1-T6) es byte-idéntico al del Bloque A**;
-el diff del fichero entre ambos momentos **no contiene ninguna línea eliminada ni modificada dentro
-de una aserción, solo añadidos**. *(Definición operativa única de «no debilitada»: se aplica a los
-seis tests, no solo a los que este bloque ejercita, y es la que invocan RC-2 y el DoD.)*
+verde · **T3: el control del arnés en `passed`; los casos parametrizados en `passed` o `skipped`
+según haya o no pares consecutivos que recorrer — nunca en `failed`** · **el gate `pytestmark`
+retirado del fichero** · **el texto de las aserciones de toda la batería (T1-T6) es byte-idéntico al
+de la versión corregida del Bloque A** (commit `33bb28a`, que ya hizo a T3 agnóstico de
+identificadores literales — no a la versión original con `"0001"`-`"0004"` citados a mano); el diff
+del fichero entre ambos momentos **no contiene ninguna línea eliminada ni modificada dentro de una
+aserción, solo añadidos**. *(Definición operativa única de «no debilitada»: se aplica a los seis
+tests, no solo a los que este bloque ejercita, y es la que invocan RC-2 y el DoD.)*
 
 **Agentes ECC.** `tdd-guide` · `silent-failure-hunter`.
 
@@ -469,9 +489,12 @@ que T4 no cubre.
 **Evidencia:** `upgrade head` y `downgrade base` literales en **ambos motores** · `alembic history`
 con una sola revisión · volcado de tipos con `jsonb` en las 19 columnas · prueba de que una BD
 stampeada en revisión antigua falla ruidosamente · Docker sobre volumen limpio con `/health`
-respondiendo · aserciones no debilitadas.
+respondiendo · aserciones no debilitadas · **T3 sin ningún caso en `failed`** (el control del arnés
+en `passed`; los parametrizados en `passed` o `skipped` — el `skipped` por ausencia de pares
+consecutivos es el resultado esperado y no bloquea) · **gate `SEIS_CALIBRAR_MIGRACIONES` ya retirado
+del fichero**.
 **Bloquea si:** falta evidencia PostgreSQL · Docker no verificado sobre volumen destruido · alguna
-BD antigua es aceptada en silencio.
+BD antigua es aceptada en silencio · el gate sigue presente en el fichero.
 
 > **Cómo producir la evidencia del stamp obsoleto** *(guía de validación, no requisito adicional).*
 > Tras el Bloque D las revisiones antiguas ya no existen, de modo que **ese estado no puede
@@ -628,7 +651,10 @@ corrupción silenciosa que esta fase erradica.
 - [ ] Índices, FKs y tipos verificados contra `create_all` por T4
 
 **Instrumentación**
-- [ ] T1-T6 en verde, **sin aserciones debilitadas** respecto del Bloque A
+- [ ] T1-T6 en verde, **sin aserciones debilitadas** respecto de la versión corregida del Bloque A
+      (T3 sin ningún caso en `failed`; `skipped` en sus casos parametrizados cuenta como en verde)
+- [ ] **Gate `SEIS_CALIBRAR_MIGRACIONES` retirado** de `test_migraciones.py` — es criterio de cierre
+      del Bloque E, no limpieza aplazable: el gate no tiene trinquete propio
 - [ ] **T4 demostrado capaz de fallar**
 - [ ] **Guarda de aislamiento de la batería en su sitio y demostrada capaz de saltar**
 - [ ] T4 en el pipeline de CI
