@@ -1,7 +1,7 @@
 # CLAUDE.md — Contexto maestro del proyecto SEIS
 **Repositorio:** christo23ch/seis
 **Rama de trabajo:** fase-12-notificaciones
-**Última actualización:** 2026-07-25
+**Última actualización:** 2026-07-26
 **Fuente de verdad funcional/técnica:** `docs/SEIS_Especificacion_Funcional_y_Tecnica.md` (ya incorporada al repo, junto al Plan Maestro y el informe de ejemplo del §19)
 
 ---
@@ -126,11 +126,12 @@ ResultadoReal · Usuario · Auditoria
 
 ## 5 · Hoja de ruta — Fases 9 a 20 (Plan Maestro)
 
-**Ruta crítica:** 9 → 10 → 11 → 13 → 20. Fase 14 (legal) en paralelo desde la 9. Fase 18 (WhatsApp) es condicional a demanda medida en Fase 12.
+**Ruta crítica:** 9 → **9.5** → 10 → 11 → 13 → 20. Fase 14 (legal) en paralelo desde la 9. Fase 18 (WhatsApp) es condicional a demanda medida en Fase 12.
 
 | Fase | Nombre | Bloquea a | Modelo recomendado |
 |---|---|---|---|
 | **9** | Multi-tenancy por organización | Todo lo demás | **Fable 5** (autorización transversal, coste de un fallo = fuga de datos) |
+| **9.5** | **Saneamiento del sistema de migraciones** | **Fases 10 y 13** | Sonnet |
 | 10 | Alta self-service + recuperación de cuenta | — | Sonnet |
 | 11 | Infraestructura de producción | — | Fable 5 (decisiones operativas) |
 | ~~12~~ | Notificaciones multicanal + scoring | — | ✅ **Completada** (2026-07-24) |
@@ -143,7 +144,11 @@ ResultadoReal · Usuario · Auditoria
 | 19 | Analítica y panel de negocio | — | Sonnet/Haiku |
 | 20 | Beta cerrada y lanzamiento | Fin del proyecto | — |
 
-**Siguiente tarea: Fase 10 — Alta self-service.** Fases 9 y 12 completadas. El plan detallado está en `docs/PENDIENTES.md`; su migración debe numerarse **0005** (la 0003 que reservaba quedó consumida por la Fase 12) y reutilizará `crear_token_proposito` (`app/core/security.py`) y el patrón de email honesto de `app/notificadores/`, ya introducidos. Antes de tocar código: **exigir plan de cambios fichero a fichero y detenerse para aprobación** — es la regla de oro de este proyecto.
+**Siguiente tarea: Fase 9.5 — Saneamiento del sistema de migraciones.** Fases 9 y 12 completadas. Se intercaló una fase de reparación porque se demostró experimentalmente que **`alembic upgrade head` falla sobre una base limpia** (en la revisión 0002) y que, como `docker-compose.yml` encadena las migraciones al arranque, **una instalación nueva no puede levantar el backend**. Plan canónico en `docs/FASE_95_PLAN_EJECUCION.md`; diseño de la estrategia en `docs/PLAN_REPARACION_MIGRACIONES.md`. Bloquea a las Fases 10 y 13.
+
+**Renumeración de migraciones (decisión cerrada, deroga lo anterior):** la Fase 9.5 sustituye las revisiones 0001-0004 por una **revisión fundacional única numerada `0005`** con `down_revision = None`. En consecuencia, **la migración de la Fase 10 pasa a `0006`** y la de la Fase 13 a `0007`. Cualquier nota previa que reserve la `0005` para la Fase 10 está derogada.
+
+**Después: Fase 10 — Alta self-service.** Su plan detallado está en `docs/PENDIENTES.md` y reutilizará `crear_token_proposito` (`app/core/security.py`) y el patrón de email honesto de `app/notificadores/`, ya introducidos. Antes de tocar código: **exigir plan de cambios fichero a fichero y detenerse para aprobación** — es la regla de oro de este proyecto.
 
 ---
 
