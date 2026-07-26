@@ -89,28 +89,73 @@ pytestmark = pytest.mark.skipif(
 # Bloque E exige que la batería se ponga verde SIN editar aserciones.
 # --------------------------------------------------------------------------
 
-def _cadena_de_revisiones() -> list[str]:
-    """Identificadores de la cadena vigente, de la más antigua a la cabeza.
+def _cadena_de_revisiones() -> tuple[list[str], str | None]:
+    """Cadena vigente de la más antigua a la cabeza, y motivo si no se pudo leer.
 
-    Solo lee el directorio de scripts: no abre ninguna base de datos, no
-    ejecuta `env.py` y no invoca ningún comando de Alembic.
+    **Nunca lanza.** Es deliberado y no es defensivo por costumbre: esta
+    función se evalúa al IMPORTAR el módulo, antes de que el gate
+    `pytestmark` pueda actuar, y una excepción aquí **abortaría la
+    recolección de toda la suite** —los 104 tests, no solo los de este
+    fichero—, porque pytest interrumpe la sesión entera ante un error de
+    recolección. Cualquier problema degrada a cadena vacía con un motivo
+    legible, y los tests de T3 se omiten explicándolo.
+
+    Los dos escenarios que lo harían saltar son propios del Bloque D, que es
+    justo el que esta batería debe sobrevivir: un instante con el directorio
+    de revisiones vacío (borrar las cuatro antes de crear la fundacional) y
+    un fichero de migración a medio editar, porque `walk_revisions()`
+    **importa como módulo** cada fichero de `versions/`.
+
+    Efecto lateral conocido: `ScriptDirectory.from_config()` aplica el
+    `prepend_sys_path` de `alembic.ini` e inserta esa ruta en `sys.path`. No
+    abre ninguna base de datos ni ejecuta `env.py`.
     """
-    from alembic.config import Config
-    from alembic.script import ScriptDirectory
+    try:
+        from alembic.config import Config
+        from alembic.script import ScriptDirectory
 
-    configuracion = Config(str(RUTA_BACKEND / "alembic.ini"))
-    configuracion.set_main_option("script_location", str(RUTA_BACKEND / "alembic"))
-    guiones = ScriptDirectory.from_config(configuracion)
-    return [guion.revision for guion in reversed(list(guiones.walk_revisions()))]
+        configuracion = Config(str(RUTA_BACKEND / "alembic.ini"))
+        configuracion.set_main_option("script_location", str(RUTA_BACKEND / "alembic"))
+        guiones = ScriptDirectory.from_config(configuracion)
+
+        cabezas = guiones.get_heads()
+        if len(cabezas) > 1:
+            # `walk_revisions()` no lanza ante una bifurcación: intercala las
+            # ramas en una lista plana. Emparejarlas con `zip` produciría
+            # pares que cruzan ramas sin relación real de `down_revision`.
+            return [], (
+                f"la cadena está bifurcada ({len(cabezas)} cabezas: "
+                f"{', '.join(sorted(cabezas))}); T3 exige una cadena lineal"
+            )
+
+        cadena = [guion.revision for guion in reversed(list(guiones.walk_revisions()))]
+        if not cadena:
+            return [], "el directorio de revisiones está vacío"
+        return cadena, None
+    except Exception as error:  # degradar, jamás abortar la recolección global
+        return [], f"{type(error).__name__}: {error}"
 
 
-CADENA_REVISIONES = _cadena_de_revisiones()
-REVISION_MAS_ANTIGUA = CADENA_REVISIONES[0]
+CADENA_REVISIONES, MOTIVO_SIN_CADENA = _cadena_de_revisiones()
+REVISION_MAS_ANTIGUA = CADENA_REVISIONES[0] if CADENA_REVISIONES else None
 
 # Pares (predecesora, revisión): solo las revisiones que tienen una anterior.
 # Hoy son tres; tras el Bloque D, con una única revisión fundacional, la lista
 # queda vacía y los tests parametrizados se saltan de forma explícita.
 PARES_CONSECUTIVOS = list(zip(CADENA_REVISIONES, CADENA_REVISIONES[1:]))
+
+
+def _motivo_de_omision() -> str:
+    """Distingue «no hay nada que recorrer» de «no se pudo descubrir nada»."""
+    if MOTIVO_SIN_CADENA:
+        return (
+            f"No se pudo descubrir la cadena de revisiones: {MOTIVO_SIN_CADENA}. "
+            "T3 se omite en vez de abortar la recolección de la suite."
+        )
+    return (
+        "La cadena vigente tiene una sola revisión (la fundacional): no hay "
+        "pares consecutivos que recorrer. Estado esperado tras el Bloque D."
+    )
 _PARES_PARAM = PARES_CONSECUTIVOS or [(None, None)]
 _PARES_IDS = [
     f"{anterior}-a-{posterior}" if anterior else "cadena-sin-pares"
@@ -431,6 +476,9 @@ def test_t3_control_del_arnes_sobre_la_revision_mas_antigua(
     Tras el Bloque D la cadena tendrá una sola revisión, la fundacional, y
     este test seguirá siendo válido sin tocar una línea.
     """
+    if REVISION_MAS_ANTIGUA is None:
+        pytest.skip(_motivo_de_omision())
+
     resultado_up = _ejecutar_alembic(entorno_migraciones, "upgrade", REVISION_MAS_ANTIGUA)
     assert resultado_up.returncode == 0, _diagnostico(
         resultado_up, f"T3 control — upgrade {REVISION_MAS_ANTIGUA}"
@@ -460,11 +508,7 @@ def test_t3_par_consecutivo_por_la_cadena_natural(
     no habrá pares consecutivos y el test se saltará de forma explícita.
     """
     if revision is None or predecesora is None:
-        pytest.skip(
-            "La cadena vigente tiene una sola revisión (la fundacional): no "
-            "hay pares consecutivos que recorrer. Estado esperado tras el "
-            "Bloque D."
-        )
+        pytest.skip(_motivo_de_omision())
 
     resultado_previo = _ejecutar_alembic(entorno_migraciones, "upgrade", predecesora)
     assert resultado_previo.returncode == 0, _diagnostico(
@@ -506,11 +550,7 @@ def test_t3_revision_aislada_via_stamp(
     explícita.
     """
     if revision is None or predecesora is None:
-        pytest.skip(
-            "La cadena vigente tiene una sola revisión (la fundacional): no "
-            "hay revisiones con predecesora que aislar. Estado esperado tras "
-            "el Bloque D."
-        )
+        pytest.skip(_motivo_de_omision())
 
     _crear_esquema_via_create_all(entorno_migraciones)
 
