@@ -85,8 +85,11 @@ cd backend && python -m pytest -q        # 104 tests (102 verdes; 2 rojos de PDF
 | **6** | Administración de usuarios, editor del motor de reglas con historial, editor de parámetros, hardening (standalone, roles, auditoría) | ✅ Completada |
 | **9** | Multi-tenancy por organización: entidad `Organizacion`, roles en dos ejes, aislamiento de análisis (recurso ajeno = 404), migración `0002` con backfill | ✅ Completada |
 | **12** | Notificaciones multicanal (email/Telegram con digest y baja firmada), alertas por usuario, captación con scoring exprés, migraciones `0003`/`0004` | ✅ Completada |
-| **10** | Alta self-service: registro, verificación de email y recuperación de contraseña | ⏳ Siguiente |
+| **9.5** | Saneamiento del sistema de migraciones: revisión fundacional única `0005` en sustitución de `0001`-`0004`, batería de tests que ejerce Alembic y test de deriva | ⏳ **Siguiente** |
+| **10** | Alta self-service: registro, verificación de email y recuperación de contraseña | ⏳ Bloqueada por la 9.5 |
 | 11, 13-20 | Infraestructura, monetización, RGPD, landing, seguridad, captación BOE real, analítica, beta | ⏳ Pendientes |
+
+> **Aviso de estado (Fase 9.5 en curso).** `alembic upgrade head` **falla sobre una base de datos limpia** en la revisión `0002`, y el backend arranca ejecutando las migraciones, por lo que **una instalación nueva no levanta hasta que la Fase 9.5 se complete**. La Fase 9.5 renumera las migraciones: fundacional `0005`, Fase 10 → `0006`, Fase 13 → `0007`. Detalle en `docs/FASE_95_PLAN_EJECUCION.md`.
 
 **Decisiones de fase documentadas:** (a) `lat/lng` se persisten como `Numeric` hasta la Fase 5, donde migran a `geometry(Point,4326)` — la imagen `postgis/postgis` ya está desplegada; (b) el orden del DAG resuelve la dependencia contingencia←(RA, ICI) ejecutando los módulos de riesgo antes de cerrar M06, conforme a §6.6/§9.4.
 

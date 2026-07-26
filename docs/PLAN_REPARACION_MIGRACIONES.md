@@ -12,7 +12,8 @@ operativo, manda el plan de ejecución.
 **Comité:** Migration Architecture Committee
 **Estado:** Diseño definitivo. **Sin código, sin parches, sin cambios en el repositorio.**
 **Insumo:** verificación experimental del Release Committee (2026-07-26)
-**Decisión rectora Q1:** *«No existe ninguna base de datos que deba preservarse. Se acepta romper
+**Decisión rectora Q1** *(identificada como **E1** en el plan de ejecución; misma decisión)*:
+*«No existe ninguna base de datos que deba preservarse. Se acepta romper
 compatibilidad con instalaciones de desarrollo existentes.»* — responsable del proyecto, 2026-07-26
 **Bloquea a:** Fase 10 y Fase 13
 
@@ -105,7 +106,14 @@ aparenta probar** — y eso afectaría igual a la migración de la Fase 10 y a l
 
 ---
 
-## 3 · Estrategia elegida — Alternativa D: revisión fundacional limpia
+## 3 · Estrategia elegida — Alternativa B: revisión fundacional limpia
+
+> **Nota de nomenclatura.** Una versión anterior de este documento enumeraba cuatro opciones (A-D) y
+> llamaba **«Alternativa D»** a esta misma estrategia. El Architecture Review Board reformuló después
+> la decisión a dos alternativas —A (mantener la historia y reparar) y **B (revisión fundacional
+> limpia)**—, y esa es la nomenclatura vigente en todo el proyecto. **«Alternativa D» y «Alternativa
+> B» designan la misma decisión.** Los códigos de riesgo `R-D1…R-D8` (§10) conservan el prefijo
+> histórico para no romper las referencias existentes.
 
 Con Q1 respondida, la decisión queda cerrada. **Se sustituyen las cuatro revisiones existentes por
 una sola revisión fundacional con DDL explícita del esquema actual completo (21 tablas).**
@@ -178,8 +186,10 @@ omisión silenciosa de un índice o una clave foránea.
 del repositorio** cuyo `version_locations` apunte a un **directorio vacío**. Con cabezas `= ∅` y
 base vacía, los conjuntos coinciden, la generación procede y **`down_revision = None` sale de forma
 nativa**. Las revisiones antiguas permanecen intactas: no se tocan, solo no se miran durante la
-generación. El identificador debe fijarse manualmente a `0005` — autogenerate asigna un hexadecimal
-aleatorio.
+generación. **Quedan dos correcciones manuales, no una:** fijar el identificador de revisión a
+`0005` —autogenerate asigna un hexadecimal aleatorio— **y renombrar el fichero generado** a
+`0005_esquema_base.py`, porque `alembic.ini` no define `file_template` y el fichero nace también con
+el hexadecimal en el nombre.
 
 *(Se descarta `stamp head`, que también funciona: exige escribir un estado falso en
 `alembic_version` y produce `down_revision = '0004'`, añadiendo un paso manual cuyo olvido deja la
@@ -200,7 +210,7 @@ Sigue siendo obligatoria la **revisión manual** posterior, que debe verificar, 
   `SmallInteger`.
 - El `downgrade` debe eliminar las 21 tablas en orden inverso de dependencias.
 
-La revisión manual no es opcional: es donde se cobra el coste que la Alternativa D ahorra en
+La revisión manual no es opcional: es donde se cobra el coste que la Alternativa B ahorra en
 arqueología.
 
 ### 3.4 · Qué NO resuelve esta estrategia
@@ -372,9 +382,9 @@ pasan sin haber demostrado nunca su capacidad de detectar el fallo.
 
 - **Fase 10 y Fase 13 están bloqueadas** hasta el paso 14: ninguna puede validar su migración sobre
   una cadena rota.
-- Esta reparación **no pertenece a ninguna de las dos**: es deuda de las Fases 9 y 12. Sigue abierta
-  la decisión de bajo qué fase se ejecuta (fase propia de *hotfix* o paso previo dentro de la
-  Fase 10).
+- Esta reparación **no pertenece a ninguna de las dos**: es deuda de las Fases 9 y 12.
+  **Decisión cerrada por el ARB:** se ejecuta como **fase propia — Fase 9.5**, no absorbida por la
+  Fase 10. Ruta crítica resultante: 9 → 9.5 → 10 → 11 → 13 → 20.
 - **Renumeración a propagar:** Fase 10 `0005 → 0006`; Fase 13 `0006 → 0007`, con
   `down_revision = "0006"`. Deroga `PENDIENTES.md:29,38` y `FASE_13_PLAN_EJECUCION.md` §12-Q1.
 - **La dependencia de orden se mantiene y se refuerza:** la `0007` no aplica sin la `0006`, luego la
@@ -385,7 +395,7 @@ pasan sin haber demostrado nunca su capacidad de detectar el fallo.
 
 ---
 
-## 10 · Riesgos de la Alternativa D
+## 10 · Riesgos de la Alternativa B
 
 | # | Riesgo | Severidad | Mitigación |
 |---|---|---|---|
@@ -503,5 +513,7 @@ antigua es aceptada en silencio.
 ---
 
 **Documento de diseño. No contiene código ni parches.**
-Estrategia cerrada sobre la Alternativa D. Queda abierta únicamente Q5: bajo qué fase se ejecuta
-esta reparación.
+Estrategia cerrada sobre la Alternativa B. **Q5 resuelta:** la reparación se ejecuta como fase
+propia, la **Fase 9.5**, cuyo plan de ejecución canónico es
+[`FASE_95_PLAN_EJECUCION.md`](FASE_95_PLAN_EJECUCION.md). **No queda ninguna decisión abierta en
+este documento.**

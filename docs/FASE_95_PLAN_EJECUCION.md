@@ -15,6 +15,10 @@ empírica (2026-07-26).
 
 > **Arquitectura cerrada.** La elección de la Alternativa B (revisión fundacional limpia) y la
 > creación de la Fase 9.5 son decisiones aprobadas y no se reabren en la ejecución.
+>
+> *Nomenclatura: una versión previa del documento de diseño llamaba «Alternativa D» a esta misma
+> estrategia, antes de que el ARB reformulara la decisión a dos opciones. Son la misma. De ahí el
+> prefijo histórico de los códigos de riesgo `R-D*`.*
 
 ---
 
@@ -279,8 +283,10 @@ siendo posible, pero deja de ser gratuito porque obliga a repetir la auditoría.
 **Riesgos.** Ajustar la batería para que pase en lugar de reparar la causa.
 
 **Criterios de aceptación.** `upgrade head` desde vacío y `downgrade base` verdes · idempotencia
-verde · **el texto de las aserciones de T1 y T2 es byte-idéntico al del Bloque A**; el diff del
-fichero no contiene líneas eliminadas ni modificadas en aserciones, solo añadidos.
+verde · **el texto de las aserciones de toda la batería (T1-T6) es byte-idéntico al del Bloque A**;
+el diff del fichero entre ambos momentos **no contiene ninguna línea eliminada ni modificada dentro
+de una aserción, solo añadidos**. *(Definición operativa única de «no debilitada»: se aplica a los
+seis tests, no solo a los que este bloque ejercita, y es la que invocan RC-2 y el DoD.)*
 
 **Agentes ECC.** `tdd-guide` · `silent-failure-hunter`.
 
@@ -384,17 +390,30 @@ ya desmentida en este proyecto.
 
 **Objetivo.** Que ningún documento siga afirmando lo que la verificación desmiente.
 
-**Archivos.** `docs/PENDIENTES.md` (líneas 29, 38, 134) · `CLAUDE.md` §§2, 3, 6, 7 ·
-`docs/FASE_13_PLAN_EJECUCION.md` · `docs/PLAN_REPARACION_MIGRACIONES.md` · procedimiento de
-recreación.
+**Archivos.** `docs/PENDIENTES.md` (líneas 29, 38, 134) · `CLAUDE.md` **§§2, 3, 5, 6, 7** ·
+`README.md` · `docs/FASE_13_PLAN_EJECUCION.md` · `docs/PLAN_REPARACION_MIGRACIONES.md` ·
+procedimiento de recreación.
+
+> **Propagación mínima ya adelantada** (rama de planificación, antes de abrir el PR):
+> **`CLAUDE.md` §5** (ruta crítica y renumeración) y la **tabla de fases de `README.md`** ya se
+> corrigieron, para que el contexto maestro del proyecto —que se carga en cada sesión de trabajo—
+> no siguiera apuntando a una ruta crítica y una numeración derogadas. **El resto sigue pendiente
+> en este bloque.**
+>
+> `CLAUDE.md` §5 no figuraba en el alcance original de este bloque, que se limitaba a §§2, 3, 6 y 7.
+> Era un defecto: la contradicción más directa con la renumeración vivía precisamente en §5, de modo
+> que cumplir el DoD al pie de la letra habría cerrado la fase dejando en pie el error que la
+> motiva.
 
 **Dependencias.** H e I. La documentación describe hechos verificados.
 
 **Criterios de aceptación.**
 - Renumeración propagada: **Fase 10 → `0006`; Fase 13 → `0007`** con `down_revision = "0006"`.
 - `PENDIENTES.md:134` corregido — la 0004 **no** puede ejecutarse en SQLite.
-- `CLAUDE.md` §2: retirar la declaración de PostGIS geoespacial — **no hay columna geométrica ni
-  dependencia de `geoalchemy2`**; `lat`/`lng` son `Numeric(9,6)`.
+- `CLAUDE.md` §2 **y `README.md`**: retirar la declaración de PostGIS geoespacial — **no hay columna
+  geométrica ni dependencia de `geoalchemy2`**; `lat`/`lng` son `Numeric(9,6)`. `README.md` contiene
+  además la afirmación de que la migración a `geometry(Point,4326)` ocurre «hasta la Fase 5», que
+  figura como completada: no ha ocurrido.
 - `CLAUDE.md` §7 sin advertencia pendiente.
 - Procedimiento de recreación (§9) publicado y comunicado.
 - `FASE_13_PLAN_EJECUCION.md` anota que su corrección **B3 es consumidora** de la convención de DML.
@@ -517,6 +536,13 @@ pueden colgar ambas de la fundacional: `0007` cuelga de `0006`, nunca de `0005`.
 
 ## 8 · Matriz de riesgos
 
+> **Aviso de nomenclatura.** `P0`, `P1` y `P2` designan aquí **niveles de severidad de riesgo** de
+> esta fase. **No confundir con los principios `P1`-`P10` de la especificación del proyecto**
+> (`P1` determinismo, `P4` la ausencia de datos penaliza, `P6` vetos antes que promedios…), que son
+> otra cosa y conviven en `CLAUDE.md` y `README.md`. Cuando este documento cita un principio, lo
+> nombra («principio P1 del proyecto»); cuando cita una severidad, usa el código con guion
+> (`P0-1`, `P1-3`).
+
 ### P0 — bloquean la fase
 
 | # | Riesgo | Bloque | Contención |
@@ -547,7 +573,7 @@ pueden colgar ambas de la fundacional: `0007` cuelga de `0006`, nunca de `0005`.
 |---|---|---|
 | **P2-1** | **RM3**: el primer `ALTER COLUMN` futuro reincidirá en SQLite sin modo batch | Convención |
 | **P2-2** | `Auditoria.entidad_id` es `String(36)`; los ids de Checkout Session rondan 66-70 caracteres | Precondición de Fase 13 |
-| **P2-3** | `CLAUDE.md` §2 declara PostGIS sin columna geométrica ni `geoalchemy2` | Corrección en J |
+| **P2-3** | `CLAUDE.md` §2 **y `README.md`** declaran PostGIS sin columna geométrica ni `geoalchemy2` | Corrección en J |
 | **P2-4** | Divergencia tests ↔ migraciones persiste mientras `conftest` use `create_all` | T4 la hace detectable |
 | **P2-5** | **RM7**: el arranque del servicio está acoplado a las migraciones por el `&&` | Fase 11 |
 
@@ -616,7 +642,8 @@ corrupción silenciosa que esta fase erradica.
 
 **Documentación**
 - [ ] `PENDIENTES.md` líneas 29, 38 y 134 corregidas
-- [ ] `CLAUDE.md` §§2, 3, 6, 7 corregidos
+- [ ] `CLAUDE.md` §§2, 3, 6, 7 corregidos *(§5 ya propagada en la rama de planificación)*
+- [ ] `README.md` corregido: PostGIS *(la tabla de fases ya se propagó en la rama de planificación)*
 - [ ] Renumeración propagada: Fase 10 → `0006`, Fase 13 → `0007`
 - [ ] Plan de Fase 13 anota que su corrección B3 consume la convención de DML
 - [ ] Procedimiento de recreación publicado, **con ambas vías** y `--purge` documentado
