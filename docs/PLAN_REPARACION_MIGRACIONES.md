@@ -289,8 +289,8 @@ que este defecto llegara hasta aquí.
 | **T5** | Marcado `@pytest.mark.postgres`, omitido sin `DATABASE_URL` de PostgreSQL: T1+T2+T4 contra PostgreSQL real | Cubre lo que SQLite no puede ejercitar, **incluida la variante JSONB (R-D1)** |
 | **T6** | Idempotencia: aplicar `upgrade` sobre un esquema que ya contiene la revisión no lanza | Que las guardas siguen cumpliendo su función *(aplicable a `0006`/`0007`, no a la fundacional)* |
 
-*(La batería de la v1.0 tenía un T3 de «instalación histórica» que desaparece: bajo la Alternativa
-D no existe tal escenario.)*
+*(La batería de la v1.0 tenía un T3 de «instalación histórica» que desaparece: bajo la
+Alternativa B no existe tal escenario.)*
 
 ### T4 es la pieza central
 
@@ -374,6 +374,9 @@ pasan sin haber demostrado nunca su capacidad de detectar el fallo.
 | `CLAUDE.md` §7 (puesta en marcha) | El `docker compose up` documentado no funciona sobre volumen limpio hasta el paso 10 |
 | `CLAUDE.md` §6 (convenciones) | Añadir las dos reglas de §6 |
 | `CLAUDE.md` §2 (stack) | Declara «PostgreSQL 16 + PostGIS (geoespacial)», pero **no hay ninguna columna geométrica ni dependencia de `geoalchemy2`**: `lat`/`lng` son `Numeric(9,6)` y `models.py:3-4` sitúa la migración a `geometry(Point,4326)` en una fase futura. La imagen es PostGIS; el esquema no lo usa |
+| **`CLAUDE.md` §5 (hoja de ruta)** | Ruta crítica sin la Fase 9.5 y numeración derogada (`0005` asignada a la Fase 10). **Ya propagado en la rama de planificación**, antes de abrir el PR: era la contradicción más directa y `CLAUDE.md` se carga como contexto en cada sesión |
+| **`README.md` (tabla de fases)** | Roadmap sin la Fase 9.5 y Fase 10 marcada como «Siguiente». **Ya propagado en la rama de planificación** |
+| **`README.md` (PostGIS)** | Repite la inexactitud de `CLAUDE.md` §2, y además sitúa la migración a `geometry` «hasta la Fase 5», que figura como completada. **Pendiente** |
 | `docs/FASE_13_PLAN_EJECUCION.md` | §12-Q1 (migración `0006`) y el criterio de «hecho» del Bloque A (§9) |
 
 ---
@@ -383,8 +386,8 @@ pasan sin haber demostrado nunca su capacidad de detectar el fallo.
 - **Fase 10 y Fase 13 están bloqueadas** hasta el paso 14: ninguna puede validar su migración sobre
   una cadena rota.
 - Esta reparación **no pertenece a ninguna de las dos**: es deuda de las Fases 9 y 12.
-  **Decisión cerrada por el ARB:** se ejecuta como **fase propia — Fase 9.5**, no absorbida por la
-  Fase 10. Ruta crítica resultante: 9 → 9.5 → 10 → 11 → 13 → 20.
+  **Decisión Q5, cerrada por el ARB:** se ejecuta como **fase propia — Fase 9.5**, no absorbida por
+  la Fase 10. Ruta crítica resultante: 9 → 9.5 → 10 → 11 → 13 → 20.
 - **Renumeración a propagar:** Fase 10 `0005 → 0006`; Fase 13 `0006 → 0007`, con
   `down_revision = "0006"`. Deroga `PENDIENTES.md:29,38` y `FASE_13_PLAN_EJECUCION.md` §12-Q1.
 - **La dependencia de orden se mantiene y se refuerza:** la `0007` no aplica sin la `0006`, luego la
@@ -501,7 +504,8 @@ Para el pase de verificación independiente, una vez implementada la reparación
 ### Verificación documental
 
 - [ ] `docs/PENDIENTES.md` líneas 29, 38 y 134 corregidas.
-- [ ] `CLAUDE.md` §§2, 3, 6 y 7 corregidos.
+- [ ] `CLAUDE.md` §§2, 3, 6 y 7 corregidos *(§5 ya propagada antes del PR)*.
+- [ ] `README.md` corregido: PostGIS *(la tabla de fases ya se propagó antes del PR)*.
 - [ ] `docs/FASE_13_PLAN_EJECUCION.md` renumerado a `0007`.
 
 ### Criterio de bloqueo

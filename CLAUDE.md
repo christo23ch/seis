@@ -1,7 +1,7 @@
 # CLAUDE.md — Contexto maestro del proyecto SEIS
 **Repositorio:** christo23ch/seis
 **Rama de trabajo:** fase-12-notificaciones
-**Última actualización:** 2026-07-25
+**Última actualización:** 2026-07-26
 **Fuente de verdad funcional/técnica:** `docs/SEIS_Especificacion_Funcional_y_Tecnica.md` (ya incorporada al repo, junto al Plan Maestro y el informe de ejemplo del §19)
 
 ---
