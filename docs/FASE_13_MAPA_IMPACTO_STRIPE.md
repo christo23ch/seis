@@ -809,7 +809,7 @@ Frontend: Mostrar "Tu suscripción ha sido cancelada"
 - [ ] Tests: `test_suscripciones.py` (70+ tests)
 - [ ] Tests: `test_stripe_webhooks.py` (50+ tests)
 - [ ] Tests: `test_facturacion_api.py` (30+ tests)
-- [ ] `npm run build` limpio + `pytest` 102 verdes (sin regresión)
+- [ ] `npm run build` limpio + `pytest` sin regresión sobre la línea base vigente: **118 recogidos — 113 pasan, 2 fallan (PDF, preexistentes), 3 se omiten** (actualizado en la Fase 9.5, Bloque J; antes decía «102 verdes»)
 
 ### Frontend
 - [ ] Tipos: `Suscripcion`, `Factura` (en `types.ts`)

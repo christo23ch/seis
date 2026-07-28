@@ -45,6 +45,13 @@ Clasificación explícita. No se opera sobre suposiciones sin marcarlas.
 | H3 | `render_as_batch=True` **no repara** `alter_column`; solo `op.batch_alter_table()` ejecuta | Cuatro escenarios contrastados |
 | H4 | La causa raíz es `Base.metadata.create_all()` en `0001:18` | DDL volcada + guarda de `0002:41` verificada |
 | H5 | La suite de 104 tests **no ejerce Alembic** | `conftest.py:64` usa `create_all` |
+
+> **Nota de vigencia de las cifras.** Todas las referencias a «104 tests» y «102/104» de este
+> documento son la **línea base anterior a la fase** y se conservan tal cual porque son mediciones
+> históricas. La cifra vigente tras añadir la batería de migraciones es **118 recogidos: 113 pasan,
+> 2 fallan (PDF, preexistentes) y 3 se omiten**. `conftest.py:64` sigue usando `create_all` a
+> propósito —los tests no pasan por Alembic para no depender de él—; quien ejerce Alembic de verdad
+> es `test_migraciones.py`, que es justamente lo que H5 echaba en falta.
 | H6 | `models.py`: 7 `default=_now`, 9 `default=_uuid`, **0 `server_default`**, 21 tablas | Recuento |
 | H7 | `autogenerate` contra base vacía con 0001-0004 presentes **aborta siempre** | `CommandError: Target database is not up to date.` — `alembic/autogenerate/api.py:605-608` |
 | H8 | `version_locations` a directorio vacío **genera `down_revision = None` de forma nativa** | Ejecutado; 21 tablas, 19 columnas JSONB |

@@ -38,6 +38,12 @@ procedimiento de puesta en marcha de `CLAUDE.md` §7 no funciona hoy en una máq
 
 **Por qué no se detectó:** `backend/tests/conftest.py:64` construye el esquema con
 `Base.metadata.create_all(engine)`. La suite de 104 tests **no invoca Alembic en ningún punto**.
+
+> **Nota de vigencia (Fase 9.5, Bloque J).** Este documento es de **diseño previo** a la ejecución:
+> sus cifras («104 tests», «102/104») y sus listas de verificación son las de aquel momento y se
+> conservan como registro. Estado vigente: **118 recogidos — 113 pasan, 2 fallan, 3 se omiten**, y
+> `test_migraciones.py` sí invoca Alembic, que era el hueco que este párrafo señalaba.
+
 Migraciones y tests son dos caminos disjuntos hacia dos esquemas que nadie ha comparado nunca.
 
 ---

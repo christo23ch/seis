@@ -571,7 +571,7 @@ botón «Reactivar» (D5).
 
 **Cambios v2.0:** confirmar que `pytest-cov` está en `requirements-dev.txt` antes de comprometer
 el «≥80 %». **Las cifras del mapa (190 tests nuevos para ~1400 líneas) son aspiracionales** —
-compárese con 104 tests para todo el motor experto. **No tratarlas como criterio de aceptación.**
+compárese con los 118 tests que hoy tiene el repositorio completo (104 antes de la Fase 9.5). **No tratarlas como criterio de aceptación.**
 Renombrar `test_stripe_integración_e2e.py` → `test_stripe_integracion_e2e.py` (la regla de idioma
 español aplica a contenido, no a identificadores de módulo).
 
