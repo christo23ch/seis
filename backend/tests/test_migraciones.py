@@ -1,12 +1,22 @@
-"""Batería de tests de migraciones de Alembic — Fase 9.5, Bloque A.
+"""Batería de tests de migraciones de Alembic — Fase 9.5.
 
-Instrumento de medida de toda la fase: se calibra antes de usarse. Hoy
-(Bloque A) esta batería nace en ROJO a propósito, porque documenta un bug
-real y ya verificado: `alembic upgrade head` desde una base vacía falla en la
-revisión 0002 (INSERT crudo que omite `creado_en`, viola NOT NULL). La
-revisión 0004 tiene un bug independiente (SQLite no soporta
-`ALTER TABLE ... ALTER COLUMN`), inalcanzable desde una base limpia porque la
-cadena se detiene antes, en la 0002 — T3 lo alcanza por otra vía (`stamp`).
+Instrumento de medida de toda la fase: se calibró antes de usarse. Nació en
+ROJO a propósito en el Bloque A, documentando dos bugs reales y verificados:
+`alembic upgrade head` desde una base vacía fallaba en la revisión 0002
+(INSERT crudo que omite `creado_en`, viola NOT NULL), y la 0004 tenía un bug
+independiente (SQLite no soporta `ALTER TABLE ... ALTER COLUMN`).
+
+El Bloque D retiró esa cadena y la sustituyó por la revisión fundacional
+única 0005. T1, T2, T3 y T6 pasaron a verde **por reparación real**: no se
+tocó ninguna aserción. Los mensajes de fallo siguen citando «Bloque A», la
+0002 y la 0004 a propósito — el criterio de cierre del Bloque E congela el
+texto de las aserciones de T1-T6 frente al commit `33bb28a` precisamente para
+impedir que se ablanden mientras se repara la cadena. Ese anacronismo es la
+prueba de que no se ablandaron.
+
+T4 sigue en rojo por un defecto propio, no por deriva de esquema: compara el
+resultado de `upgrade head` con el de `create_all` sin excluir
+`alembic_version`. Su reparación corresponde al Bloque G.
 
 Diseño (D-A, decidido): cada invocación de Alembic corre en un SUBPROCESO
 propio, con `DATABASE_URL` fijada solo en el entorno de ese subproceso. Así
@@ -15,18 +25,12 @@ ni la caché de `get_settings()` ni el `engine` module-level de
 principal frente al riesgo destructivo (un `downgrade base` fuera de
 control podría vaciar una base real).
 
-Gate por defecto (D-B, decidido): el `pytestmark` de más abajo excluye este
-fichero de la invocación normal de `pytest` mientras la 0002 siga rota, para
-que la suite existente (102/104) se siga viendo como tal sin que estos tests,
-deliberadamente rojos, se confundan con una regresión. Se activa con
-`SEIS_CALIBRAR_MIGRACIONES=1 pytest ...`.
-
-*** IMPORTANTE — retirar en el Bloque E ***
-A diferencia de `xfail(strict=True)`, este gate NO tiene trinquete propio:
-nada fuerza automáticamente su retirada cuando las migraciones se reparen.
-Cuando el Bloque E deje `upgrade head` en verde, la línea `pytestmark = ...`
-de más abajo DEBE ELIMINARSE A MANO para que la batería vuelva a formar
-parte de la ejecución por defecto de la suite.
+Gate retirado (Bloque E): mientras la 0002 siguió rota, un
+`pytestmark = pytest.mark.skipif(...)` sobre `SEIS_CALIBRAR_MIGRACIONES`
+excluía este fichero de la invocación normal de `pytest`, para que unos
+tests deliberadamente rojos no se confundieran con una regresión. Reparada
+la cadena, esa línea se eliminó: la batería forma parte de la ejecución por
+defecto de la suite.
 
 T5 (verificación contra PostgreSQL real) se escribe en este bloque pero
 queda en *skipped*: el plan canónico sitúa su primera ejecución real en el
@@ -54,8 +58,14 @@ from app.core.config import Settings
 RUTA_BACKEND = Path(__file__).resolve().parents[1]
 RUTA_SEIS_DEV_DB = RUTA_BACKEND / "seis_dev.db"  # fichero compartido de la fixture `api`
 
-GATE_ENV_VAR = "SEIS_CALIBRAR_MIGRACIONES"
 POSTGRES_ENV_VAR = "SEIS_TEST_POSTGRES_URL"  # dedicada: nunca DATABASE_URL
+
+# Tabla de contabilidad interna de Alembic: la crea el runtime al aplicar una
+# revisión, nunca `Base.metadata.create_all`, de modo que su presencia en un
+# lado y no en el otro es estructural y no es deriva. Coincide con el valor por
+# defecto de `version_table`, que `alembic/env.py` no sobrescribe: si algún día
+# lo hiciera, este nombre debe seguirlo. Es la ÚNICA exclusión de T4 (Bloque G).
+TABLA_VERSION_ALEMBIC = "alembic_version"
 
 # Mensajes exactos documentados por el Release Committee.
 MENSAJE_ERROR_0002_INTEGRIDAD = "NOT NULL constraint failed: organizacion.creado_en"
@@ -67,16 +77,6 @@ _URLS_SQLITE_PROHIBIDAS = frozenset({
     "sqlite:///./seis_dev.db",
     "sqlite:///seis_dev.db",
 })
-
-pytestmark = pytest.mark.skipif(
-    not os.environ.get(GATE_ENV_VAR),
-    reason=(
-        "Bloque A: batería de migraciones en calibración (nace en rojo a "
-        "propósito, ver docstring del módulo). Ejecutar explícitamente con "
-        f"{GATE_ENV_VAR}=1 para ver los fallos reales. Retirar este gate en "
-        "el Bloque E, cuando las migraciones queden reparadas."
-    ),
-)
 
 
 # --------------------------------------------------------------------------
@@ -93,12 +93,12 @@ def _cadena_de_revisiones() -> tuple[list[str], str | None]:
     """Cadena vigente de la más antigua a la cabeza, y motivo si no se pudo leer.
 
     **Nunca lanza.** Es deliberado y no es defensivo por costumbre: esta
-    función se evalúa al IMPORTAR el módulo, antes de que el gate
-    `pytestmark` pueda actuar, y una excepción aquí **abortaría la
-    recolección de toda la suite** —los 104 tests, no solo los de este
-    fichero—, porque pytest interrumpe la sesión entera ante un error de
-    recolección. Cualquier problema degrada a cadena vacía con un motivo
-    legible, y los tests de T3 se omiten explicándolo.
+    función se evalúa al IMPORTAR el módulo, de modo que ninguna marca de
+    omisión puede protegerla —tampoco el gate que hubo hasta el Bloque E—, y
+    una excepción aquí **abortaría la recolección de toda la suite**, no solo
+    la de este fichero, porque pytest interrumpe la sesión entera ante un
+    error de recolección. Cualquier problema degrada a cadena vacía con un
+    motivo legible, y los tests de T3 se omiten explicándolo.
 
     Los dos escenarios que lo harían saltar son propios del Bloque D, que es
     justo el que esta batería debe sobrevivir: un instante con el directorio
@@ -279,9 +279,21 @@ def _crear_esquema_via_create_all(entorno: EntornoMigraciones) -> None:
 
 def _describir_esquema(inspector: Inspector) -> dict[str, dict[str, list]]:
     """Descripción comparable de un esquema: tablas, columnas (nombre, tipo,
-    nulabilidad) e índices, todo ordenado para que la comparación sea estable."""
+    nulabilidad) e índices, todo ordenado para que la comparación sea estable.
+
+    Excluye `alembic_version` y **solo** esa tabla (Bloque G). No es un
+    ablandamiento: la crea el runtime de Alembic al aplicar una revisión y
+    `create_all` no la crea nunca, de modo que sin excluirla los dos lados
+    difieren siempre y T4 no puede pasar jamás — una barrera que no puede
+    ponerse verde no vigila nada. Excluida, la comparación sigue cubriendo el
+    100 % del esquema de SEIS: 21 tablas, 171 columnas y 22 índices (medido).
+    La prueba de mutación del Bloque G es la evidencia de que sigue detectando
+    deriva en tablas, columnas, tipos, nulabilidad e índices.
+    """
     descripcion: dict[str, dict[str, list]] = {}
     for tabla in sorted(inspector.get_table_names()):
+        if tabla == TABLA_VERSION_ALEMBIC:
+            continue
         columnas = sorted(
             (columna["name"], str(columna["type"]), bool(columna["nullable"]))
             for columna in inspector.get_columns(tabla)
@@ -584,9 +596,16 @@ def test_t4_deriva_de_esquema_upgrade_head_vs_create_all(
     `Base.metadata.create_all` (tablas, columnas, tipos, nulabilidad,
     índices). Si difieren, hay deriva entre migraciones y modelos.
 
-    HOY (Bloque A) la fase previa (`upgrade head`) ya falla por el bug de la
-    0002: se reporta como tal, sin intentar comparar nada, para no generar
-    un segundo mensaje desconectado del real.
+    Si la fase previa (`upgrade head`) falla, se reporta como tal sin intentar
+    comparar nada, para no generar un segundo mensaje desconectado del real.
+    El texto de esa llamada a `pytest.fail` sigue citando el bug de la 0002
+    porque el criterio de cierre del Bloque E congela el texto de las
+    aserciones de T1-T6; el Bloque G corrigió la comparación sin tocar una
+    sola línea de aserción.
+
+    Alcance del motor: ambos lados son SQLite desechables, así que aquí no
+    aparece ningún objeto de extensión (medido: cero). El ruido de PostGIS que
+    sí afecta a `alembic check` es otra barrera distinta y otro bloque.
     """
     resultado_up = _ejecutar_alembic(entorno_migraciones, "upgrade", "head")
     if resultado_up.returncode != 0:
@@ -631,11 +650,11 @@ def test_t4_deriva_de_esquema_upgrade_head_vs_create_all(
 @pytest.mark.skipif(
     not os.environ.get(POSTGRES_ENV_VAR),
     reason=(
-        "T5 se escribe en el Bloque A pero su primera ejecución real está "
-        "programada para el Bloque F por el plan canónico — no es una "
-        "cuestión de infraestructura (Docker Desktop ya está disponible, "
-        f"PRE-1 resuelta). Definir {POSTGRES_ENV_VAR} para ejecutarla de "
-        "todas formas."
+        "T5 exige un PostgreSQL real. Se ejecutó y pasó en el Bloque F contra "
+        "postgis/postgis:16-3.4 (PostgreSQL 16.4); aquí se omite únicamente "
+        f"porque {POSTGRES_ENV_VAR} no está definida. Definirla apuntando a "
+        "una base desechable cuyo nombre contenga «test» para volver a "
+        "ejecutarla."
     ),
 )
 def test_t5_upgrade_head_y_downgrade_base_contra_postgres_real() -> None:
