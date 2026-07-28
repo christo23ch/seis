@@ -1,0 +1,63 @@
+# Barrera anti-recurrencia de la Fase 9.5 (Bloque I).
+#
+# Ejecuta la batería de migraciones en cada cambio del backend. El test que
+# justifica este pipeline es T4: compara el esquema que produce
+# `alembic upgrade head` con el que produce `Base.metadata.create_all` y falla
+# si divergen. Sin él en CI, la deriva entre modelos y migraciones vuelve a ser
+# invisible hasta que alguien intente instalar el producto desde cero — que es
+# exactamente el defecto que originó esta fase.
+#
+# Alcance deliberado: solo `tests/test_migraciones.py`, no la suite completa.
+# La suite arrastra dos fallos preexistentes de PDF (falta la fuente DejaVu,
+# ver docs/PENDIENTES.md) que dejarían este pipeline permanentemente en rojo, y
+# una barrera que siempre está roja no vigila nada. Ampliarlo a la suite
+# completa exige instalar `fonts-dejavu-core` en el runner y queda registrado
+# como deuda, fuera del alcance del Bloque I.
+name: Migraciones
+
+on:
+  push:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/migraciones.yml'
+  pull_request:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/migraciones.yml'
+
+jobs:
+  bateria:
+    name: Batería de migraciones (T1-T6)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      # La batería lanza cada invocación de Alembic en un subproceso con su
+      # propia DATABASE_URL desechable; estos valores solo cubren la importación
+      # del módulo de configuración.
+      SEIS_ENV: test
+      JWT_SECRET: secreto-de-ci-sin-valor-productivo
+      ADMIN_PASSWORD: admin-de-ci
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+
+      - name: Instalar dependencias
+        run: pip install -r requirements-dev.txt
+
+      - name: Batería de migraciones
+        run: python -m pytest tests/test_migraciones.py -v --no-header
+
+      # T5 se omite sin SEIS_TEST_POSTGRES_URL y los casos parametrizados de T3
+      # se omiten porque la cadena tiene una sola revisión. Ambos `skip` son
+      # resultados esperados, no huecos: este paso los deja visibles en el log
+      # para que nadie confunda «omitido» con «ejecutado y verde».
+      - name: Motivos de omisión (visibilidad)
+        if: always()
+        run: python -m pytest tests/test_migraciones.py -q -rs --no-header
