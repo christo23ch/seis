@@ -172,19 +172,38 @@ El aislamiento debe lograrse fijando `DATABASE_URL` en el entorno **antes** de q
    (H10). `down_revision` ya sale `None` de forma nativa (H8) y **no requiere edición**.
 5. **Renombrar el fichero a `0005_esquema_base.py`.** `alembic.ini` no define `file_template`, de
    modo que el fichero nace con el hexadecimal en el nombre —observado:
-   `90f725c3ba9f_esquema_base.py`—. Son **dos** correcciones manuales, no una: el identificador
-   *dentro* del fichero y el nombre *del* fichero.
-6. Trasladarlo a `backend/alembic/versions/`.
+   `90f725c3ba9f_esquema_base.py`.
+6. **Verificar por ejecución antes de aceptar el fichero — no es opcional.** Con el mismo
+   `alembic.ini` desechable y la misma base vacía del paso 2, ejecutar
+   `alembic -c <ini desechable> upgrade head` y `downgrade base`; ambos deben terminar con
+   `returncode == 0`. **Que el comando de generación del paso 3 termine con éxito no basta**:
+   autogenerate puede producir un fichero sintácticamente correcto pero **no ejecutable**.
+   Trampa conocida y reproducible: al renderizar las columnas con variante JSONB, autogenerate
+   emite `astext_type=Text()` pero solo importa `sqlalchemy as sa` y
+   `from sqlalchemy.dialects import postgresql` — nunca `Text` a secas —, así que el fichero lanza
+   `NameError: name 'Text' is not defined` en cuanto se ejecuta. **Si aparece, es un ajuste manual
+   obligatorio, no un fallo del procedimiento**: sustituir cada `Text()` dentro de `astext_type=...`
+   por `sa.Text()` (hoy, 19 ocurrencias en las columnas `PortableJSON`) y repetir la verificación.
+   La corrección no altera el DDL emitido — `JSONB(astext_type=sa.Text())` y `JSONB()` compilan al
+   mismo `CREATE TABLE` en PostgreSQL — así que **no invalida el enfoque ni la corrección de la
+   revisión generada**: es un defecto de generación de código de la herramienta, no del diseño.
+   **El procedimiento no es garantizadamente «una sola pasada»**: si el `NameError` aparece,
+   corregir y volver a ejecutar este mismo paso 6 antes de continuar.
+7. Trasladarlo a `backend/alembic/versions/`.
 
 **Descartado: `stamp head`.** Funciona, pero exige escribir un estado falso en `alembic_version`
 —declarar la base al día en `0004` cuando no tiene ni una tabla— y genera `down_revision = '0004'`,
 añadiendo un paso manual cuyo olvido deja la revisión colgando de una cadena que el Bloque D va a
 borrar: fallo silencioso al generar, ruidoso mucho después.
 
-**Riesgos.** Omitir el paso 4 y dejar el identificador hexadecimal, incumpliendo E4.
+**Riesgos.** Omitir el paso 4 y dejar el identificador hexadecimal, incumpliendo E4 · omitir el
+paso 6 y trasladar un fichero nunca ejecutado, arriesgando descubrir el `NameError` (u otro fallo de
+generación) en el Bloque C o más tarde, en vez de aquí.
 
 **Criterios de aceptación.** Existe el fichero · 21 tablas · `revision = "0005"` ·
-`down_revision = None`. **El bloque no se cierra aquí**: su validación es el Bloque C.
+`down_revision = None` · **`upgrade head` y `downgrade base` terminan en éxito contra la base
+desechable del paso 2** (paso 6). **El bloque no se cierra aquí**: la corrección semántica de la
+DDL —que coincida con `models.py`— es el Bloque C.
 
 **Agentes ECC.** Ninguno. Paso mecánico.
 
@@ -223,8 +242,13 @@ mano el artefacto generado.** Sin excepciones, y sea cual sea el defecto detecta
 **Motivo:** el fichero es un artefacto generado y su valor entero descansa en corresponderse con
 `models.py`. Parches manuales acumulados rompen esa correspondencia, la vuelven inauditable y
 degradan T4 —que compara DDL ejecutada contra `create_all`— a un test que valida un fichero que ya
-nadie sabe de dónde viene. El coste de regenerar es reaplicar los dos pasos manuales del Bloque B
-(identificador y nombre de fichero).
+nadie sabe de dónde viene. El coste de regenerar es reaplicar los pasos manuales mecánicos y
+deterministas del Bloque B: fijar el identificador, renombrar el fichero y —si autogenerate vuelve
+a reproducirlo— corregir `Text()` a `sa.Text()` en las columnas JSONB (paso 6). **Esto no contradice
+«no se parchea a mano»**: son ajustes de generación que se aplican siempre, en cada regeneración,
+dentro del propio Bloque B y antes de que el fichero llegue a la auditoría de RC-1 en este Bloque
+C — nunca como respuesta a un rechazo de esa auditoría. No es una corrección puntual sobre contenido
+ya auditado.
 
 **No se admite «corregir solo esta línea».** Es la decisión que evita improvisar bajo presión en el
 checkpoint más crítico de la fase.
@@ -268,6 +292,21 @@ siendo posible, pero deja de ser gratuito porque obliga a repetir la auditoría.
 **Criterios de aceptación.** `alembic history` muestra una sola revisión · ningún fichero bajo
 `versions/` referencia `Base.metadata` ni `create_all`.
 
+**Estado: COMPLETADO.** Retiradas las cuatro revisiones y los `.pyc` obsoletos de `__pycache__`.
+`versions/` contiene un único fichero, `0005_esquema_base.py`. Medido tras la retirada:
+`alembic heads` → `0005 (head)`, una sola cabeza · `alembic history` → `<base> -> 0005 (head)`,
+una sola línea · `alembic current` → vacío sobre base sin sellar y `0005 (head)` tras `upgrade` ·
+`alembic upgrade head` y `downgrade base` en éxito (antes de D, `upgrade head` abortaba con
+*«Multiple head revisions are present»*, el mismo comando que ejecuta `docker-compose.yml:56`) ·
+`alembic check` → *«No new upgrade operations detected»*, que la doble cabeza impedía ejecutar
+durante RC-1. Batería de migraciones: de 4 fallos (T1, T2, T4, T6) a 1; T1, T2 y T6 en verde y los
+casos parametrizados de T3 omitidos con el motivo previsto. **T4 sigue en rojo por un defecto
+propio, no por deriva** (ver Bloque G / P0-1): compara el esquema de `upgrade head` contra el de
+`create_all` sin excluir `alembic_version`, tabla que el primero siempre tiene y el segundo nunca,
+de modo que la aserción no puede satisfacerse tal como está escrita. Las 21 tablas reales salen
+idénticas en esa misma comparación. Suite completa sin regresión: 102 pasan, 2 fallan (PDF/DejaVu,
+preexistentes), 14 omitidos — cifras idénticas a las de antes del bloque.
+
 **Agentes ECC.** `refactor-cleaner`.
 
 **Graphify.** No.
@@ -308,6 +347,26 @@ del fichero entre ambos momentos **no contiene ninguna línea eliminada ni modif
 aserción, solo añadidos**. *(Definición operativa única de «no debilitada»: se aplica a los seis
 tests, no solo a los que este bloque ejercita, y es la que invocan RC-2 y el DoD.)*
 
+**Estado: COMPLETADO.** Gate retirado del fichero: eliminados el bloque `pytestmark`, la constante
+`GATE_ENV_VAR` y los párrafos del docstring que lo describían. La batería corre ya en la invocación
+por defecto de `pytest`, sin variable de entorno. Medido en esa invocación: **T1, T2 y T6 en
+`passed`**, **el control del arnés de T3 en `passed`** y **los dos casos parametrizados de T3 en
+`skipped`** con el motivo previsto («la cadena vigente tiene una sola revisión…») — ninguno en
+`failed`. Los seis tests de guarda de aislamiento, en `passed`. T5 en `skipped` (Bloque F).
+
+*Verde por reparación real, verificado de forma objetiva:* `git diff 33bb28a` sobre el fichero
+arroja 31 líneas añadidas y 38 eliminadas, y **ninguna de las 38 pertenece a una aserción** — son
+docstring, comentario y el propio gate. El texto de las aserciones de T1-T6 permanece byte-idéntico.
+Por eso sus mensajes de fallo siguen citando «Bloque A», la `0002` y la `0004`: ese anacronismo es
+la evidencia de que no se ablandaron, y corregirlo está **prohibido** por este mismo criterio.
+
+*Efecto sobre la suite por defecto:* de `2 fallan · 102 pasan · 14 omitidos` a
+`3 fallan · 112 pasan · 3 omitidos`. Los 14 omitidos anteriores eran la batería entera, oculta por
+el gate. El tercer fallo es **T4**, que el gate venía enmascarando y cuya reparación corresponde al
+**Bloque G**: no es deriva de esquema —`alembic check` no detecta operación pendiente y las 21
+tablas salen idénticas—, sino que T4 compara `upgrade head` contra `create_all` sin excluir
+`alembic_version`. Ninguna prueba que pasara antes falla ahora.
+
 **Agentes ECC.** `tdd-guide` · `silent-failure-hunter`.
 
 **Graphify.** No.
@@ -330,6 +389,40 @@ variante, no que la **DDL ejecutada** produzca `jsonb`.
 **Criterios de aceptación.** `upgrade head` y `downgrade base` verdes en PostgreSQL · **las 19
 columnas son `jsonb`**, verificado por consulta de tipos con salida archivada · el *skip* de T5 es
 visible.
+
+**Estado: COMPLETADO.** Ejecutado contra `postgis/postgis:16-3.4` —la misma imagen que declara
+`docker-compose.yml:5`— en contenedor desechable aparte, sin tocar la composición (eso es el Bloque
+H). Motor: **PostgreSQL 16.4**, con las extensiones `postgis`, `postgis_topology`, `fuzzystrmatch` y
+`postgis_tiger_geocoder` que trae la imagen.
+
+- **T5 en `passed`** contra PostgreSQL real: `upgrade head` y `downgrade base`, ambos con
+  `returncode 0`. `alembic current` → `0005 (head)` tras el upgrade y vacío tras el downgrade.
+- **Downgrade sin residuo:** 0 de las 21 tablas de SEIS y 0 columnas `json`/`jsonb` sobreviven al
+  `downgrade base`.
+- **`skip` de T5 visible** en la invocación por defecto (`pytest -rs`), con motivo legible.
+- Suite completa sin regresión: `3 fallan · 112 pasan · 3 omitidos`, idéntico al cierre del Bloque E.
+
+**Volcado de tipos archivado** — `information_schema.columns`, esquema `public`, tras `upgrade head`:
+
+| Columna | `data_type` | `udt_name` |
+|---|---|---|
+| `activo.atributos` · `alerta.criterios` · `analisis.entrada` · `analisis.hechos` · `analisis.resultado` · `auditoria.delta` · `decision.condiciones` · `decision.vetos` · `fuente_subasta.perfil` · `parametro.valor` · `perfil_inversion.parametros` · `preferencias_notificacion.canales` · `regla.definicion` · `regla_disparada.efecto` · `regla_disparada.evidencias` · `resultado_real.incidencias` · `riesgo_evaluado.condiciones` · `riesgo_evaluado.evidencias` · `subasta.datos_brutos` | `jsonb` | `jsonb` |
+
+Recuento: **`jsonb = 19`, `json = 0`.** Queda elevado a hecho medido lo que hasta ahora solo estaba
+demostrado sobre el *código generado*: la **DDL ejecutada** produce `jsonb`, no `json` degradado.
+Total de tablas en `public` tras el upgrade: 23 = las 21 de SEIS + `alembic_version` +
+`spatial_ref_sys`, esta última propiedad de la extensión PostGIS y creada por la imagen, no por la
+migración.
+
+> **Hallazgo registrado, no resuelto — `alembic check` es inservible como barrera de deriva contra
+> PostGIS.** Ejecutado sobre la base ya migrada, informa `New upgrade operations detected` con **74
+> `remove_table` y 56 `remove_index`**. Verificado uno a uno: las 38 tablas señaladas
+> (`loader_lookuptables`, `tiger`, `zip_lookup`, `spatial_ref_sys`, `topology`…) son **todas de las
+> extensiones**, y **ninguna es una tabla de SEIS**. No hay ni una sola operación `add_*` ni
+> `modify_*`, de modo que **no existe deriva del esquema de SEIS**: lo que falta es un
+> `include_object` en `env.py` que excluya los objetos de extensión. Afecta a la barrera
+> anti-recurrencia, no a esta fase de verificación. **Alcance: Bloques G / I.** Fuera del alcance del
+> Bloque F, cuyos tres criterios no lo mencionan.
 
 **Agentes ECC.** `database-reviewer`.
 
@@ -359,6 +452,56 @@ y da falsa seguridad permanente.
 **Criterios de aceptación.** T4 verde · **T4 demostrado en rojo** ante una divergencia introducida
 a propósito y revertida · la comparación cubre tablas, columnas, tipos, nulabilidad e índices.
 
+**Estado: COMPLETADO.**
+
+*Diagnóstico medido.* Replicando la comparación de T4 sobre dos SQLite desechables: la **única**
+diferencia entre `upgrade head` y `create_all` era la tabla `alembic_version`, presente solo en el
+primer lado. De las 21 tablas comunes, **0 tenían contenido distinto**. T4 no fallaba por deriva:
+fallaba porque su aserción era insatisfacible por construcción, y una barrera que no puede ponerse
+verde no vigila nada.
+
+*Corrección aplicada.* Una sola exclusión, `alembic_version`, en `_describir_esquema()`, más un
+`continue` y una constante `TABLA_VERSION_ALEMBIC` documentada. **No se tocó ninguna línea de
+aserción**: el criterio de congelación del Bloque E sigue verificándose con el mismo filtro
+(`assert |_afirmar|pytest.fail` sobre las líneas eliminadas del diff contra `33bb28a`) y sigue sin
+coincidencias. Excluida esa tabla, la comparación cubre el **100 % del esquema de SEIS**:
+**21 tablas · 171 columnas · 22 índices** (medido).
+
+*Determinación sobre `include_object` y los objetos de extensión PostGIS.* **No procede en T4, y no
+se ha aplicado.** Ambos lados de T4 son SQLite desechables, donde no existe ninguna extensión:
+medido, **cero** objetos con prefijo `spatial_`, `geometry_`, `raster_`, `tiger`, `topology` o
+`loader_`. El ruido de PostGIS documentado en el Bloque F afecta a `alembic check` sobre
+PostgreSQL —otra barrera, otro mecanismo (`env.py`)— y no a esta prueba. Queda como deuda del
+**Bloque I**.
+
+**Prueba de mutación — resultado.** Cinco mutaciones mínimas sobre `0005_esquema_base.py`, una por
+dimensión exigida. Para cada una: aplicar → ejecutar T4 → revertir → ejecutar T4.
+
+| Dimensión | Mutación | T4 mutado | T4 revertido |
+|---|---|---|---|
+| Tabla | `op.create_table('escenario', …)` → `'escenario_mutado'` | **FALLA** ✔ | PASA ✔ |
+| Columna | elimina `sa.Column('lote', sa.SmallInteger(), nullable=False)` de `activo` | **FALLA** ✔ | PASA ✔ |
+| Tipo | `auditoria.quien`: `String(120)` → `String(80)` | **FALLA** ✔ | PASA ✔ |
+| Nulabilidad | `subasta.puja_minima`: `nullable=True` → `nullable=False` | **FALLA** ✔ | PASA ✔ |
+| Índice | elimina `op.create_index(op.f('ix_decision_semaforo'), …)` | **FALLA** ✔ | PASA ✔ |
+
+Las cinco fallaron con el mensaje propio de T4 («Deriva detectada entre el esquema de `upgrade head`
+y el de `Base.metadata.create_all`»), no con un error accidental. **5/5 dimensiones: PRUEBA DE
+MUTACIÓN SUPERADA.** La migración quedó byte-idéntica: SHA-256 `9d5aae5116cc85fc…` antes y después,
+y `git diff` sobre el fichero, vacío.
+
+*Efecto sobre la suite.* De `3 fallan · 112 pasan · 3 omitidos` a **`2 fallan · 113 pasan ·
+3 omitidos`**. Los dos rojos restantes son los preexistentes de PDF (fuente DejaVu, `docs/PENDIENTES.md`),
+ajenos a esta fase. La batería de migraciones queda **sin ningún `failed`**.
+
+> **Deuda registrada, no resuelta.** (a) `_describir_esquema()` compara los índices **por nombre**:
+> una mutación que cambiara las columnas de un índice conservando su nombre no se detectaría.
+> (b) La prueba de mutación se ejecutó de forma dirigida, no automatizada; convertirla en barrera
+> permanente en CI corresponde a los **Bloques I / J** (RC-3 exige «T4 en CI»). (c) Si algún día T4
+> se extendiera a PostgreSQL —posibilidad que insinúa el docstring de T5—, habría que reexaminar los
+> objetos de extensión; **hipótesis, no hecho medido**: con ambas bases creadas desde la misma
+> imagen PostGIS los objetos aparecerían en los dos lados y se cancelarían.
+
 **Agentes ECC.** `tdd-guide` · `pr-test-analyzer`.
 
 **Graphify.** No.
@@ -376,6 +519,56 @@ levanta el backend.
 
 **Criterios de aceptación.** Backend respondiendo en `/api/v1/health` tras arranque sobre volumen
 destruido · evidencia de que el volumen se destruyó.
+
+**Estado: COMPLETADO.** Motor Docker 29.6.2, Compose v5.3.0.
+
+*Precondición que faltaba.* No existía `.env`, y `docker-compose.yml` declara `POSTGRES_PASSWORD`,
+`JWT_SECRET` y `ADMIN_PASSWORD` como `${VAR:?…}` sin respaldo: sin ese fichero la composición ni
+siquiera parsea. Se generó uno local —cubierto por `.gitignore:18`, verificado que git no lo ve— con
+secretos aleatorios **validados importando `_motivo_inseguro()` de `app/core/config.py`**, la misma
+función que ejecuta el backend al arrancar, en vez de darlos por buenos a ojo. `SEIS_ENV` se dejó sin
+definir a propósito, de modo que Compose cae en su valor por defecto, `production`: el caso estricto,
+con la guarda de secretos activa.
+
+*Protocolo de verificación.* Un solo `down -v` seguido de `up` no distingue «volumen destruido» de
+«volumen que nunca existió», y validar contra un volumen antiguo es el riesgo que este bloque nombra.
+Se hicieron **dos arranques completos** con destrucción intermedia, usando como testigo el
+`system_identifier` del clúster PostgreSQL, que `initdb` genera **solo** sobre un directorio de datos
+vacío:
+
+| | Arranque 1 | `down -v` | Arranque 2 |
+|---|---|---|---|
+| `system_identifier` | `7667641443493126182` | — | **`7667642052658954278`** |
+| `seis_pgdata` | creado | `Volume seis_pgdata Removed`, inventario vacío, `inspect` falla | recreado |
+| `/api/v1/health` | `HTTP 200` en ~3 s | — | **`HTTP 200` en ~9 s** |
+| `alembic_version` | `0005` | — | `0005` |
+| Tablas de SEIS | 21 | — | 21 |
+| Columnas JSON | `jsonb=19 · json=0` | — | `jsonb=19 · json=0` |
+
+**Los dos identificadores son distintos**: el segundo arranque inicializó un clúster nuevo, luego el
+volumen se destruyó de verdad y no se reutilizó. Es la evidencia que cierra el riesgo de verde falso.
+
+*Cadena de arranque, medida en el log del backend del segundo arranque:*
+`Running upgrade -> 0005` sobre `PostgresqlImpl` con DDL transaccional → `Usuario administrador
+creado` → `esquema creado y conocimiento sembrado` → `Uvicorn running` → `GET /api/v1/health 200 OK`.
+Los tres eslabones de `command:` (`alembic upgrade head && python -m scripts.init_db && uvicorn`)
+se ejecutan en orden y ninguno aborta. **Esto es exactamente lo que una instalación nueva no podía
+hacer antes de esta fase.**
+
+*Comprobación suplementaria, fuera del criterio.* `/api/v1/health` devuelve un diccionario estático y
+por sí solo no prueba que el backend alcance la base. Se añadió un `POST /api/v1/auth/login` real con
+el `ADMIN_PASSWORD` generado: **HTTP 200 con JWT emitido**, `rol=admin`. Prueba conectividad efectiva
+con PostgreSQL y que la siembra funcionó, bajo la guarda estricta de `production`.
+
+*Resto de la pila (sin anomalías).* `db` y `redis` en `healthy`; `worker` conectado a Redis con el
+beat programando `seis.telegram_polling` (devuelve `0`, no-op esperado sin token) y **cero errores**
+en su log; `frontend` en `HTTP 200`. Los cinco servicios `running`.
+
+> **Observaciones registradas, no resueltas** (ninguna pertenece al Bloque H): (a) `docker-compose.yml`
+> conserva `version: "3.9"`, que Compose v5 declara obsoleto y avisa en cada invocación — cosmético;
+> (b) `db` y `redis` se publican en `127.0.0.1` con comentario explícito, mientras `backend` (8000) y
+> `frontend` (3000) se publican en todas las interfaces: es coherente con que deban ser alcanzables,
+> pero conviene confirmarlo en la **auditoría de seguridad de la Fase 16**.
 
 **Agentes ECC.** `build-error-resolver` solo si el arranque falla.
 
@@ -399,6 +592,85 @@ ya desmentida en este proyecto.
   **(2) toda DML de migración especifica explícitamente cada columna `NOT NULL`**.
 - T4 en el pipeline, no solo en el repositorio.
 - `render_as_batch` documentado con precisión: **preventivo de autogenerate, jamás correctivo**.
+
+**Estado: COMPLETADO, con un residuo explícito en el segundo criterio.**
+
+*Criterio 1 — convenciones en `CLAUDE.md` §6.* Añadidas las reglas **9**, **10** y **11**. No se
+redactaron de memoria: cada una cita el defecto real que la motiva, verificado contra el historial de
+git antes de escribirla. `git show HEAD:…0001_esquema_inicial.py` confirma
+`Base.metadata.create_all` en su línea 18 y `drop_all` en la 22; `git show HEAD:…0002_multitenancy.py`
+confirma en su línea 72 el `INSERT INTO organizacion (id, nombre)` que omite `creado_en` —columna
+`NOT NULL` cuyo `default=_now` es **de cliente** y por tanto inexistente para el SQL crudo—, que es
+la causa medida de `IntegrityError: NOT NULL constraint failed: organizacion.creado_en`.
+
+*Criterio 3 — `render_as_batch`.* El riesgo nombrado de este bloque es documentarlo como el arreglo
+que no es, así que **se remidió en esta ejecución** en vez de citar H3. Cuatro cruces sobre SQLite
+real (SQLAlchemy 2.0.51 · Alembic 1.18.5):
+
+| Operación | `render_as_batch=False` | `render_as_batch=True` |
+|---|---|---|
+| `alter_column` | **FALLO** — `OperationalError: near "ALTER": syntax error` | **FALLO** — idéntico |
+| `batch_alter_table` | OK | OK |
+
+No repara nada, y `batch_alter_table` no lo necesita. Documentado en `CLAUDE.md` §6.11 y en un
+comentario de `backend/alembic/env.py`, en el punto exacto de `run_migrations_online()` donde alguien
+sentiría la tentación de activarlo. **Se documenta, no se activa**: el criterio pide precisión, no
+habilitación, y encenderlo daría falsa sensación de cobertura.
+
+*Criterio 2 — T4 en el pipeline.* **No existía ninguna CI en el repositorio** (`.github/`, `.gitlab-ci.yml`,
+`Jenkinsfile`, `azure-pipelines.yml`, `.circleci`: ninguno). Creado
+`.github/workflows/migraciones.yml`, que ejecuta la batería en cada cambio de `backend/**`.
+Verificado: el YAML parsea y su estructura es la esperada; el comando del paso principal se ejecutó
+en un **entorno virtual limpio**, instalado desde cero con `requirements-dev.txt` y solo con las
+variables que el propio workflow declara → **11 pasan · 3 omitidos · 0 fallos**.
+
+*El pipeline no es una prueba vacía — demostrado.* Se mutó `models.py` añadiendo
+`activo.columna_de_deriva` **sin migración que la acompañe** (la dirección contraria a la mutación
+del Bloque G, y la deriva que de verdad ocurrirá: tocar el modelo y olvidar la revisión). Se ejecutó
+el comando literal del workflow y se comprobó el **código de salida**, que es lo que pone la CI en
+rojo:
+
+| Estado | `exit` | CI |
+|---|---|---|
+| Línea base | `0` | verde — 11 pasan |
+| `models.py` mutado, sin migración | **`1`** | **roja — 1 falla** |
+| Revertido | `0` | verde — 11 pasan |
+
+> **Defecto del método, detectado y corregido en el propio bloque.** El script de mutación
+> restauraba `models.py` con `write_text(..., newline="")` y verificaba por SHA-256 del contenido
+> **releído**, que Python normaliza: la comprobación daba idéntico mientras los bytes en disco habían
+> pasado de CRLF a LF (308 líneas). `git diff --numstat` no listaba el fichero —`core.autocrlf`
+> normaliza para comparar— pero `git status` sí lo marcaba modificado. Se detectó por esa
+> discrepancia, se caracterizó contando los bytes reales y se restauró con `git checkout --`:
+> `models.py` vuelve a tener 308 CRLF y desaparece de `git status`. La evidencia de la mutación no
+> queda invalidada —es de comportamiento: `exit 0 → 1 → 0`, y el contenido siempre fue
+> semánticamente idéntico—, pero la afirmación «byte-idéntico» solo era cierta en la vista
+> normalizada de git. `0005_esquema_base.py` no se vio afectado: ya era LF antes del Bloque G, como
+> acredita el aviso que git emitió al añadirlo en el Bloque D.
+
+> **Residuo declarado, sin maquillar.** El workflow está definido y demostrado correcto **en local**;
+> **no se ha observado ejecutándose en GitHub Actions**, porque eso exige un push y este entorno no
+> tiene `gh` ni `GITHUB_TOKEN`. La primera ejecución remota debe verificarse al publicar la rama. El
+> criterio se da por cumplido en lo verificable desde aquí, y este residuo queda explícito.
+
+*Alcance deliberado de la CI.* Solo `tests/test_migraciones.py`, no la suite completa: esta arrastra
+dos fallos preexistentes de PDF (falta `fonts-dejavu-core`, que el `Dockerfile` sí instala) que
+dejarían el pipeline permanentemente en rojo, y una barrera siempre roja no vigila nada. Ampliarla
+queda registrado como deuda.
+
+*Sin regresión, con `env.py` tocado.* Al modificar `env.py` —aunque solo sea un comentario— se
+revalidó todo lo que depende de él: `upgrade head` → `0005`, `alembic check` → *No new upgrade
+operations detected*, `downgrade base` sin error; suite completa `2 fallan · 113 pasan · 3 omitidos`,
+idéntica; y **se repitió el arranque real del Bloque H**: `Running upgrade -> 0005`, `/api/v1/health`
+→ `HTTP 200`, `alembic_version=0005`, `jsonb=19 · json=0`, desmontado con `down -v` y cero volúmenes.
+
+> **Corrección de propiedad de deuda.** En los informes de los Bloques F, G y H asigné al Bloque I
+> tres deudas —`include_object` para `alembic check` contra PostGIS, la comparación de índices **por
+> nombre** en `_describir_esquema()`, y la automatización de la prueba de mutación—. Releído el plan
+> canónico, **ninguna de las tres figura en los criterios de aceptación de este bloque**, que son
+> exactamente los tres de arriba. Aquellas asignaciones eran mías, no del plan. Se rectifican: quedan
+> **sin bloque propietario** dentro de la Fase 9.5 y deben inscribirse en el backlog
+> (`docs/PENDIENTES.md`, fichero del **Bloque J**). No se resuelven aquí.
 
 **Agentes ECC.** `doc-updater` · `code-reviewer` al cierre.
 
@@ -437,6 +709,50 @@ procedimiento de recreación.
 - `CLAUDE.md` §7 sin advertencia pendiente.
 - Procedimiento de recreación (§9) publicado y comunicado.
 - `FASE_13_PLAN_EJECUCION.md` anota que su corrección **B3 es consumidora** de la convención de DML.
+
+**Estado: COMPLETADO.** Cada corrección se verificó contra el repositorio antes de escribirla;
+ninguna se dedujo del texto anterior.
+
+| Defecto documental | Evidencia que lo desmiente | Corregido en |
+|---|---|---|
+| `PENDIENTES.md:29` reservaba la `0005` para la Fase 10 | La `0005` es la fundacional (`down_revision = None`) | → `0006`; Fase 13 → `0007` |
+| `PENDIENTES.md:38` nombraba `0005_self_service.py` | Ídem | → `0006_self_service.py` |
+| `PENDIENTES.md:134` afirmaba `0003` y `0004` «verificadas en SQLite» | `git show HEAD:…0004…` usa `op.alter_column` (líneas 25 y 30); medido: `OperationalError: near "ALTER": syntax error`. **La `0004` nunca pudo ejecutarse en SQLite** | Corregido, con nota de que ambas fueron retiradas |
+| `CLAUDE.md` §2 declaraba «PostgreSQL 16 + PostGIS (geoespacial)» | Sin `geoalchemy2` en `requirements*.txt`; sin columna `Geometry` en `models.py`; `lat`/`lng` son `Numeric(9,6)` | Reescrito: la imagen es PostGIS pero **sus capacidades no se usan** |
+| `README.md` decía que `lat/lng` migran a `geometry(Point,4326)` «hasta la Fase 5», marcada ✅ | No ha ocurrido | Reescrito como trabajo futuro, no hecho consumado |
+| `README.md` avisaba de que **una instalación nueva no levanta** | Bloque H: `HTTP 200` sobre volumen destruido | Sustituido por el estado real medido |
+| `README.md` marcaba la Fase 9.5 «⏳ Siguiente» y la 10 «Bloqueada» | Bloques A-J ejecutados | Actualizado |
+| Cifra «104 tests / 102 verdes» en `CLAUDE.md` (×3) y `README.md` (×2) | `--collect-only`: **118 recogidos**; ejecución: 113 pasan · 2 fallan · 3 se omiten | Actualizado en los cinco sitios |
+| `CLAUDE.md` §3 describía `0002`, `0003` y `0004` como vigentes | Retiradas en el Bloque D | Anotadas como retiradas, con la causa del fallo de la `0002` |
+| `CLAUDE.md` §5 decía «Siguiente tarea: Fase 9.5» | La fase está ejecutada | → Fase 10, tras RC-3 y merge |
+| `FASE_13_PLAN_EJECUCION.md` fijaba `0006` para la Fase 13 con `down_revision = "0005"` (§tabla v2.0, §1 y §12-Q1) | Derogado por la renumeración | → `0007` con `down_revision = "0006"`, en los tres sitios |
+| `PLAN_REPARACION_MIGRACIONES.md:167` decía «Propagación pendiente» | Ya aplicada en esta ronda | → «Propagación COMPLETADA», enumerando dónde |
+| DoD exigía «suite en 102/104» | La batería añadió 14 tests | → 118 recogidos, con la equivalencia explicada |
+
+`CLAUDE.md` §7 se revisó y **no contenía ninguna advertencia pendiente**: no requería cambio.
+
+**Evidencia de P0-2 producida en este bloque** *(no es criterio del Bloque J: es evidencia de RC-2 y
+del DoD, sin bloque propietario en el plan; se ejecutó aquí porque era ejecutable y era lo único que
+faltaba para cerrar RC-2).* Fabricado a mano el estado imposible de alcanzar por la cadena —escribir
+`UPDATE alembic_version SET version_num = …` en una base desechable— y ejecutadas cuatro órdenes de
+Alembic con cada sellado, **en los dos motores**:
+
+| Motor | Sellado | `current` | `upgrade head` | `downgrade base` | `check` |
+|---|---|---|---|---|---|
+| SQLite | `0004` · `0001` | falla | falla | falla | falla |
+| PostgreSQL 16.4 | `0004` · `0001` | falla | falla | falla | falla |
+
+Las **16 órdenes** terminan con código distinto de cero y el mensaje
+`ERROR [alembic.util.messaging] Can't locate revision identified by '0004'` (resp. `'0001'`).
+**Cero aceptaciones en silencio.** Es exactamente el síntoma que anticipa la tabla del §9, y cierra
+el riesgo **P0-2**.
+
+> **Deuda sin bloque propietario, trasladada a `docs/PENDIENTES.md`.** El plan no asigna propietario
+> a estas cuatro, de modo que no se inventa uno: (a) falta `include_object` en `env.py`, sin el cual
+> `alembic check` es inservible contra PostGIS; (b) `_describir_esquema()` compara los índices **por
+> nombre**, de modo que un cambio de columnas conservando el nombre no se detectaría; (c) la prueba
+> de mutación de T4 se ejecuta a mano, no automatizada; (d) la CI cubre solo la batería, no la suite
+> completa, que exigiría `fonts-dejavu-core` en el runner. Ninguna se resuelve aquí.
 
 **Agentes ECC.** `doc-updater` · `comment-analyzer`.
 
@@ -639,46 +955,49 @@ corrupción silenciosa que esta fase erradica.
 ## 10 · Definition of Done
 
 **Ejecución**
-- [ ] `alembic upgrade head` desde base vacía: verde en **SQLite y PostgreSQL**
-- [ ] `alembic downgrade base`: verde en ambos motores
-- [ ] `alembic history`: **una sola revisión**, `down_revision = None`, identificador `0005`
-- [ ] `alembic heads` devuelve **exactamente una cabeza**
-- [ ] Una BD stampeada en `0001`-`0004` falla **de forma ruidosa**
-- [ ] `docker compose down -v && up -d --build` sobre volumen limpio: backend en `/api/v1/health`
+- [x] `alembic upgrade head` desde base vacía: verde en **SQLite y PostgreSQL** *(E · F)*
+- [x] `alembic downgrade base`: verde en ambos motores *(E · F)*
+- [x] `alembic history`: **una sola revisión**, `down_revision = None`, identificador `0005` *(D)*
+- [x] `alembic heads` devuelve **exactamente una cabeza** *(D)*
+- [x] Una BD stampeada en `0001`-`0004` falla **de forma ruidosa** *(P0-2, Bloque J: 16/16 órdenes con `returncode != 0` y `Can't locate revision`, en ambos motores; 0 silencios)*
+- [x] `docker compose down -v && up -d --build` sobre volumen limpio: backend en `/api/v1/health` *(H: `HTTP 200`, con `system_identifier` distinto entre arranques)*
 
 **Corrección del esquema**
-- [ ] Las **19 columnas `PortableJSON` son `jsonb`** en PostgreSQL, con volcado archivado
-- [ ] Índices, FKs y tipos verificados contra `create_all` por T4
+- [x] Las **19 columnas `PortableJSON` son `jsonb`** en PostgreSQL, con volcado archivado *(F: `jsonb=19 · json=0`)*
+- [x] Índices, FKs y tipos verificados contra `create_all` por T4 *(C: 21 tablas · 171 columnas · 15 FK · 22 índices, 0 diferencias)*
 
 **Instrumentación**
 - [ ] T1-T6 en verde, **sin aserciones debilitadas** respecto de la versión corregida del Bloque A
       (T3 sin ningún caso en `failed`; `skipped` en sus casos parametrizados cuenta como en verde)
-- [ ] **Gate `SEIS_CALIBRAR_MIGRACIONES` retirado** de `test_migraciones.py` — es criterio de cierre
+- [x] **Gate `SEIS_CALIBRAR_MIGRACIONES` retirado** de `test_migraciones.py` *(E)* — es criterio de cierre
       del Bloque E, no limpieza aplazable: el gate no tiene trinquete propio
-- [ ] **T4 demostrado capaz de fallar**
-- [ ] **Guarda de aislamiento de la batería en su sitio y demostrada capaz de saltar**
-- [ ] T4 en el pipeline de CI
-- [ ] Suite existente en **102/104** (los 2 rojos de PDF, preexistentes y ajenos)
+- [x] **T4 demostrado capaz de fallar** *(G: 5/5 dimensiones — tabla, columna, tipo, nulabilidad, índice)*
+- [x] **Guarda de aislamiento de la batería en su sitio y demostrada capaz de saltar** *(Bloque J: `RuntimeError` en 7/7 escenarios peligrosos — fichero compartido, valor por defecto de `Settings`, sqlite fuera del directorio, postgres con «prod», postgres sin marcador de test, URL vacía y esquema no soportado)*
+- [ ] T4 en el pipeline de CI — **workflow creado y demostrado en local (`exit 0 → 1 → 0` ante deriva real), NO observado ejecutándose en GitHub Actions: requiere push**
+- [ ] Suite en **118 recogidos: 113 pasan · 2 fallan · 3 se omiten** — los 2 rojos son de PDF,
+      preexistentes y ajenos. *(El criterio se escribió como «102/104» cuando la batería de
+      migraciones aún no existía; los 14 tests nuevos elevan el total a 118 sin alterar el
+      significado: ninguna prueba que pasara antes falla ahora.)*
 
 **Barreras**
-- [ ] `CLAUDE.md` §6: prohibido `Base.metadata` en `alembic/versions/`
-- [ ] `CLAUDE.md` §6: toda DML de migración especifica cada columna `NOT NULL`
-- [ ] Búsquedas de `Base.metadata` y `create_all` en `versions/`: sin resultados
-- [ ] `render_as_batch` documentado como preventivo, **nunca como correctivo**
+- [x] `CLAUDE.md` §6: prohibido `Base.metadata` en `alembic/versions/` *(I, §6.9)*
+- [x] `CLAUDE.md` §6: toda DML de migración especifica cada columna `NOT NULL` *(I, §6.10)*
+- [x] Búsquedas de `Base.metadata` y `create_all` en `versions/`: sin resultados *(0 apariciones)*
+- [x] `render_as_batch` documentado como preventivo, **nunca como correctivo** *(I: `CLAUDE.md` §6.11 y `env.py`, con los cuatro cruces remedidos)*
 
 **Documentación**
-- [ ] `PENDIENTES.md` líneas 29, 38 y 134 corregidas
-- [ ] `CLAUDE.md` §§2, 3, 6, 7 corregidos *(§5 ya propagada en la rama de planificación)*
-- [ ] `README.md` corregido: PostGIS *(la tabla de fases ya se propagó en la rama de planificación)*
-- [ ] Renumeración propagada: Fase 10 → `0006`, Fase 13 → `0007`
-- [ ] Plan de Fase 13 anota que su corrección B3 consume la convención de DML
-- [ ] Procedimiento de recreación publicado, **con ambas vías** y `--purge` documentado
+- [x] `PENDIENTES.md` líneas 29, 38 y 134 corregidas *(J)*
+- [x] `CLAUDE.md` §§2, 3, 6, 7 corregidos *(J; §7 se revisó y no contenía advertencia pendiente)*
+- [x] `README.md` corregido: PostGIS, aviso de estado, tabla de fases y cifras *(J)*
+- [x] Renumeración propagada: Fase 10 → `0006`, Fase 13 → `0007` *(J: `PENDIENTES.md` ×2, `FASE_13` ×4, `PLAN_REPARACION`)*
+- [x] Plan de Fase 13 anota que su corrección B3 consume la convención de DML *(J)*
+- [x] Procedimiento de recreación publicado, **con ambas vías** y `--purge` documentado *(§9)*
 
 **Gobernanza**
-- [ ] RC-0, RC-1, RC-2, RC-3 superados en orden
-- [ ] Revisión humana previa al merge
-- [ ] PRE-1 satisfecha, o Bloque H consignado como no superado con I1 sin cerrar
-- [ ] **PRE-2 satisfecha** antes de ejecutar el Bloque H
+- [ ] RC-0, RC-1, RC-2, RC-3 superados en orden — **RC-0, RC-1 y RC-2 superados; RC-3 pendiente del único punto abierto: la ejecución del pipeline en remoto**
+- [ ] Revisión humana previa al merge — **pendiente, corresponde al humano**
+- [x] PRE-1 satisfecha *(Docker Desktop; motor verificado en marcha por medición, no por declaración)*
+- [x] **PRE-2 satisfecha** antes de ejecutar el Bloque H *(`.env` con secretos validados contra `_motivo_inseguro()`)*
 
 ---
 

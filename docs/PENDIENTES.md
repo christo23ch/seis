@@ -26,7 +26,7 @@ Plan aprobado en su estructura; **pendiente de arrancar la implementación.**
   Falta solo la tabla `TokenConsumido` para el uso único por `jti`.
 
 ### Reconciliación con la realidad del repo (el prompt asumía otro estado)
-- Migración nueva = **0005**. (Esta nota decía "0003" cuando solo existían 0001 y 0002; la Fase 12 consumió 0003 y 0004, así que la siguiente libre es la 0005.)
+- Migración nueva = **0006**. (La Fase 9.5 retiró las revisiones 0001-0004 y las sustituyó por la fundacional única **`0005`**, con `down_revision = None`, de modo que la siguiente libre es la **`0006`**. La Fase 13 toma la **`0007`**, con `down_revision = "0006"`. Cualquier nota anterior que reserve la `0005` para la Fase 10 está derogada.)
 - `email_service.py` **no existe** → se crea.
 - Rate-limiting: Redis **con fallback a memoria** en tests.
 
@@ -35,7 +35,7 @@ Plan aprobado en su estructura; **pendiente de arrancar la implementación.**
 **Backend — modelos y migración**
 - `app/models.py`: `Usuario` += `email_verificado: bool` (default False). Nueva tabla
   `TokenConsumido(jti PK, proposito, consumido_en)` (uso único de tokens).
-- `alembic/versions/0005_self_service.py` (idempotente + reversible): add column
+- `alembic/versions/0006_self_service.py` (idempotente + reversible): add column
   `usuario.email_verificado` (backfill: usuarios existentes → `True`); create table
   `token_consumido`. `downgrade` elimina ambos.
 
@@ -131,7 +131,15 @@ Resumen (detalle y prompts de ejecución en `docs/SEIS_Plan_Maestro_Fases_920.md
 4. **Prerequisitos mínimos creados aquí** (no existían): modelos `Alerta`/`Notificacion`,
    router `captacion.py`, páginas `/alertas` y `/subastas`.
 
-**Entregado:** migraciones `0003` (4 tablas) y `0004` (amplía `auditoria.quien` a 120), ambas con upgrade/downgrade verificados en SQLite —**no contra PostgreSQL**—;
+**Entregado:** migraciones `0003` (4 tablas) y `0004` (amplía `auditoria.quien` a 120).
+> **Corrección (Fase 9.5, Bloque J).** Esta nota afirmaba que ambas tenían «upgrade/downgrade
+> verificados en SQLite». Es **falso para la `0004`**: usaba `op.alter_column` (líneas 25 y 30), y
+> SQLite no implementa `ALTER TABLE ... ALTER COLUMN` —medido: `OperationalError: near "ALTER":
+> syntax error`—, de modo que **no podía ejecutarse en SQLite en ningún caso**. Solo
+> `op.batch_alter_table()` funciona ahí; `render_as_batch` no lo arregla (ver `CLAUDE.md` §6.11).
+> Ambas revisiones fueron **retiradas** por la Fase 9.5 y sustituidas por la fundacional `0005`; su
+> contenido permanece en el historial de git. El ensanchamiento de `auditoria.quien` a `String(120)`
+> sigue vigente: viaja dentro de la `0005`, verificado en PostgreSQL real (`quien VARCHAR(120)`).
 `app/notificadores/` (base + email + telegram + registro); `notificaciones_service.py`;
 routers `notificaciones.py` (+ `/alertas`) y `captacion.py`; tareas `seis.digest`
 (beat horario) y `seis.telegram_polling`; parámetros T3 `scoring_expres` editables;
@@ -166,3 +174,46 @@ añadió `--beat` al worker (sin él, digest y polling nunca se ejecutan).
   - La suma del desglose total es 88, no 104.
 - **Cifra de `test_notificaciones.py` errónea en `docs/PENDIENTES.md:139` (línea anterior)**:
   documento decía 15 tests, realidad es **18**. Corregido en esta edición.
+
+> **Resuelto en la Fase 9.5 (Bloque J):** el desglose por fichero de `CLAUDE.md` §3 se retiró en vez
+> de corregirlo cifra a cifra — era una lista que se desactualizaba en cada fase y cuya suma nunca
+> cuadró. Queda solo el total, con la fecha de medición y la orden que lo produce.
+
+---
+
+## Deuda de la Fase 9.5 sin bloque propietario
+
+Registrada en el Bloque J. El plan canónico de la Fase 9.5 **no asigna propietario** a ninguna de
+las cuatro, de modo que no se les inventa uno: quedan aquí hasta que alguien las priorice. Ninguna
+bloquea el cierre de la fase; las cuatro son mejoras de la barrera anti-recurrencia, no defectos del
+esquema.
+
+1. **`env.py` no filtra los objetos de extensión, y eso deja `alembic check` inservible contra
+   PostGIS.** Medido en el Bloque F sobre la base ya migrada: informa `New upgrade operations
+   detected` con **74 `remove_table` y 56 `remove_index`**; verificadas una a una, las 38 tablas
+   señaladas (`loader_lookuptables`, `tiger`, `zip_lookup`, `spatial_ref_sys`, `topology`…) son
+   **todas de las extensiones** y **ninguna es de SEIS**. No hay ni una operación `add_*` ni
+   `modify_*`: **no existe deriva del esquema**, solo ruido. Arreglo: `include_object` en
+   `context.configure()` de `alembic/env.py`. Mientras tanto, la barrera real de deriva es T4, que
+   sí funciona.
+2. **T4 compara los índices por nombre.** `_describir_esquema()` recoge `sorted(i["name"] …)`: una
+   mutación que cambiara las columnas de un índice **conservando su nombre** no se detectaría. Las
+   otras cuatro dimensiones (tablas, columnas, tipos, nulabilidad) sí están demostradas por la
+   prueba de mutación del Bloque G.
+3. **La prueba de mutación de T4 se ejecuta a mano.** El Bloque G la ejecutó (5/5 dimensiones) y el
+   Bloque I demostró que el pipeline pasa a `exit 1` ante deriva real, pero ninguna de las dos está
+   automatizada como test permanente. RC-3 exige «T4 en CI» —cubierto— pero no la mutación.
+4. **La CI cubre solo `tests/test_migraciones.py`, no la suite completa.** Decisión deliberada del
+   Bloque I: la suite arrastra dos fallos preexistentes de PDF que dejarían el pipeline
+   permanentemente en rojo, y una barrera siempre roja no vigila nada. Ampliarla exige instalar
+   `fonts-dejavu-core` en el runner —el `Dockerfile` ya lo hace—, lo que probablemente resolvería
+   también esos dos rojos.
+
+**Observaciones de otras fases detectadas de paso** (no de la 9.5, no se tocan aquí):
+`docker-compose.yml` conserva `version: "3.9"`, obsoleto en Compose v5 · `backend` (8000) y
+`frontend` (3000) se publican en todas las interfaces mientras `db` y `redis` van a `127.0.0.1` con
+comentario explícito — **a confirmar en la auditoría de seguridad de la Fase 16** ·
+`Settings.env_file=".env"` es una ruta relativa: ejecutar `pytest` desde la raíz del repositorio
+haría que la suite leyera el `.env` real · el docstring de `app/models.py` (líneas 3-5) sigue
+anunciando la migración a `geometry(Point,4326)` «con el módulo de mapa (Fase 5)», que no ha
+ocurrido; no se corrigió porque el Bloque J no autoriza tocar modelos.

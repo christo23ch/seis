@@ -164,10 +164,13 @@ cuando la compatibilidad se rompe a propósito.
         └── 0007    Fase 13 — facturación y suscripciones
 ```
 
-> **Propagación pendiente.** Esto deroga dos decisiones ya tomadas y documentadas:
-> `docs/PENDIENTES.md` reserva la `0005` para la Fase 10, y
+> **Propagación COMPLETADA** (Fase 9.5, Bloque J). Esto derogaba dos decisiones ya tomadas y
+> documentadas: `docs/PENDIENTES.md` reservaba la `0005` para la Fase 10, y
 > `docs/FASE_13_PLAN_EJECUCION.md` §12-Q1 fijó la `0006` para la Fase 13 con
-> `down_revision = "0005"`. Ambas pasan a **`0006`** y **`0007`**. Ver §9.
+> `down_revision = "0005"`. Ambas pasaron a **`0006`** y **`0007`**, y la propagación está
+> aplicada en los dos documentos: `PENDIENTES.md` (nota de reconciliación y nombre del fichero
+> `0006_self_service.py`) y `FASE_13_PLAN_EJECUCION.md` (tabla de cambios v2.0, §1 y §12-Q1, los
+> tres marcados como derogados). Ver §9.
 
 ### 3.3 · Cómo se produce la DDL explícita
 
@@ -186,10 +189,20 @@ omisión silenciosa de un índice o una clave foránea.
 del repositorio** cuyo `version_locations` apunte a un **directorio vacío**. Con cabezas `= ∅` y
 base vacía, los conjuntos coinciden, la generación procede y **`down_revision = None` sale de forma
 nativa**. Las revisiones antiguas permanecen intactas: no se tocan, solo no se miran durante la
-generación. **Quedan dos correcciones manuales, no una:** fijar el identificador de revisión a
-`0005` —autogenerate asigna un hexadecimal aleatorio— **y renombrar el fichero generado** a
-`0005_esquema_base.py`, porque `alembic.ini` no define `file_template` y el fichero nace también con
-el hexadecimal en el nombre.
+generación.
+
+**El procedimiento no termina en una sola pasada garantizada.** Además de fijar el identificador de
+revisión a `0005` y renombrar el fichero generado a `0005_esquema_base.py` —autogenerate asigna un
+hexadecimal aleatorio para ambos, porque `alembic.ini` no define `file_template`—, **el fichero debe
+ejecutarse (`upgrade head` + `downgrade base`) contra la base desechable antes de darse por bueno**.
+Verificado empíricamente: autogenerate puede rendir un fichero que no es ejecutable — al renderizar
+las columnas con variante JSONB emite `astext_type=Text()` sin importar `Text`, lanzando
+`NameError: name 'Text' is not defined`. Si ocurre, es un **ajuste manual conocido, no un fallo del
+enfoque**: sustituir `Text()` por `sa.Text()` en cada `astext_type=...` y repetir la ejecución. El
+DDL resultante es idéntico en ambos casos (`JSONB(astext_type=sa.Text())` compila igual que
+`JSONB()` en PostgreSQL), así que la corrección no toca la semántica, solo la ejecutabilidad. Detalle
+del procedimiento paso a paso en [`FASE_95_PLAN_EJECUCION.md`](FASE_95_PLAN_EJECUCION.md) §4,
+Bloque B.
 
 *(Se descarta `stamp head`, que también funciona: exige escribir un estado falso en
 `alembic_version` y produce `down_revision = '0004'`, añadiendo un paso manual cuyo olvido deja la
@@ -201,8 +214,10 @@ Sigue siendo obligatoria la **revisión manual** posterior, que debe verificar, 
 - **`PortableJSON` — riesgo descartado empíricamente, comprobación conservada.** `app/core/db.py:11`
   define `JSON().with_variant(JSONB(), "postgresql")`. Se temía que autogenerate lo aplanara a
   `sa.JSON()`; **la ejecución real demuestra que preserva la variante en las 19 columnas**
-  (`sa.JSON().with_variant(postgresql.JSONB(astext_type=Text()), 'postgresql')`, 19 de 19). La
-  verificación se mantiene como confirmación, no como contención. Ver R-D1.
+  (`sa.JSON().with_variant(postgresql.JSONB(astext_type=Text()), 'postgresql')`, 19 de 19 — *esta es
+  la forma cruda que emite autogenerate, sin corregir; el fichero final usa `sa.Text()`, ver el
+  ajuste manual del Bloque B*). La verificación se mantiene como confirmación, no como contención.
+  Ver R-D1.
 - Índices y claves foráneas: presencia y nombre.
 - Los 7 `default=_now` y 9 `default=_uuid`: **no** aparecerán como `server_default`, y es correcto
   que no aparezcan — pero debe ser una omisión consciente, no una sorpresa (ver R-D4).
@@ -342,7 +357,7 @@ Diseñado para que cada paso sea verificable antes del siguiente, y para que la 
 | # | Paso | Verificable por |
 |---|---|---|
 | **1** | Construir `test_migraciones.py` (T1-T6) **y verla en rojo** | T1 falla con el error exacto del Release Committee. *Si no falla, la batería no prueba lo que dice* |
-| **2** | Generar la revisión fundacional por autogenerate **con `version_locations` a directorio vacío** (§3.3); fijar el identificador a `0005` | Existe el fichero, con `down_revision = None`; aún sin revisar |
+| **2** | Generar la revisión fundacional por autogenerate **con `version_locations` a directorio vacío** (§3.3); fijar el identificador a `0005`; **verificar por ejecución** (§3.3) | Existe el fichero, con `down_revision = None`, **ejecutable** (`upgrade`/`downgrade` en verde contra la base desechable); aún sin revisión semántica |
 | **3** | **Revisión manual de la DDL generada** (§3.3), con foco en `PortableJSON` | Inspección humana. Es el paso de mayor valor y el menos automatizable |
 | **4** | Eliminar las revisiones 0001-0004 | `alembic history` muestra una sola revisión |
 | **5** | T1 y T2 en verde sobre SQLite | Cadena aplicable y reversible |

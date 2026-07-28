@@ -23,7 +23,7 @@ Cambios respecto de la v1.0:
 
 | Área | v1.0 | v2.0 |
 |---|---|---|
-| Nº de migración | `0005` («verificado») | **Error mío: la `0005` está reservada por la Fase 10.** Ver §1 y §12-Q1 |
+| Nº de migración | `0005` («verificado») | **Error mío: la `0005` estaba reservada.** Ver §1 y §12-Q1. **Derogado por la Fase 9.5: la `0005` es la revisión fundacional; la Fase 13 toma la `0007`, con `down_revision = "0006"`** |
 | Orden de bloques | A‖B → C → **D → E** → … | A‖B → C → **E → D** → … (§7) |
 | `EventoFacturacion` | Idempotencia por `evento.id` | **El esquema no tiene esa columna.** Corrección bloqueante B1 |
 | `Organizacion`↔`Suscripcion` | 1:1 con `unique=True` | **1:N**; el 1:1 destruye el histórico (§4) |
@@ -46,6 +46,9 @@ Verificado en `docs/PENDIENTES.md`:
 - **línea 29:** «Migración nueva = **0005**» (Fase 10)
 - **línea 38:** `alembic/versions/0005_self_service.py`
 
+> *Cita del estado de `PENDIENTES.md` en el momento de escribir este plan. Ambas líneas fueron
+> corregidas después, en la Fase 9.5 (Bloque J): hoy dicen `0006`.*
+
 Y `CLAUDE.md` §5 sitúa la **Fase 10 antes que la 13** en la ruta crítica (9→10→11→13), con su
 migración ya numerada `0005`. Si ambas ramas fijan `revision = "0005"` y
 `down_revision = "0004"`, al fusionar se obtiene una **cadena de Alembic bifurcada**.
@@ -53,8 +56,13 @@ migración ya numerada `0005`. Si ambas ramas fijan `revision = "0005"` y
 → **Resuelto (§12-Q1): la Fase 13 toma la `0006`**, con `down_revision = "0005"`. La Fase 10
 conserva la `0005` que ya tiene documentada.
 
-**Consecuencia de orden que hay que asumir explícitamente:** la `0006` **no puede aplicarse hasta
-que exista la `0005`**. Es decir, **la Fase 13 no es desplegable antes que la Fase 10**. Coincide
+> **Derogado por la Fase 9.5 (Bloque J).** Aquella resolución presuponía la cadena `0001`-`0004`,
+> retirada desde entonces. La numeración vigente es: **fundacional `0005`** (`down_revision = None`),
+> **Fase 10 → `0006`**, **Fase 13 → `0007`** con **`down_revision = "0006"`**. La consecuencia de
+> orden se mantiene intacta: la Fase 13 sigue sin ser desplegable antes que la Fase 10.
+
+**Consecuencia de orden que hay que asumir explícitamente:** la migración de la Fase 13 —hoy la
+`0007`— **no puede aplicarse hasta que exista la de la Fase 10, hoy la `0006`**. Es decir, **la Fase 13 no es desplegable antes que la Fase 10**. Coincide
 con la ruta crítica del plan maestro (9→10→11→13), pero deja de ser una preferencia y pasa a ser
 una dependencia técnica dura. Si se decidiera implementar la 13 antes que la 10, habría que
 renumerar en ese momento.
@@ -286,6 +294,16 @@ procesan. Stripe reintenta agresivamente ante timeouts y **no garantiza serializ
 
 *El riesgo más grave que la v1.0 no recogía.*
 
+> **B3 es consumidora de la convención de DML de `CLAUDE.md` §6.10** (escrita en la Fase 9.5,
+> Bloque I). El backfill de B3 es un `INSERT` de migración, exactamente la clase de operación que
+> tumbó la revisión `0002`: aquel `INSERT INTO organizacion (id, nombre)` omitía `creado_en`, una
+> columna `NOT NULL` cuyo `default=_now` es **de cliente** y por tanto inexistente para el SQL crudo,
+> y el resultado medido fue `IntegrityError: NOT NULL constraint failed: organizacion.creado_en`,
+> con `alembic upgrade head` inservible sobre base limpia. **El `INSERT` de B3 debe enumerar
+> explícitamente todas las columnas `NOT NULL` de `Suscripcion` sin `server_default`**, incluidas
+> las de marca temporal. No es una recomendación de estilo: es la barrera que impide repetir el
+> defecto que motivó la Fase 9.5.
+
 Ni el plan ni el mapa dicen qué pasa con los tenants que ya existen —incluida la «Organización por
 defecto» que crea el backfill de la `0002` y la org del admin bootstrap que siembra
 `conftest.py`—. Quedan **sin fila en `Suscripcion`**. Entonces llega el Bloque F y
@@ -303,8 +321,13 @@ ids de Stripe; y borrado en el `downgrade`.
 
 ### B4 — Colisión del número de migración con la Fase 10 ✅ RESUELTA
 
-**Fase 13 = `0006_facturacion_y_suscripciones.py`, `down_revision = "0005"`.** La Fase 10 conserva
-la `0005`. Ver §1 para la consecuencia de orden de despliegue.
+~~**Fase 13 = `0006_facturacion_y_suscripciones.py`, `down_revision = "0005"`.** La Fase 10 conserva
+la `0005`.~~
+
+**Vigente tras la Fase 9.5 (Bloque J): Fase 13 = `0007_facturacion_y_suscripciones.py`, con
+`down_revision = "0006"`.** La `0005` es la revisión **fundacional** (`down_revision = None`, 21
+tablas) y la Fase 10 toma la `0006`. Ver §1 para la consecuencia de orden de despliegue, que no
+cambia: la Fase 13 sigue sin ser desplegable antes que la Fase 10.
 
 ---
 
@@ -719,7 +742,7 @@ documento:
 
 | # | Decisión | Resolución | Consecuencia propagada |
 |---|---|---|---|
-| **Q1** | Numeración de migración | **`0006`** para Fase 13, `down_revision = "0005"`. La Fase 10 conserva la `0005` | §1, B4. **La Fase 13 deja de ser desplegable antes que la Fase 10** — dependencia técnica dura, no preferencia |
+| **Q1** | Numeración de migración | ~~`0006` para Fase 13, `down_revision = "0005"`~~ → **derogado por la Fase 9.5: `0007` para Fase 13, `down_revision = "0006"`; la Fase 10 toma la `0006`** | §1, B4. **La Fase 13 deja de ser desplegable antes que la Fase 10** — dependencia técnica dura, no preferencia |
 | **Q2** | Semántica de la cuota de análisis | **Por periodo de facturación** | §4 (**faltan `periodo_actual_inicio`/`_fin`**; `proxima_fecha_facturacion` queda redundante), Bloque F, R13 |
 | **Q3** | Control compensatorio sobre mutaciones de dinero | **Reconfirmación + notificación síncrona**, ambas | Bloque D, Bloque I, §8. **Reconfirmación por contraseña, no por código de un solo uso** — ver aviso abajo |
 

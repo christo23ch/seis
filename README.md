@@ -23,7 +23,7 @@ seis/
 │   │   ├── api/                # REST /api/v1
 │   │   └── tasks/              # Celery (lotes y re-análisis por eventos)
 │   ├── scripts/init_db.py      # esquema + siembra de conocimiento
-│   └── tests/                  # ★ caso dorado §19 + vetos + precios + API + notificaciones (104 tests)
+│   └── tests/                  # ★ caso dorado §19 + vetos + precios + API + notificaciones + migraciones (118 tests)
 └── frontend/                   # Next.js 15 · React 19 · TS · Tailwind · RHF+Zod · TanStack Query · Recharts · Leaflet
     ├── app/                    # login, dashboard, nueva (11 pasos), inversiones[/id],
     │                           # comparativa, mapa, configuracion, reglas, parametros, administracion
@@ -57,7 +57,9 @@ python -m scripts.init_db && uvicorn app.main:app --reload
 ## Tests
 
 ```bash
-cd backend && python -m pytest -q        # 104 tests (102 verdes; 2 rojos de PDF preexistentes, ver docs/PENDIENTES.md)
+cd backend && python -m pytest -q        # 118 recogidos: 113 pasan, 2 fallan, 3 se omiten
+                                        # (los 2 rojos son de PDF y preexisten: falta la
+                                        #  fuente DejaVu fuera de Docker, ver docs/PENDIENTES.md)
 ```
 
 `tests/test_golden_caso19.py` reproduce **íntegro el ejemplo numérico del §19** de la especificación (ICI, ICU, matriz de riesgos, RA 40, δ_v 6 %, C_F, escalera 51,1k/60,1k/69,1k/~80k, ROI 25 %, MS 25 %, RVC 1,08, semáforo AMARILLO con condiciones) y es la prueba de regresión fundacional: cualquier cambio de reglas o parámetros que altere la decisión rompe el test de forma visible.
@@ -85,13 +87,13 @@ cd backend && python -m pytest -q        # 104 tests (102 verdes; 2 rojos de PDF
 | **6** | Administración de usuarios, editor del motor de reglas con historial, editor de parámetros, hardening (standalone, roles, auditoría) | ✅ Completada |
 | **9** | Multi-tenancy por organización: entidad `Organizacion`, roles en dos ejes, aislamiento de análisis (recurso ajeno = 404), migración `0002` con backfill | ✅ Completada |
 | **12** | Notificaciones multicanal (email/Telegram con digest y baja firmada), alertas por usuario, captación con scoring exprés, migraciones `0003`/`0004` | ✅ Completada |
-| **9.5** | Saneamiento del sistema de migraciones: revisión fundacional única `0005` en sustitución de `0001`-`0004`, batería de tests que ejerce Alembic y test de deriva | ⏳ **Siguiente** |
-| **10** | Alta self-service: registro, verificación de email y recuperación de contraseña | ⏳ Bloqueada por la 9.5 |
+| **9.5** | Saneamiento del sistema de migraciones: revisión fundacional única `0005` en sustitución de `0001`-`0004`, batería T1-T6 que ejerce Alembic de verdad, test de deriva T4 con prueba de mutación y barrera en CI | ✅ Bloques A-J ejecutados (pendiente RC-3 y merge) |
+| **10** | Alta self-service: registro, verificación de email y recuperación de contraseña — migración `0006` | ⏳ **Siguiente**, tras fusionar la 9.5 |
 | 11, 13-20 | Infraestructura, monetización, RGPD, landing, seguridad, captación BOE real, analítica, beta | ⏳ Pendientes |
 
-> **Aviso de estado (Fase 9.5 en curso).** `alembic upgrade head` **falla sobre una base de datos limpia** en la revisión `0002`, y el backend arranca ejecutando las migraciones, por lo que **una instalación nueva no levanta hasta que la Fase 9.5 se complete**. La Fase 9.5 renumera las migraciones: fundacional `0005`, Fase 10 → `0006`, Fase 13 → `0007`. Detalle en `docs/FASE_95_PLAN_EJECUCION.md`.
+> **Estado de las migraciones (Fase 9.5, bloques A-J ejecutados).** El historial de Alembic es **una sola revisión fundacional, `0005_esquema_base`**, con `down_revision = None`, que sustituye a la cadena `0001`-`0004` retirada (su contenido permanece en el historial de git). Antes de esta fase `alembic upgrade head` fallaba sobre una base limpia y una instalación nueva no levantaba; **medido tras la reparación**: `docker compose down -v && up -d --build` sobre volumen destruido deja el backend en `HTTP 200` sobre `/api/v1/health`, con `alembic_version = 0005`, 21 tablas y 19 columnas `jsonb`. Numeración vigente: **Fase 10 → `0006`, Fase 13 → `0007`**. Detalle y evidencias en `docs/FASE_95_PLAN_EJECUCION.md`.
 
-**Decisiones de fase documentadas:** (a) `lat/lng` se persisten como `Numeric` hasta la Fase 5, donde migran a `geometry(Point,4326)` — la imagen `postgis/postgis` ya está desplegada; (b) el orden del DAG resuelve la dependencia contingencia←(RA, ICI) ejecutando los módulos de riesgo antes de cerrar M06, conforme a §6.6/§9.4.
+**Decisiones de fase documentadas:** (a) `lat/lng` se persisten como `Numeric(9,6)`. **La migración a `geometry(Point,4326)` NO ha ocurrido**: pese a que la Fase 5 figura como completada, el esquema no tiene ninguna columna geométrica ni el proyecto declara `geoalchemy2`. La imagen desplegada es `postgis/postgis`, pero sus capacidades geoespaciales **no se usan**; convertirlas en uso real es trabajo futuro, no un hecho consumado (verificado en la Fase 9.5, Bloque J). (b) El orden del DAG resuelve la dependencia contingencia←(RA, ICI) ejecutando los módulos de riesgo antes de cerrar M06, conforme a §6.6/§9.4.
 
 
 **Manual de pruebas y despliegue online:** ver `MANUAL_DE_PRUEBAS.md` (Docker local, Swagger, VPS y Render+Vercel, guion funcional del caso §19, cURL y troubleshooting).

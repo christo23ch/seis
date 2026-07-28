@@ -22,7 +22,7 @@
 | Auth | PyJWT, JWT propio (`app/core/security.py`), roles vía deps (`app/api/deps.py`) |
 | Async / colas | Celery + Redis (`celery[redis]>=5.4`) — análisis async y tareas beat |
 | PDF | fpdf2 |
-| Base de datos | PostgreSQL 16 + PostGIS (geoespacial) + JSONB para atributos por tipología de activo; SQLite en tests |
+| Base de datos | PostgreSQL 16 + JSONB para atributos por tipología de activo; SQLite en tests. **La imagen desplegada es `postgis/postgis:16-3.4`, pero el esquema NO usa capacidades geoespaciales**: no hay columna `geometry`, no se declara `geoalchemy2` y `lat`/`lng` son `Numeric(9,6)` (verificado en la Fase 9.5, Bloque J) |
 | Frontend | Next.js 15.1.6 (App Router) + React 19 + TypeScript estricto |
 | Frontend — forms/datos | React Hook Form + Zod (`lib/schema.ts`), TanStack Query, Recharts (gráficos), Leaflet (`mapa-leaflet.tsx`, geolocalización) |
 | Estilos | Tailwind CSS 3.4 |
@@ -37,18 +37,18 @@
 
 ### ✅ Construido y verificado
 - **Motor experto completo M01–M14** en `backend/app/engine/modules/` (un fichero por módulo, 1:1 con la especificación), **puro y sin I/O**, sobre una pizarra de hechos (`contracts.py`, `pipeline.py` como DAG).
-- **104 tests** en `backend/tests/` — 10 ficheros: `test_notificaciones.py` 18 · `test_golden_caso19.py` 14 · `test_seguridad_arranque.py` 27 · `test_precios.py` 9 · `test_vetos.py` 7 · `test_multitenant.py` 10 · `test_api.py` 6 · `test_conocimiento.py` 6 · `test_auth.py` 5 · `test_pdf_async.py` 2. Incluye el **caso dorado §19** como test de regresión fundacional.
-  > Cifra verificada con `python -m pytest tests --collect-only -q` el 2026-07-25 (104 recogidos; parametrizaciones incluidas). Recontar antes de citarla.
+- **118 tests** en `backend/tests/` — 11 ficheros. A los 10 originales se sumó `test_migraciones.py` (14) en la Fase 9.5. Incluye el **caso dorado §19** como test de regresión fundacional y la batería T1-T6 que ejerce Alembic de verdad.
+  > Cifra verificada con `python -m pytest tests --collect-only -q` el 2026-07-28 (118 recogidos; parametrizaciones incluidas). Recontar antes de citarla.
 - **API REST completa** con JWT y roles (`backend/app/api/`: `auth.py`, `routes.py`, `conocimiento.py`, `deps.py`), Swagger en `/docs`.
 - **Gobernanza del conocimiento versionada (T2/T3)**: reglas en YAML versionadas con vigencia temporal (`app/engine/rules/`), parámetros legales/fiscales versionados por ámbito (`app/engine/params/`), editables sin desplegar código.
 - **Frontend Next.js 15 completo**: login, dashboard, asistente de nueva inversión (11 pasos), detalle de inversión, comparativa, mapa, configuración, reglas, parámetros, administración.
 - **PDF de informe**, **Docker Compose** funcional, **manuales** (instalación, pruebas).
-- **Migraciones Alembic**: 4 en cadena lineal — `0001_esquema_inicial` → `0002_multitenancy` (Fase 9) → `0003_notificaciones` (Fase 12) → `0004_ampliar_auditoria_quien` (Fase 12). Cada cambio de esquema exige nueva migración con `downgrade` funcional. **La siguiente libre es la `0005`.**
+- **Migraciones Alembic**: **una sola revisión fundacional, `0005_esquema_base` (`down_revision = None`)**. Sustituye a la cadena `0001_esquema_inicial` → `0002_multitenancy` → `0003_notificaciones` → `0004_ampliar_auditoria_quien`, retirada en el **Bloque D de la Fase 9.5**; su contenido sigue en el historial de git. Cada cambio de esquema exige nueva migración con `downgrade` funcional. **La siguiente libre es la `0006`** (Fase 10).
 
 ### ✅ Fase 9 — Multi-tenancy por organización (COMPLETADA, 2026-07-14)
 - Entidad `Organizacion`; `Usuario` += `organizacion_id`, `rol_org` (propietario|miembro), `es_superadmin` (plataforma); `Analisis` += `organizacion_id`.
 - **Modelo de roles en dos ejes** (reconciliación): `rol` (admin|analista|lector) = capacidad dentro de la org; `rol_org` = gestión de miembros; `es_superadmin` = gobierno del conocimiento T2/T3 global.
-- Migración **Alembic 0002** idempotente + reversible con backfill (org por defecto para datos históricos; admin bootstrap → propietario+superadmin). Verificada upgrade/downgrade sobre BD real.
+- Migración **Alembic 0002** con backfill (org por defecto para datos históricos; admin bootstrap → propietario+superadmin). **Retirada por la Fase 9.5** (su contenido vive en el historial de git y el esquema resultante viaja en la fundacional `0005`). Su `INSERT` omitía `creado_en`, columna `NOT NULL`, y era la causa medida de que `alembic upgrade head` fallara sobre una base limpia — el defecto que originó la Fase 9.5.
 - Aislamiento por `organizacion_id` en todos los endpoints de análisis; acceso a recurso ajeno = **404** (no 403). `require_superadmin` para conocimiento y alta de usuarios de plataforma. Router nuevo `organizacion.py` (GET /organizacion, POST/PATCH miembros por el propietario).
 - Frontend: tipos/api/menú actualizados (oculta «Conocimiento» salvo superadmin), página `/equipo`.
 - Tests: `test_multitenant.py` (10 nuevos, aislamiento + permisos + gestión de miembros). **Suite: 59 verdes** (49 previos + 10). `npm run build` limpio.
@@ -75,10 +75,16 @@
   router `captacion.py` (`POST/GET /subastas`), páginas `/alertas` y `/subastas`.
 - Migraciones **Alembic 0003** (4 tablas del subsistema) y **0004** (amplía
   `auditoria.quien` a 120: con `String(36)` un email largo abortaba la transacción
-  en PostgreSQL), ambas idempotentes y reversibles. **No verificadas contra
-  PostgreSQL real** — sin Docker en el entorno de desarrollo; ver §Riesgos abajo.
-- **Suite: 104 tests, 102 verdes.** Los 2 rojos son de PDF y **preexisten** a esta
-  fase (falta la fuente DejaVu fuera de Docker — ver `docs/PENDIENTES.md`).
+  en PostgreSQL). **Ambas retiradas por la Fase 9.5**; su contenido está en el
+  historial de git y el esquema resultante viaja en la fundacional `0005`, ya
+  verificada contra PostgreSQL real (`quien VARCHAR(120)`, 19 columnas `jsonb`).
+  La `0004` además **nunca pudo ejecutarse en SQLite**: usaba `op.alter_column`,
+  que SQLite no implementa.
+- **Suite: 118 recogidos — 113 pasan, 2 fallan, 3 se omiten** (medido 2026-07-28).
+  Los 2 rojos son de PDF y **preexisten** a esta fase (falta la fuente DejaVu fuera
+  de Docker — ver `docs/PENDIENTES.md`). Los 3 omitidos son T5 (exige
+  `SEIS_TEST_POSTGRES_URL`) y los dos casos parametrizados de T3, que no tienen
+  pares consecutivos que recorrer al existir una sola revisión.
   `npm run build` limpio.
 - **Endurecimiento de arranque (cierre de revisión):** `app/core/config.py` valida
   en producción que `JWT_SECRET` y `ADMIN_PASSWORD` sean propios y fuertes
@@ -144,7 +150,9 @@ ResultadoReal · Usuario · Auditoria
 | 19 | Analítica y panel de negocio | — | Sonnet/Haiku |
 | 20 | Beta cerrada y lanzamiento | Fin del proyecto | — |
 
-**Siguiente tarea: Fase 9.5 — Saneamiento del sistema de migraciones.** Fases 9 y 12 completadas. Se intercaló una fase de reparación porque se demostró experimentalmente que **`alembic upgrade head` falla sobre una base limpia** (en la revisión 0002) y que, como `docker-compose.yml` encadena las migraciones al arranque, **una instalación nueva no puede levantar el backend**. Plan canónico en `docs/FASE_95_PLAN_EJECUCION.md`; diseño de la estrategia en `docs/PLAN_REPARACION_MIGRACIONES.md`. Bloquea a las Fases 10 y 13.
+**Fase 9.5 — Saneamiento del sistema de migraciones: bloques A-J ejecutados.** Se intercaló porque se demostró experimentalmente que `alembic upgrade head` fallaba sobre una base limpia (revisión 0002, `INSERT` que omitía `creado_en`) y que, como `docker-compose.yml` encadena las migraciones al arranque, **una instalación nueva no podía levantar el backend**. **Ese defecto está cerrado y medido**: `docker compose down -v && up -d --build` sobre volumen destruido deja el backend respondiendo `HTTP 200` en `/api/v1/health`, con `alembic_version = 0005` y 19 columnas `jsonb`. Plan canónico y evidencias bloque a bloque en `docs/FASE_95_PLAN_EJECUCION.md`; diseño de la estrategia en `docs/PLAN_REPARACION_MIGRACIONES.md`.
+
+**Siguiente tarea: Fase 10 — Alta self-service**, una vez la Fase 9.5 pase RC-3 y se fusione a `main`. Su plan detallado está en `docs/PENDIENTES.md` y su migración es la **`0006`**.
 
 **Renumeración de migraciones (decisión cerrada, deroga lo anterior):** la Fase 9.5 sustituye las revisiones 0001-0004 por una **revisión fundacional única numerada `0005`** con `down_revision = None`. En consecuencia, **la migración de la Fase 10 pasa a `0006`** y la de la Fase 13 a `0007`. Cualquier nota previa que reserve la `0005` para la Fase 10 está derogada.
 
@@ -162,6 +170,9 @@ ResultadoReal · Usuario · Auditoria
 6. El frontend debe compilar limpio: `npm run build` sin errores de tipos.
 7. **Protocolo de trabajo por fase:** una rama por fase (`fase-09-multitenant`, etc.) → plan de cambios primero, detenerse para aprobación → implementar → ejecutar `pytest` y `npm run build`, mostrar resultados → resumen de qué cambió y qué decisiones se tomaron → un PR por fase, revisado por el humano antes de fusionar.
 8. **NO tocar `app/engine/` sin indicación expresa** — es el núcleo validado por el caso dorado §19.
+9. **Prohibido `Base.metadata` dentro de `alembic/versions/`.** Ni `create_all`, ni `drop_all`, ni ninguna otra vía que derive la DDL de los modelos en tiempo de ejecución. Una revisión así no describe un cambio de esquema: reproduce el estado que los modelos tengan **el día que se ejecute**, de modo que dos instalaciones con la misma revisión acaban con esquemas distintos y el historial deja de ser reproducible. Cada revisión emite su DDL explícita (`op.create_table`, `op.add_column`, `op.create_index`…). Patrón de referencia: `0005_esquema_base`. *(La retirada `0001_esquema_inicial` incumplía esto —`Base.metadata.create_all` en su línea 18— y es la razón por la que la cadena antigua no era auditable.)*
+10. **Toda DML de migración especifica explícitamente cada columna `NOT NULL`.** Los `default=` de SQLAlchemy son **de cliente**: los aplica Python al construir el objeto, no la base de datos, y por tanto **no existen** para un `INSERT`/`UPDATE` en SQL crudo. Omitir una columna `NOT NULL` sin `server_default` aborta la transacción entera. *(La retirada `0002_multitenancy` hacía `INSERT INTO organizacion (id, nombre)` en su línea 72 omitiendo `creado_en`; el resultado medido fue `IntegrityError: NOT NULL constraint failed: organizacion.creado_en`, y con él **`alembic upgrade head` dejó de funcionar sobre una base limpia**.)*
+11. **`render_as_batch` es preventivo de `autogenerate`, jamás correctivo.** Hace que Alembic **escriba** bloques `op.batch_alter_table()` al *generar* una revisión; no cambia en nada lo que ocurre al *ejecutarla*. Medido sobre SQLite (SQLAlchemy 2.0.51 · Alembic 1.18.5): `alter_column` falla con `OperationalError: near "ALTER": syntax error` **tanto con `render_as_batch=True` como sin él**, y `batch_alter_table` funciona **también sin él**. Quien necesite alterar una columna en SQLite debe escribir `op.batch_alter_table()`; activar la opción no le salvará. No documentarlo nunca como arreglo de un `alter_column` que ya falla.
 
 ---
 
