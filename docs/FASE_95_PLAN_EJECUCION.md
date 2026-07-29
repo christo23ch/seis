@@ -974,14 +974,14 @@ corrupción silenciosa que esta fase erradica.
 - [x] Índices, FKs y tipos verificados contra `create_all` por T4 *(C: 21 tablas · 171 columnas · 15 FK · 22 índices, 0 diferencias)*
 
 **Instrumentación**
-- [ ] T1-T6 en verde, **sin aserciones debilitadas** respecto de la versión corregida del Bloque A
+- [x] T1-T6 en verde, **sin aserciones debilitadas** respecto de la versión corregida del Bloque A
       (T3 sin ningún caso en `failed`; `skipped` en sus casos parametrizados cuenta como en verde)
 - [x] **Gate `SEIS_CALIBRAR_MIGRACIONES` retirado** de `test_migraciones.py` *(E)* — es criterio de cierre
       del Bloque E, no limpieza aplazable: el gate no tiene trinquete propio
 - [x] **T4 demostrado capaz de fallar** *(G: 5/5 dimensiones — tabla, columna, tipo, nulabilidad, índice)*
 - [x] **Guarda de aislamiento de la batería en su sitio y demostrada capaz de saltar** *(Bloque J: `RuntimeError` en 7/7 escenarios peligrosos — fichero compartido, valor por defecto de `Settings`, sqlite fuera del directorio, postgres con «prod», postgres sin marcador de test, URL vacía y esquema no soportado)*
 - [ ] T4 en el pipeline de CI — **workflow creado y demostrado en local (`exit 0 → 1 → 0` ante deriva real), NO observado ejecutándose en GitHub Actions: requiere push**
-- [ ] Suite en **118 recogidos: 113 pasan · 2 fallan · 3 se omiten** — los 2 rojos son de PDF,
+- [x] Suite en **118 recogidos: 113 pasan · 2 fallan · 3 se omiten** — los 2 rojos son de PDF,
       preexistentes y ajenos. *(El criterio se escribió como «102/104» cuando la batería de
       migraciones aún no existía; los 14 tests nuevos elevan el total a 118 sin alterar el
       significado: ninguna prueba que pasara antes falla ahora.)*
