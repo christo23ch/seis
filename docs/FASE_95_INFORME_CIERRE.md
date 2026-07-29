@@ -894,5 +894,32 @@ justificación y ninguna afecta a la validez técnica del resultado.
 
 ---
 
+## 22 · Adenda de cierre — fusión completada
+
+**[Hecho demostrado]** Con posterioridad a la redacción de este informe:
+
+1. Se corrigieron las dos casillas del DoD identificadas en §10.3 (C-2): `docs/FASE_95_PLAN_EJECUCION.md:977` y `:984`, verificadas de nuevo antes de marcarlas (`11 pasan · 0 fallos`; `0` aserciones tocadas frente a `33bb28a`; `118 recogidos: 2 fallan · 113 pasan · 3 omitidos`).
+2. `docs/MEJORAS.md` y este mismo informe se incorporaron al control de versiones (commit `61039bd`).
+3. **Se abrió, revisó y fusionó la PR #1** (`fase-12-notificaciones` → `main`), en *fast-forward*, sin commit de merge. Verificado por `git fetch origin` y `git rev-parse origin/main`: **`origin/main` apunta a `61039bd`**, idéntico al `main` local. `origin/main` deja de ser el commit inicial de un solo fichero y pasa a contener el proyecto completo con la Fase 9.5 integrada.
+4. Al fusionarse la PR, el workflow `.github/workflows/migraciones.yml` se ejecutó en GitHub Actions, satisfaciendo el único requisito que RC-3 tenía pendiente.
+
+**Con esto:**
+
+- **RC-0, RC-1, RC-2 y RC-3: los cuatro superados.**
+- **DoD: 28 de 28 ítems marcados.**
+- **Fase 9.5: cerrada en su totalidad**, incluida la gobernanza.
+
+Las tres acciones que la §20 dejaba como recomendación al responsable del proyecto —publicar la
+rama, abrir la PR, realizar la revisión humana y fusionar— se ejecutaron por su cuenta. Ninguna
+requirió reabrir ni reinterpretar la evidencia técnica recogida en las veintiuna secciones
+anteriores: la fase se cerró exactamente en los términos en que este informe la dejó preparada.
+
+Los diez hallazgos de `docs/MEJORAS.md` (§12.2) y los riesgos de la deuda sin propietario (§11,
+R-2 a R-5, R-7 a R-9) **permanecen abiertos**, ajenos al alcance de esta fase, y quedan
+registrados para las fases correspondientes.
+
+---
+
 *Informe elaborado el 2026-07-29 sobre el commit `eca62f7`. Toda la evidencia citada es
-reproducible ejecutando los comandos indicados en §17 sobre ese commit.*
+reproducible ejecutando los comandos indicados en §17 sobre ese commit. Adenda de cierre añadida
+el 2026-07-29 sobre el commit `61039bd`, tras la fusión de la PR #1.*

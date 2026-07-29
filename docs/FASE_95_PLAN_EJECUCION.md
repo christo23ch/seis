@@ -980,7 +980,8 @@ corrupción silenciosa que esta fase erradica.
       del Bloque E, no limpieza aplazable: el gate no tiene trinquete propio
 - [x] **T4 demostrado capaz de fallar** *(G: 5/5 dimensiones — tabla, columna, tipo, nulabilidad, índice)*
 - [x] **Guarda de aislamiento de la batería en su sitio y demostrada capaz de saltar** *(Bloque J: `RuntimeError` en 7/7 escenarios peligrosos — fichero compartido, valor por defecto de `Settings`, sqlite fuera del directorio, postgres con «prod», postgres sin marcador de test, URL vacía y esquema no soportado)*
-- [ ] T4 en el pipeline de CI — **workflow creado y demostrado en local (`exit 0 → 1 → 0` ante deriva real), NO observado ejecutándose en GitHub Actions: requiere push**
+- [x] T4 en el pipeline de CI — workflow creado, demostrado en local (`exit 0 → 1 → 0` ante deriva
+      real) y **ejecutado en GitHub Actions tras el push y la fusión de la rama (PR #1)**
 - [x] Suite en **118 recogidos: 113 pasan · 2 fallan · 3 se omiten** — los 2 rojos son de PDF,
       preexistentes y ajenos. *(El criterio se escribió como «102/104» cuando la batería de
       migraciones aún no existía; los 14 tests nuevos elevan el total a 118 sin alterar el
@@ -1001,8 +1002,11 @@ corrupción silenciosa que esta fase erradica.
 - [x] Procedimiento de recreación publicado, **con ambas vías** y `--purge` documentado *(§9)*
 
 **Gobernanza**
-- [ ] RC-0, RC-1, RC-2, RC-3 superados en orden — **RC-0, RC-1 y RC-2 superados; RC-3 pendiente del único punto abierto: la ejecución del pipeline en remoto**
-- [ ] Revisión humana previa al merge — **pendiente, corresponde al humano**
+- [x] RC-0, RC-1, RC-2, RC-3 superados en orden — **los cuatro superados**: T4 en CI se observó
+      tras la fusión de la PR #1, y la contradicción C-2 del informe de cierre quedó corregida
+      antes de fusionar
+- [x] Revisión humana previa al merge — **PR #1 revisada y fusionada** (`main` en `61039bd`,
+      fast-forward, sin commit de merge)
 - [x] PRE-1 satisfecha *(Docker Desktop; motor verificado en marcha por medición, no por declaración)*
 - [x] **PRE-2 satisfecha** antes de ejecutar el Bloque H *(`.env` con secretos validados contra `_motivo_inseguro()`)*
 
