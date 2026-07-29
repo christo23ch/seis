@@ -217,3 +217,17 @@ comentario explícito — **a confirmar en la auditoría de seguridad de la Fase
 haría que la suite leyera el `.env` real · el docstring de `app/models.py` (líneas 3-5) sigue
 anunciando la migración a `geometry(Point,4326)` «con el módulo de mapa (Fase 5)», que no ha
 ocurrido; no se corrigió porque el Bloque J no autoriza tocar modelos.
+
+---
+
+## Observación de arquitectura
+
+Durante la Fase 9.5 se detectó una posible ambigüedad en `CLAUDE.md` §6.7 respecto al significado
+de «fusionar».
+
+Se analizaron tres alternativas (RFC-A, RFC-B y RFC-C).
+
+**No se modifica la gobernanza durante esta fase.**
+
+La decisión se pospone para una futura revisión del protocolo, al no afectar a la validez técnica
+de la Fase 9.5.
