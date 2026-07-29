@@ -25,6 +25,13 @@ on:
       - 'backend/**'
       - '.github/workflows/migraciones.yml'
 
+# Mínimo privilegio: el job solo clona el repositorio y ejecuta pruebas. No
+# escribe nada, no publica artefactos y no habla con la API de GitHub. Sin esta
+# declaración el `GITHUB_TOKEN` heredaría los permisos por defecto del
+# repositorio, que pueden ser de escritura.
+permissions:
+  contents: read
+
 jobs:
   bateria:
     name: Batería de migraciones (T1-T6)
