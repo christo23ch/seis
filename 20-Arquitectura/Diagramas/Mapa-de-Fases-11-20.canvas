@@ -1,0 +1,24 @@
+{
+	"nodes":[
+		{"id":"n-10","type":"file","file":"40-Fases/Fase-10-alta-self-service.md","x":-200,"y":0,"width":280,"height":100,"color":"4"},
+		{"id":"n-11","type":"text","text":"# Fase 11\nInfraestructura de producción\n\n⛔ Hereda la puerta de despliegue de la Fase 10: la IP de origen no sobrevive a docker compose.","x":200,"y":0,"width":280,"height":140,"color":"1"},
+		{"id":"n-13","type":"text","text":"# Fase 13\nMonetización (Stripe)\n\nMigración 0007","x":600,"y":0,"width":280,"height":100,"color":"1"},
+		{"id":"n-20","type":"text","text":"# Fase 20\nBeta cerrada y lanzamiento\n\nFin del proyecto","x":1000,"y":0,"width":280,"height":100,"color":"3"},
+		{"id":"n-14","type":"text","text":"# Fase 14\nRGPD / legal\n\nEn paralelo desde la Fase 9 — pendiente de arrancar","x":200,"y":220,"width":280,"height":100,"color":"5"},
+		{"id":"n-16","type":"text","text":"# Fase 16\nEndurecimiento de seguridad\n\nAntes de tráfico real y dinero","x":600,"y":220,"width":280,"height":100,"color":"5"},
+		{"id":"n-15","type":"text","text":"# Fase 15\nLanding y onboarding","x":200,"y":380,"width":280,"height":80},
+		{"id":"n-17","type":"text","text":"# Fase 17\nEscalado de captación (continua)","x":600,"y":380,"width":280,"height":80},
+		{"id":"n-19","type":"text","text":"# Fase 19\nAnalítica de negocio","x":1000,"y":220,"width":280,"height":80},
+		{"id":"n-leyenda","type":"text","text":"Ruta crítica: flecha sólida\nParalela / bloquea lanzamiento sin ser ruta crítica: flecha discontinua","x":-200,"y":380,"width":280,"height":80,"color":"6"}
+	],
+	"edges":[
+		{"id":"e1","fromNode":"n-10","fromSide":"right","toNode":"n-11","toSide":"left","label":"ruta crítica"},
+		{"id":"e2","fromNode":"n-11","fromSide":"right","toNode":"n-13","toSide":"left","label":"URL pública HTTPS para webhooks"},
+		{"id":"e3","fromNode":"n-13","fromSide":"right","toNode":"n-20","toSide":"left","label":"clientes de pago reales"},
+		{"id":"e4","fromNode":"n-11","fromSide":"bottom","toNode":"n-15","toSide":"top"},
+		{"id":"e5","fromNode":"n-11","fromSide":"bottom","toNode":"n-17","toSide":"top"},
+		{"id":"e6","fromNode":"n-11","fromSide":"bottom","toNode":"n-19","toSide":"top"},
+		{"id":"e7","fromNode":"n-14","fromSide":"right","toNode":"n-20","toSide":"bottom","label":"bloquea lanzamiento"},
+		{"id":"e8","fromNode":"n-16","fromSide":"right","toNode":"n-20","toSide":"bottom","label":"bloquea lanzamiento"}
+	]
+}
