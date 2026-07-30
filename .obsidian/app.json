@@ -1,0 +1,11 @@
+{
+  "attachmentFolderPath": "999-Meta/Adjuntos",
+  "newFileLocation": "folder",
+  "newFileFolderPath": "00-Inbox",
+  "alwaysUpdateLinks": true,
+  "useMarkdownLinks": false,
+  "showLineNumber": true,
+  "strictLineBreaks": false,
+  "readableLineLength": true,
+  "promptDelete": true
+}

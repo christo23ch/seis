@@ -1,0 +1,29 @@
+{
+  "collapse-filter": false,
+  "search": "-path:900-Plantillas -path:999-Meta -path:00-Inbox",
+  "showTags": true,
+  "showAttachments": false,
+  "hideUnresolved": false,
+  "showOrphans": true,
+  "collapse-color-groups": false,
+  "colorGroups": [
+    { "query": "tag:#tipo/incidente OR tag:#tipo/postmortem", "color": { "a": 1, "rgb": 15282240 } },
+    { "query": "tag:#tipo/bug", "color": { "a": 1, "rgb": 15694400 } },
+    { "query": "tag:#tipo/adr OR tag:#tipo/rfc", "color": { "a": 1, "rgb": 4501381 } },
+    { "query": "tag:#tipo/fase OR tag:#tipo/release", "color": { "a": 1, "rgb": 5025616 } },
+    { "query": "tag:#tipo/runbook", "color": { "a": 1, "rgb": 9013641 } },
+    { "query": "tag:#tipo/reunion", "color": { "a": 1, "rgb": 16766720 } }
+  ],
+  "collapse-display": false,
+  "showArrow": false,
+  "textFadeMultiplier": 0,
+  "nodeSizeMultiplier": 1,
+  "lineSizeMultiplier": 1,
+  "collapse-forces": false,
+  "centerStrength": 0.5,
+  "repelStrength": 10,
+  "linkStrength": 1,
+  "linkDistance": 250,
+  "scale": 1,
+  "close": false
+}

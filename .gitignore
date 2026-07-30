@@ -25,3 +25,17 @@ npm-debug.log*
 
 # Herramientas de análisis (artefactos locales, no versionables)
 graphify-out/
+
+# Vault de Obsidian (999-Meta/Sistema-de-Links.md explica el porqué):
+# se versiona la CONFIGURACIÓN COMPARTIDA de equipo (plugins, plantillas,
+# atajos, snippets) y se ignora el ESTADO PERSONAL de cada instalación
+# (caché, ventana abierta, historial de búsquedas, credenciales de sync).
+# Plantilla oficial: https://github.com/kepano/obsidian-gitignore
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/workspace.json.bak
+.obsidian/cache
+.obsidian/.smart-env
+.obsidian/plugins/*/data.json.bak
+.trash/
+.obsidian/plugins/quickadd/logs/
