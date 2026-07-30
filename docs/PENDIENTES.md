@@ -158,6 +158,15 @@ Seis hallazgos se arreglaron dentro de la propia fase, no se difirieron:
    `frontend/lib/api.ts`. Cualquier XSS expondría la sesión completa, lo que
    amplificaría las deudas 3 y 4. No lo introduce esta fase; se anota porque la
    revisión de seguridad lo señaló como amplificador de los otros hallazgos.
+12. **`/auth/cambiar-password` no tiene interfaz** *(propietario: SIN ASIGNAR)*.
+   El endpoint existe, está probado y tiene el 96 % de cobertura, pero
+   `api.cambiarPassword` **no lo invoca ningún componente**: no hay página de
+   cuenta y `construirNav` no tiene entrada para ella. Consecuencia concreta: el
+   propietario de una organización asigna una «Contraseña temporal» en `/equipo`
+   y su titular **no puede cambiarla desde la aplicación**. No incumple el
+   contrato —el cambio de contraseña autenticado no figura entre los seis pasos
+   del §Fase 10 del Plan Maestro—, pero debe asignarse fase antes de admitir
+   usuarios reales. Candidata natural: Fase 15, que rehace la capa pública.
 
 ---
 

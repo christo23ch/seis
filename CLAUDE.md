@@ -111,9 +111,17 @@
   el efecto, de modo que dos peticiones simultáneas no pueden pasar las dos.
 - **`/reenviar-verificacion`**: sin él, un enlace caducado dejaba la cuenta muerta
   (no puede entrar por no estar verificada, ni verificarse porque el enlace expiró).
-- **`/cambiar-password`** (autenticado). Cierra un hueco que el plan no registraba:
+- **`/cambiar-password`** (autenticado). Aborda un hueco que el plan no registraba:
   **no existía ninguna ruta de código que modificara `hash_pwd` tras crear la
   cuenta**, así que una contraseña temporal asignada por el propietario era eterna.
+  ⚠️ **Existe en la API y NO en la interfaz.** Ningún componente del frontend
+  invoca `api.cambiarPassword`, no hay página de cuenta y el menú de navegación no
+  tiene entrada para ella (verificado sobre `components/` y `construirNav`). Para
+  el usuario el hueco **sigue abierto**: quien recibe una contraseña temporal en
+  `/equipo` no puede cambiarla. El cambio de contraseña autenticado **no figura
+  entre los seis pasos del §Fase 10 del Plan Maestro**, de modo que no es un
+  entregable incumplido de esta fase, pero tampoco está resuelto. Falta asignarle
+  fase — ver `docs/PENDIENTES.md`.
 - **Login**: contraseña correcta pero email sin verificar ⇒ **403 accionable** con
   reenvío a mano. Cuenta desactivada por su propietario ⇒ sigue devolviendo **401
   genérico**, como fijó la Fase 9. Anti-fuerza-bruta de 5 fallos / 15 min ⇒ **429**;
@@ -259,6 +267,9 @@ Caso de prueba de referencia: **§19 de la especificación**, guion completo con
 - `SEIS_Plan_Maestro_Fases_920.md` — hoja de ruta comercial Fases 9-20, con prompts de ejecución listos para pegar en Claude Code por fase.
 - `MANUAL_DE_PRUEBAS.md` — cómo levantar y probar (local, VPS, PaaS, cURL, troubleshooting).
 - `SEIS_informe_ejemplo_caso19.md` — salida de referencia para verificar que el motor no ha regresionado.
+- `CHANGELOG.md` (raíz) — registro de cambios **por fase**, no por SemVer. Una entrada por fase cerrada, con lo añadido, lo corregido, las migraciones y los cambios incompatibles. Arranca en la Fase 9; lo anterior está en el historial de git.
+
+> **Dónde vive la hoja de ruta.** No existe `ROADMAP.md` y es deliberado: la hoja de ruta contractual es `docs/SEIS_Plan_Maestro_Fases_920.md` y su estado de ejecución es el §5 de este documento. Un tercer fichero con la misma tabla se desincronizaría — ya ocurrió en la Fase 12 con las cifras de la suite (ver `docs/PENDIENTES.md`, P2).
 
 ---
 
