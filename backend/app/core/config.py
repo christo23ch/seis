@@ -19,6 +19,11 @@ class Settings(BaseSettings):
     admin_email: str = "admin@seis.local"
     admin_password: str = "admin"          # SOLO bootstrap; cambiar en el primer arranque
 
+    # Anti-abuso (Fase 10): ventana deslizante del login y de los endpoints
+    # públicos que envían correo. Ver app/core/rate_limit.py.
+    login_max_intentos: int = 5
+    login_ventana_min: int = 15
+
     # Celery
     celery_task_always_eager: bool = False # True en tests: ejecuta tareas en proceso
 
