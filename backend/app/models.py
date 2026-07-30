@@ -244,6 +244,9 @@ class Usuario(Base):
     rol_org: Mapped[str] = mapped_column(String(16), default="miembro")  # propietario | miembro
     es_superadmin: Mapped[bool] = mapped_column(Boolean, default=False)  # plataforma: gobierna T2/T3 global
     activo: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Fase 10: distinto de `activo`, que es el alta/baja administrativa que ejerce el
+    # propietario. Separarlos evita que reactivar a un miembro lo dé por verificado.
+    email_verificado: Mapped[bool] = mapped_column(Boolean, default=False)
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
@@ -267,6 +270,22 @@ class CodigoTelegram(Base):
     usuario_id: Mapped[str] = mapped_column(ForeignKey("usuario.id"), index=True)
     expira_en: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     usado: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class TokenConsumido(Base):
+    """Fase 10: `jti` de un token de propósito ya gastado (uso único).
+
+    `crear_token_proposito` emite un `jti` desde la Fase 12, pero nadie lo
+    persistía: un enlace de verificación o de reseteo era reutilizable tantas
+    veces como cupiera en su TTL. Esta tabla es el registro que lo impide.
+    Misma disciplina que `CodigoTelegram`: se marca gastado ANTES de aplicar el
+    efecto, y quien lo reutiliza recibe la misma respuesta que quien trae un
+    token inválido o caducado.
+    """
+    __tablename__ = "token_consumido"
+    jti: Mapped[str] = mapped_column(String(36), primary_key=True)
+    proposito: Mapped[str] = mapped_column(String(24))
+    consumido_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
 class Alerta(Base):

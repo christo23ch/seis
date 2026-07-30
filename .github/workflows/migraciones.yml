@@ -61,10 +61,15 @@ jobs:
       - name: Batería de migraciones
         run: python -m pytest tests/test_migraciones.py -v --no-header
 
-      # T5 se omite sin SEIS_TEST_POSTGRES_URL y los casos parametrizados de T3
-      # se omiten porque la cadena tiene una sola revisión. Ambos `skip` son
-      # resultados esperados, no huecos: este paso los deja visibles en el log
-      # para que nadie confunda «omitido» con «ejecutado y verde».
+      # T5 se omite sin SEIS_TEST_POSTGRES_URL. Es el ÚNICO `skip` que queda:
+      # desde la Fase 10 la cadena tiene dos revisiones (0005→0006), así que el
+      # caso parametrizado de T3 que antes se omitía por falta de pares ahora se
+      # ejecuta de verdad. (La otra variante de T3, «revisión aislada vía stamp»,
+      # se retiró en esa misma fase por ser insostenible por construcción: el
+      # esquema de `create_all` es siempre el de HEAD, nunca el de la revisión
+      # predecesora. Motivo completo en el propio test_migraciones.py.)
+      # El `skip` restante es un resultado esperado, no un hueco: este paso lo
+      # deja visible en el log para que nadie confunda «omitido» con «verde».
       - name: Motivos de omisión (visibilidad)
         if: always()
         run: python -m pytest tests/test_migraciones.py -q -rs --no-header

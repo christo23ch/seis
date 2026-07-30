@@ -1,7 +1,9 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import { api, ApiError } from "@/lib/api";
 import { Button, Campo, Input } from "@/components/ui";
 import { Gavel } from "lucide-react";
 
@@ -11,17 +13,35 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  // El backend distingue «sin verificar» (403) de «credenciales incorrectas»
+  // (401). Solo en el primer caso tiene sentido ofrecer el reenvío del correo.
+  const [sinVerificar, setSinVerificar] = useState(false);
+  const [reenviado, setReenviado] = useState("");
   const [cargando, setCargando] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError(""); setCargando(true);
+    setError(""); setSinVerificar(false); setReenviado(""); setCargando(true);
     try {
       await entrar(email, password);
       router.replace("/");
-    } catch (err: any) {
-      setError(err?.message ?? "No se pudo iniciar sesión");
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+        setSinVerificar(err.status === 403);
+      } else {
+        setError("No se pudo iniciar sesión");
+      }
     } finally { setCargando(false); }
+  }
+
+  async function reenviar() {
+    try {
+      const r = await api.reenviarVerificacion(email);
+      setReenviado(r.mensaje);
+    } catch {
+      setReenviado("No se pudo reenviar el correo de confirmación");
+    }
   }
 
   return (
@@ -54,7 +74,19 @@ export default function LoginPage() {
             <Input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
           </Campo>
           {error && <p className="text-sm text-sem-rojo">{error}</p>}
+          {sinVerificar && !reenviado && (
+            <Button type="button" variante="secundario" className="w-full" onClick={reenviar}>
+              Reenviar el correo de confirmación
+            </Button>
+          )}
+          {reenviado && (
+            <p className="rounded-md border border-sem-verde/30 bg-sem-verdebg px-4 py-3 text-sm text-sem-verde">{reenviado}</p>
+          )}
           <Button type="submit" className="w-full" cargando={cargando}>Entrar</Button>
+          <div className="flex items-center justify-between text-sm">
+            <Link href="/registro" className="text-primario hover:underline">Crear una cuenta</Link>
+            <Link href="/recuperar" className="text-primario hover:underline">He olvidado mi contraseña</Link>
+          </div>
           <p className="text-[12px] text-slate-400">Primer arranque: admin@seis.local / admin (cámbiela de inmediato).</p>
         </form>
       </section>

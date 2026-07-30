@@ -53,6 +53,21 @@ def base_input():
 ADMIN = {"username": "admin@seis.local", "password": "admin"}
 
 
+@pytest.fixture(autouse=True)
+def _limpiar_rate_limit():
+    """Cada test arranca y termina con el limitador anti-abuso a cero (Fase 10).
+
+    Es `autouse` porque el limitador es estado de proceso compartido: sin esto,
+    un test que agota los intentos de login dejaría bloqueado al siguiente, y el
+    fallo aparecería en un fichero que no tiene nada que ver con la causa.
+    """
+    from app.core import rate_limit
+
+    rate_limit.limpiar_todo()
+    yield
+    rate_limit.limpiar_todo()
+
+
 @pytest.fixture(scope="module")
 def api():
     """Cliente HTTP con esquema creado, admin superadmin sembrado y limpieza al terminar."""

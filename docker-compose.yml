@@ -45,6 +45,13 @@ services:
       JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET en .env antes de arrancar}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@seis.local}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Defina ADMIN_PASSWORD en .env antes de arrancar}
+      # Fase 10 — anti-abuso del login y de los endpoints públicos que envían
+      # correo. Se propagan aunque tengan valor por defecto en config.py: sin
+      # esta línea, ajustarlos en `.env` no tendría ningún efecto dentro del
+      # contenedor y el operador no tendría forma de notarlo (es el defecto P1
+      # que la Fase 12 dejó registrado con SES y SMTP).
+      LOGIN_MAX_INTENTOS: ${LOGIN_MAX_INTENTOS:-5}
+      LOGIN_VENTANA_MIN: ${LOGIN_VENTANA_MIN:-15}
       # Fase 12 — notificaciones (sin valor: el canal queda inactivo, nada rompe)
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       EMAIL_PROVIDER: ${EMAIL_PROVIDER:-}

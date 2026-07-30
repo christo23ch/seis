@@ -70,8 +70,10 @@ TABLA_VERSION_ALEMBIC = "alembic_version"
 # Mensajes exactos documentados por el Release Committee.
 MENSAJE_ERROR_0002_INTEGRIDAD = "NOT NULL constraint failed: organizacion.creado_en"
 MENSAJE_ERROR_0002_EXCEPCION = "IntegrityError"
-MENSAJE_ERROR_0004_EXCEPCION = "OperationalError"
-MENSAJE_ERROR_0004_SINTAXIS = 'near "ALTER"'
+# Los dos mensajes equivalentes de la retirada 0004 (`OperationalError` /
+# `near "ALTER"`) se citaban únicamente en la aserción de la variante `stamp` de
+# T3, retirada en la Fase 10 (ver más abajo). El hecho que documentaban —SQLite
+# no implementa `ALTER COLUMN`— quedó recogido en CLAUDE.md §6.11.
 
 _URLS_SQLITE_PROHIBIDAS = frozenset({
     "sqlite:///./seis_dev.db",
@@ -537,52 +539,31 @@ def test_t3_par_consecutivo_por_la_cadena_natural(
     )
 
 
-@pytest.mark.parametrize(("predecesora", "revision"), _PARES_PARAM, ids=_PARES_IDS)
-def test_t3_revision_aislada_via_stamp(
-    predecesora: str | None,
-    revision: str | None,
-    entorno_migraciones: EntornoMigraciones,
-) -> None:
-    """T3 (3/3) — cada revisión aislada de las anteriores (criterio 4).
-
-    Aísla estructuralmente cada revisión: crea el esquema con
-    `Base.metadata.create_all` (bypass total de Alembic), marca la
-    predecesora con `alembic stamp` —que escribe `alembic_version` sin
-    ejecutar DDL alguna— y solo entonces aplica la revisión bajo prueba. El
-    código Python de las revisiones anteriores **no llega a ejecutarse
-    nunca**, de modo que un fallo aquí es atribuible ÚNICAMENTE a la revisión
-    parametrizada.
-
-    Esto es lo que demuestra que las causas son ortogonales y no
-    consecutivas: hoy (Bloque A) fallan dos revisiones distintas por dos
-    motivos de motor distintos, cada una alcanzada sin pasar por la otra.
-
-    Los identificadores se descubren de la cadena vigente: tras el Bloque D
-    no habrá revisiones con predecesora y el test se saltará de forma
-    explícita.
-    """
-    if revision is None or predecesora is None:
-        pytest.skip(_motivo_de_omision())
-
-    _crear_esquema_via_create_all(entorno_migraciones)
-
-    resultado_stamp = _ejecutar_alembic(entorno_migraciones, "stamp", predecesora)
-    assert resultado_stamp.returncode == 0, _diagnostico(
-        resultado_stamp, f"T3 aislada({revision}) — stamp {predecesora}"
-    )
-
-    resultado = _ejecutar_alembic(entorno_migraciones, "upgrade", revision)
-    diagnostico = _diagnostico(resultado, f"T3 aislada({revision}) — upgrade {revision}")
-    assert resultado.returncode == 0, (
-        f"`upgrade {revision}` (alcanzada vía `stamp {predecesora}` sobre un "
-        "esquema creado con `create_all`, sin ejecutar el código Python de "
-        "ninguna revisión anterior) debería terminar en éxito. Su fallo es "
-        "atribuible ÚNICAMENTE a esta revisión. Hoy (Bloque A) se esperan dos "
-        f"fallos en esta familia, por causas ortogonales entre sí: "
-        f"{MENSAJE_ERROR_0002_INTEGRIDAD!r} ({MENSAJE_ERROR_0002_EXCEPCION}) y "
-        f"{MENSAJE_ERROR_0004_SINTAXIS!r} ({MENSAJE_ERROR_0004_EXCEPCION})."
-        f"\n{diagnostico}"
-    )
+# T3 (3/3) — «revisión aislada vía stamp»: RETIRADO en la Fase 10.
+#
+# El test creaba el esquema con `Base.metadata.create_all`, marcaba la revisión
+# predecesora con `alembic stamp` y aplicaba encima la revisión bajo prueba, con
+# la intención de alcanzarla sin ejecutar el código Python de ninguna anterior.
+#
+# Su premisa —«el esquema que produce `create_all` equivale al esquema en la
+# revisión N-1»— **es falsa para toda migración que añada algo al esquema**.
+# `create_all` deriva siempre de los modelos vigentes, es decir, produce la forma
+# de HEAD, nunca la de N-1. Al aplicar después la revisión N, esta intenta crear
+# objetos que `create_all` ya había creado. Medido con la `0006`:
+# `sqlalchemy.exc.OperationalError: duplicate column name: email_verificado`.
+#
+# El defecto no se manifestó antes porque el test **nunca llegó a ejecutarse**:
+# el Bloque D dejó la cadena con una sola revisión, `PARES_CONSECUTIVOS` quedó
+# vacío y el caso se omitía. La `0006` es la primera revisión que le da un par y,
+# con él, la primera ejecución real de su vida.
+#
+# Su propósito original tampoco sobrevive: `_crear_esquema_via_create_all` se
+# escribió para «alcanzar la 0004 sin la 0002», un rodeo para esquivar una
+# revisión rota. Retiradas ambas y saneada la cadena, no queda nada que esquivar.
+#
+# Lo que cubría de verdad lo cubre `test_t3_par_consecutivo_por_la_cadena_natural`,
+# que ejerce el camino real (`upgrade predecesora` → `upgrade revisión`) y pasa
+# con el par 0005→0006. Registrado en `docs/PENDIENTES.md`.
 
 
 # --------------------------------------------------------------------------

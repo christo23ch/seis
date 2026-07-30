@@ -1,7 +1,7 @@
 # CLAUDE.md — Contexto maestro del proyecto SEIS
 **Repositorio:** christo23ch/seis
-**Rama de trabajo:** fase-12-notificaciones
-**Última actualización:** 2026-07-26
+**Rama de trabajo:** fase-10-alta-self-service
+**Última actualización:** 2026-07-29
 **Fuente de verdad funcional/técnica:** `docs/SEIS_Especificacion_Funcional_y_Tecnica.md` (ya incorporada al repo, junto al Plan Maestro y el informe de ejemplo del §19)
 
 ---
@@ -37,13 +37,13 @@
 
 ### ✅ Construido y verificado
 - **Motor experto completo M01–M14** en `backend/app/engine/modules/` (un fichero por módulo, 1:1 con la especificación), **puro y sin I/O**, sobre una pizarra de hechos (`contracts.py`, `pipeline.py` como DAG).
-- **118 tests** en `backend/tests/` — 11 ficheros. A los 10 originales se sumó `test_migraciones.py` (14) en la Fase 9.5. Incluye el **caso dorado §19** como test de regresión fundacional y la batería T1-T6 que ejerce Alembic de verdad.
-  > Cifra verificada con `python -m pytest tests --collect-only -q` el 2026-07-28 (118 recogidos; parametrizaciones incluidas). Recontar antes de citarla.
+- **162 tests** en `backend/tests/` — 12 ficheros. A los 11 previos se sumó `test_registro.py` (45) en la Fase 10. Incluye el **caso dorado §19** como test de regresión fundacional y la batería T1-T6 que ejerce Alembic de verdad.
+  > Cifra verificada con `python -m pytest tests --collect-only -q` el 2026-07-29 (157 recogidos; parametrizaciones incluidas). Recontar antes de citarla.
 - **API REST completa** con JWT y roles (`backend/app/api/`: `auth.py`, `routes.py`, `conocimiento.py`, `deps.py`), Swagger en `/docs`.
 - **Gobernanza del conocimiento versionada (T2/T3)**: reglas en YAML versionadas con vigencia temporal (`app/engine/rules/`), parámetros legales/fiscales versionados por ámbito (`app/engine/params/`), editables sin desplegar código.
 - **Frontend Next.js 15 completo**: login, dashboard, asistente de nueva inversión (11 pasos), detalle de inversión, comparativa, mapa, configuración, reglas, parámetros, administración.
 - **PDF de informe**, **Docker Compose** funcional, **manuales** (instalación, pruebas).
-- **Migraciones Alembic**: **una sola revisión fundacional, `0005_esquema_base` (`down_revision = None`)**. Sustituye a la cadena `0001_esquema_inicial` → `0002_multitenancy` → `0003_notificaciones` → `0004_ampliar_auditoria_quien`, retirada en el **Bloque D de la Fase 9.5**; su contenido sigue en el historial de git. Cada cambio de esquema exige nueva migración con `downgrade` funcional. **La siguiente libre es la `0006`** (Fase 10).
+- **Migraciones Alembic**: **una sola revisión fundacional, `0005_esquema_base` (`down_revision = None`)**. Sustituye a la cadena `0001_esquema_inicial` → `0002_multitenancy` → `0003_notificaciones` → `0004_ampliar_auditoria_quien`, retirada en el **Bloque D de la Fase 9.5**; su contenido sigue en el historial de git. Cada cambio de esquema exige nueva migración con `downgrade` funcional. La Fase 10 añadió la **`0006_self_service`** (`down_revision = "0005"`); **la siguiente libre es la `0007`** (Fase 13).
 
 ### ✅ Fase 9 — Multi-tenancy por organización (COMPLETADA, 2026-07-14)
 - Entidad `Organizacion`; `Usuario` += `organizacion_id`, `rol_org` (propietario|miembro), `es_superadmin` (plataforma); `Analisis` += `organizacion_id`.
@@ -97,12 +97,66 @@
   (bloque duplicado tras `volumes:`); se eliminó el duplicado y se añadió `--beat` al
   worker, sin el cual el digest y el polling nunca se ejecutan. Creado `.env.example`.
 
-> **Backlog vivo:** el trabajo planificado y no implementado se registra en
-> `docs/PENDIENTES.md` (incluye el plan detallado de la Fase 10, ya elaborado y
-> pendiente de arrancar).
+### ✅ Fase 10 — Alta self-service (COMPLETADA, 2026-07-29)
+- **Registro público** `POST /auth/registro`: crea `Organizacion` propia + `Usuario`
+  propietario **inactivo y sin verificar**. Responde **201 exista o no la cuenta**;
+  si ya existe, no crea nada y avisa **por correo al titular** («alguien ha
+  intentado registrarse»). La respuesta HTTP nunca revela si una dirección está
+  registrada — mismo criterio que el 404-y-no-403 de §4.
+- **Verificación** (`/verificar`, 24 h) y **recuperación** (`/recuperar` +
+  `/resetear`, 1 h), ambas con **uso único real**: nueva tabla `TokenConsumido`
+  (`jti` PK). Antes de esta fase `crear_token_proposito` emitía `jti` pero nadie lo
+  comprobaba, así que un enlace servía tantas veces como cupiera en su TTL. El
+  `jti` se reclama por **clave primaria** —no leyendo antes— y **antes** de aplicar
+  el efecto, de modo que dos peticiones simultáneas no pueden pasar las dos.
+- **`/reenviar-verificacion`**: sin él, un enlace caducado dejaba la cuenta muerta
+  (no puede entrar por no estar verificada, ni verificarse porque el enlace expiró).
+- **`/cambiar-password`** (autenticado). Aborda un hueco que el plan no registraba:
+  **no existía ninguna ruta de código que modificara `hash_pwd` tras crear la
+  cuenta**, así que una contraseña temporal asignada por el propietario era eterna.
+  ⚠️ **Existe en la API y NO en la interfaz.** Ningún componente del frontend
+  invoca `api.cambiarPassword`, no hay página de cuenta y el menú de navegación no
+  tiene entrada para ella (verificado sobre `components/` y `construirNav`). Para
+  el usuario el hueco **sigue abierto**: quien recibe una contraseña temporal en
+  `/equipo` no puede cambiarla. El cambio de contraseña autenticado **no figura
+  entre los seis pasos del §Fase 10 del Plan Maestro**, de modo que no es un
+  entregable incumplido de esta fase, pero tampoco está resuelto. Falta asignarle
+  fase — ver `docs/PENDIENTES.md`.
+- **Login**: contraseña correcta pero email sin verificar ⇒ **403 accionable** con
+  reenvío a mano. Cuenta desactivada por su propietario ⇒ sigue devolviendo **401
+  genérico**, como fijó la Fase 9. Anti-fuerza-bruta de 5 fallos / 15 min ⇒ **429**;
+  un acceso correcto y un reseteo limpian el contador.
+- **`app/core/rate_limit.py`**: ventana deslizante en Redis con respaldo en memoria.
+  Cubre login y recuperar por email, registro y reenvío por IP.
+- **Frontend**: `/registro`, `/verificar`, `/recuperar`, `/resetear`, públicas y
+  fuera del grupo `(app)/`. `/login` gana enlaces y el reenvío ante el 403.
+- Migración **`0006_self_service`**. Verificada en SQLite (ciclo
+  upgrade→downgrade→upgrade) y **en PostgreSQL 16 real**, incluido el backfill
+  sobre los usuarios que ya existían.
+- **Separación de audiencia entre tokens (cierre de la revisión de seguridad).**
+  `crear_token` marca ahora `tipo="sesion"` y `decodificar_token` lo **exige**.
+  Antes, como los tokens de propósito se firman con el mismo `jwt_secret`, un
+  enlace de verificación o de reseteo enviado por correo valía además como Bearer
+  de sesión completo — y seguía valiendo tras consumirse, porque `token_consumido`
+  solo lo mira el camino de un solo uso. Defecto nacido en la Fase 12; la 10 lo
+  cerró. **Al desplegar, los tokens ya emitidos dejan de servir.**
+- **El limitador del login usa clave compuesta `email + origen`.** Con la clave
+  solo por email, cualquiera bloqueaba la cuenta de un tercero de forma indefinida
+  con cinco contraseñas erróneas. Su efecto pleno depende de la Fase 11 (ver abajo).
+- **Suite: 162 recogidos — 159 pasan, 2 fallan, 1 se omite** (medido 2026-07-29).
+  Los 2 rojos son los de PDF, preexistentes. El único omitido es T5.
+  `npm run build` limpio.
+- **Retirado `test_t3_revision_aislada_via_stamp`** (Fase 9.5): era insostenible por
+  construcción —`create_all` produce siempre el esquema de HEAD, nunca el de la
+  revisión predecesora, así que toda migración aditiva lo rompe— y nunca había
+  llegado a ejecutarse por falta de pares en la cadena. Lo que cubría lo cubre
+  `test_t3_par_consecutivo_por_la_cadena_natural`, que sí pasa con 0005→0006.
 
-### ⏳ No construido (Fases 10-20 del Plan Maestro — ver §5)
-Alta self-service, infraestructura de producción real, notificaciones multicanal (email/Telegram/WhatsApp) + scoring de alertas, monetización con Stripe, cumplimiento RGPD, landing pública, endurecimiento de seguridad, escalado de captación (el conector BOE existe pero defensivo, sin ajuste empírico contra el portal real), analítica de negocio, beta cerrada.
+> **Backlog vivo:** el trabajo planificado y no implementado se registra en
+> `docs/PENDIENTES.md`.
+
+### ⏳ No construido (Fases 11-20 del Plan Maestro — ver §5)
+Infraestructura de producción real, monetización con Stripe, cumplimiento RGPD, landing pública, endurecimiento de seguridad, escalado de captación (el conector BOE existe pero defensivo, sin ajuste empírico contra el portal real), analítica de negocio, beta cerrada.
 
 ### 🐛 Gotchas conocidos
 - El motor (`app/engine/modules/` + `pipeline.py` + `contracts.py`) es la parte más validada del sistema — **NO tocar sin indicación expresa**; cualquier cambio ahí exige entender el "caso dorado §19" primero. (`app/engine/scoring_expres.py`, Fase 12, vive fuera del DAG y no le afecta.)
@@ -119,6 +173,8 @@ FuenteSubasta · Subasta · Activo · Carga · Comparable
 Analisis (snapshot inmutable) · RiesgoEvaluado · Escenario · Decision · ReglaDisparada
 Regla (versionada) · Parametro (versionado) · PerfilInversion
 ResultadoReal · Usuario · Auditoria
+Organizacion (Fase 9) · Alerta · Notificacion · PreferenciasNotificacion · CodigoTelegram (Fase 12)
+TokenConsumido (Fase 10: `jti` gastado de un token de propósito, uso único)
 ```
 
 **Reglas de negocio críticas (de la especificación, no negociables):**
@@ -132,14 +188,14 @@ ResultadoReal · Usuario · Auditoria
 
 ## 5 · Hoja de ruta — Fases 9 a 20 (Plan Maestro)
 
-**Ruta crítica:** 9 → **9.5** → 10 → 11 → 13 → 20. Fase 14 (legal) en paralelo desde la 9. Fase 18 (WhatsApp) es condicional a demanda medida en Fase 12.
+**Ruta crítica:** ~~9~~ → ~~**9.5**~~ → ~~10~~ → **11** → 13 → 20. Fase 14 (legal) en paralelo desde la 9. Fase 18 (WhatsApp) es condicional a demanda medida en Fase 12.
 
 | Fase | Nombre | Bloquea a | Modelo recomendado |
 |---|---|---|---|
 | **9** | Multi-tenancy por organización | Todo lo demás | **Fable 5** (autorización transversal, coste de un fallo = fuga de datos) |
 | **9.5** | **Saneamiento del sistema de migraciones** | **Fases 10 y 13** | Sonnet |
-| 10 | Alta self-service + recuperación de cuenta | — | Sonnet |
-| 11 | Infraestructura de producción | — | Fable 5 (decisiones operativas) |
+| ~~10~~ | Alta self-service + recuperación de cuenta | — | ✅ **Completada** (2026-07-29) |
+| **11** | **Infraestructura de producción** | — | Fable 5 (decisiones operativas) |
 | ~~12~~ | Notificaciones multicanal + scoring | — | ✅ **Completada** (2026-07-24) |
 | 13 | Monetización (Stripe) | Beta real | Fable 5 (ciclo de vida de suscripción, idempotencia de webhooks) |
 | 14 | RGPD / legal | — | Fable 5 (borradores) + Sonnet (implementación) |
@@ -152,7 +208,11 @@ ResultadoReal · Usuario · Auditoria
 
 **Fase 9.5 — Saneamiento del sistema de migraciones: bloques A-J ejecutados.** Se intercaló porque se demostró experimentalmente que `alembic upgrade head` fallaba sobre una base limpia (revisión 0002, `INSERT` que omitía `creado_en`) y que, como `docker-compose.yml` encadena las migraciones al arranque, **una instalación nueva no podía levantar el backend**. **Ese defecto está cerrado y medido**: `docker compose down -v && up -d --build` sobre volumen destruido deja el backend respondiendo `HTTP 200` en `/api/v1/health`, con `alembic_version = 0005` y 19 columnas `jsonb`. Plan canónico y evidencias bloque a bloque en `docs/FASE_95_PLAN_EJECUCION.md`; diseño de la estrategia en `docs/PLAN_REPARACION_MIGRACIONES.md`.
 
-**Siguiente tarea: Fase 10 — Alta self-service**, una vez la Fase 9.5 pase RC-3 y se fusione a `main`. Su plan detallado está en `docs/PENDIENTES.md` y su migración es la **`0006`**.
+**Siguiente tarea: Fase 11 — Infraestructura de producción.**
+
+> ⛔ **Puerta de despliegue heredada de la Fase 10.** Bajo `docker compose` la IP de origen **no se conserva**: se midió que todas las peticiones externas llegan con la de la pasarela (`172.18.0.1`). En consecuencia, los límites por origen de `/registro` y `/reenviar-verificacion` actúan como un **cupo global** y un solo atacante sin credenciales puede negar el alta pública a todo el sitio de forma sostenida. **Este `docker-compose.yml` no se expone a Internet** hasta que la Fase 11 aporte un proxy inverso con `uvicorn --proxy-headers` y `--forwarded-allow-ips` acotado a ese proxy. No bloquea la fusión del código; bloquea el despliegue.
+
+Hereda además: purga de `token_consumido` y de las cuentas nunca verificadas, y reintento de Redis en el limitador. Todo anotado en `docs/PENDIENTES.md`.
 
 **Renumeración de migraciones (decisión cerrada, deroga lo anterior):** la Fase 9.5 sustituye las revisiones 0001-0004 por una **revisión fundacional única numerada `0005`** con `down_revision = None`. En consecuencia, **la migración de la Fase 10 pasa a `0006`** y la de la Fase 13 a `0007`. Cualquier nota previa que reserve la `0005` para la Fase 10 está derogada.
 
@@ -207,6 +267,9 @@ Caso de prueba de referencia: **§19 de la especificación**, guion completo con
 - `SEIS_Plan_Maestro_Fases_920.md` — hoja de ruta comercial Fases 9-20, con prompts de ejecución listos para pegar en Claude Code por fase.
 - `MANUAL_DE_PRUEBAS.md` — cómo levantar y probar (local, VPS, PaaS, cURL, troubleshooting).
 - `SEIS_informe_ejemplo_caso19.md` — salida de referencia para verificar que el motor no ha regresionado.
+- `CHANGELOG.md` (raíz) — registro de cambios **por fase**, no por SemVer. Una entrada por fase cerrada, con lo añadido, lo corregido, las migraciones y los cambios incompatibles. Arranca en la Fase 9; lo anterior está en el historial de git.
+
+> **Dónde vive la hoja de ruta.** No existe `ROADMAP.md` y es deliberado: la hoja de ruta contractual es `docs/SEIS_Plan_Maestro_Fases_920.md` y su estado de ejecución es el §5 de este documento. Un tercer fichero con la misma tabla se desincronizaría — ya ocurrió en la Fase 12 con las cifras de la suite (ver `docs/PENDIENTES.md`, P2).
 
 ---
 

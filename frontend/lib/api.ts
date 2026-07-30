@@ -1,4 +1,4 @@
-import type { Alerta, CodigoTelegram, Detalle, ListItem, Miembro, Opciones, Organizacion, PreferenciasNotificacion, Resultado, SubastaCaptada, Usuario } from "./types";
+import type { Alerta, CodigoTelegram, Detalle, ListItem, Miembro, Opciones, Organizacion, PreferenciasNotificacion, RespuestaSimple, Resultado, SubastaCaptada, Usuario } from "./types";
 
 const BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") + "/api/v1";
 
@@ -40,6 +40,21 @@ export const api = {
   me: () => req<Usuario>("/auth/me"),
   crearUsuario: (b: { email: string; password: string; nombre?: string; rol: string }) =>
     req<{ email: string; rol: string }>("/auth/usuarios", { method: "POST", body: JSON.stringify(b) }),
+
+  // Fase 10 — alta self-service. Todos cuelgan de /auth, que `req` ya exime del
+  // redirect global a /login ante un 401, así que funcionan sin sesión.
+  registro: (b: { email: string; password: string; nombre?: string }) =>
+    req<RespuestaSimple>("/auth/registro", { method: "POST", body: JSON.stringify(b) }),
+  verificar: (token: string) =>
+    req<RespuestaSimple>("/auth/verificar", { method: "POST", body: JSON.stringify({ token }) }),
+  reenviarVerificacion: (email: string) =>
+    req<RespuestaSimple>("/auth/reenviar-verificacion", { method: "POST", body: JSON.stringify({ email }) }),
+  recuperar: (email: string) =>
+    req<RespuestaSimple>("/auth/recuperar", { method: "POST", body: JSON.stringify({ email }) }),
+  resetear: (token: string, nueva: string) =>
+    req<RespuestaSimple>("/auth/resetear", { method: "POST", body: JSON.stringify({ token, nueva }) }),
+  cambiarPassword: (actual: string, nueva: string) =>
+    req<RespuestaSimple>("/auth/cambiar-password", { method: "POST", body: JSON.stringify({ actual, nueva }) }),
 
   // Fase 9 — organización y miembros
   organizacion: () => req<Organizacion>("/organizacion"),
