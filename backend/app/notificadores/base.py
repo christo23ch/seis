@@ -12,7 +12,12 @@ class Mensaje:
     """Mensaje neutro respecto al canal: cada notificador lo formatea a su medio."""
     asunto: str
     cuerpo: str                      # texto plano en español; email lo envuelve en HTML simple
-    enlace_baja: str | None = None   # enlace firmado de baja (obligatorio en email)
+    # Enlace firmado de baja. Obligatorio en las comunicaciones **comerciales**
+    # por email (alertas y digest, Fase 12). Los correos **transaccionales** de
+    # la Fase 10 —verificación, reseteo y aviso de intento de registro— lo dejan
+    # a None a propósito: nadie debe poder darse de baja del mensaje que
+    # justamente le permite activar la cuenta o recuperar el acceso.
+    enlace_baja: str | None = None
 
 
 class Notificador(ABC):
