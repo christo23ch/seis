@@ -4,16 +4,165 @@ Registro vivo del trabajo planificado y aún no implementado. Cada fase se ejecu
 con el protocolo del proyecto: **plan → aprobación → implementación → tests verdes
 + `npm run build` limpio → PR**. Detalle metodológico en `docs/SEIS_Plan_Maestro_Fases_920.md`.
 
-**Estado del recorrido:** Fase 9 (multi-tenancy) ✅ y Fase 12 (notificaciones +
-scoring) ✅ completadas. Siguiente: Fase 10 (alta self-service), que reutiliza
-`crear_token_proposito` y el patrón de email honesto ya introducidos por la 12.
+**Estado del recorrido:** Fase 9 (multi-tenancy) ✅, Fase 9.5 (migraciones) ✅,
+Fase 12 (notificaciones + scoring) ✅ y Fase 10 (alta self-service) ✅ completadas.
+Siguiente: **Fase 11 (infraestructura de producción)**, que hereda dos asuntos
+medidos en la 10 — la IP de origen bajo Docker y la purga de `token_consumido`.
 
 ---
 
-## 🔜 Fase 10 — Alta self-service (PLANIFICADA, pendiente de implementar)
+## ✅ Fase 10 — Alta self-service (COMPLETADA, 2026-07-29)
 
-Registro público, verificación de email y recuperación de contraseña.
-Plan aprobado en su estructura; **pendiente de arrancar la implementación.**
+Registro público, verificación de email, recuperación y cambio de contraseña,
+y protección anti-abuso. Migración **`0006_self_service`**.
+
+### Lo entregado, y en qué se apartó del plan
+
+| Punto | Resultado |
+|---|---|
+| `email_service.py` | **No se creó.** Se reutilizó `app/notificadores/`, como ya anticipaba la nota de más abajo |
+| `config.py += frontend_url, email_from` | Ya existían desde la Fase 12; solo se añadieron `login_max_intentos` y `login_ventana_min` |
+| `crear_token_proposito` / `decodificar_token_proposito` | Ya existían; solo faltaba persistir el `jti`, que es lo que hace la tabla `TokenConsumido` |
+| Email duplicado ⇒ 400 | **Derogado.** Responde **201 idéntico** y avisa por correo al titular: un 400 convertía `/registro` en un oráculo de enumeración de cuentas, incoherente con la regla «respuesta idéntica» que el propio plan exigía a `/recuperar` |
+| Rate limit solo en login | **Ampliado** a `/registro`, `/recuperar` y `/reenviar-verificacion`: sin límite, los tres endpoints públicos que envían correo permitían bombardear un buzón ajeno |
+| — | **Añadido `/auth/cambiar-password`.** No estaba en el plan. No existía **ninguna** ruta de código que modificara `hash_pwd` tras crear la cuenta |
+| — | **Añadido `/auth/reenviar-verificacion`.** Sin él, un enlace caducado a las 24 h dejaba la cuenta sin salida posible |
+| — | **Añadido el 403 accionable** en el login sin verificar. Con `activo=False` el usuario habría visto «email o contraseña incorrectos», que es falso |
+
+### Decisiones que conviene no reinventar
+
+- **`email_verificado` es una columna aparte de `activo`.** `activo` ya significa el
+  alta/baja administrativa que ejerce el propietario; conflarlos haría que
+  reactivar a un miembro lo diera por verificado.
+- **`crear_usuario` nace con `email_verificado=True` por defecto.** No es un
+  descuido: esa función la invocan el arranque, el superadmin y el propietario,
+  que asignan la contraseña a mano y **no envían correo de verificación**. Con el
+  valor contrario, el 403 del login dejaría fuera al admin bootstrap y con él a
+  toda instalación en marcha. Solo `registrar_usuario` pasa `False`.
+- **El `jti` se reclama por clave primaria, no leyendo antes.** Comprobar y luego
+  insertar dejaba una ventana en la que dos peticiones con el mismo enlace pasaban
+  las dos. Se reclama **antes** de aplicar el efecto: si el efecto fallara después,
+  el token queda gastado sin servir, que es el lado seguro del error.
+- **Los correos transaccionales van con `enlace_baja=None`.** Nadie debe poder
+  darse de baja del mensaje que le permite activar la cuenta.
+- **`EmailBody` usa `str` y no `EmailStr`.** En `/recuperar` y
+  `/reenviar-verificacion` la dirección es solo una clave de búsqueda; exigir
+  sintaxis de email metía un 422 que rompía la promesa de «200 siempre» y dejaba
+  fuera al propio `admin@seis.local`, que `email-validator` rechaza por ser
+  `.local` un dominio de uso especial (RFC 6762).
+
+### Corregido tras la revisión de seguridad y de calidad
+
+Seis hallazgos se arreglaron dentro de la propia fase, no se difirieron:
+
+- **Confusión de audiencia entre tokens (HIGH).** `decodificar_token` era un
+  `jwt.decode` genérico y los tokens de propósito se firman con **el mismo
+  secreto** que los de sesión. Un enlace de verificación (24 h) o de reseteo (1 h)
+  enviado por correo valía además como **Bearer de sesión completo** en cualquier
+  endpoint protegido, heredando el rol real de la cuenta — y **seguía valiendo
+  después de consumirse**, porque `token_consumido` solo lo consulta el camino de
+  un solo uso, nunca `get_current_user`. Cerrado con un claim `tipo="sesion"` que
+  `decodificar_token` exige como lista blanca. Defecto **anterior a esta fase**
+  (nació con la Fase 12), pero la 10 multiplicaba su superficie. Efecto
+  secundario: los tokens emitidos antes del cambio dejan de servir — un cierre de
+  sesión único al desplegar.
+- **DoS dirigido en el login (HIGH).** Regresión **introducida por esta fase**:
+  con la clave del limitador solo por email, cualquiera dejaba fuera a un tercero
+  con cinco contraseñas erróneas, indefinidamente y sin que la cuenta tuviera
+  siquiera que existir; el bloqueo se comprueba antes que la contraseña, así que
+  ni el titular legítimo entraba. Clave ahora compuesta por email **y** origen.
+  Su efecto completo depende de la Fase 11 (ver deuda 1).
+- **Carrera en el alta duplicada.** `registrar_usuario` comprobaba duplicidad y
+  creaba después, sin bloqueo. En PostgreSQL con READ COMMITTED, dos registros
+  simultáneos del mismo email pasaban ambos la comprobación; el segundo chocaba
+  contra el `UNIQUE` y propagaba un `IntegrityError` **sin capturar** — un 500 en
+  el endpoint cuyo contrato es «201 siempre»— y dejaba una organización huérfana.
+  Resuelto con el mismo patrón que ya usaba `marcar_jti`.
+- **`/verificar` quemaba el token sin intervención humana.** Se confirmaba en un
+  `useEffect` al montar la página, de modo que cualquier escáner corporativo de
+  enlaces, antivirus o previsualizador de correo gastaba el uso único antes que
+  su destinatario. Ahora exige un clic explícito, como `/baja`.
+- **Bombardeo de bandeja dirigido.** `/reenviar-verificacion` limitaba solo por
+  origen. Añadida la clave por destinatario, igual que `/recuperar`.
+- **Higiene de entrada.** `max_length` en `password`, `nueva`, `actual`, `token` y
+  `nombre` (este último acotado a los 80 de la columna: sin tope, un valor más
+  largo abortaba la transacción en PostgreSQL y salía como 500 en vez de 422). Y
+  `obtener_por_email` recorta espacios, que en formularios públicos llegan al
+  copiar del cliente de correo.
+
+### Deuda que deja la Fase 10
+
+1. **⛔ PUERTA DE DESPLIEGUE — la IP de origen no sobrevive a `docker compose`**
+   *(propietario: Fase 11)*. Medido: todas las peticiones externas llegan con la
+   IP de la pasarela (`172.18.0.1`), de modo que los límites por origen de
+   `/registro` y `/reenviar-verificacion` funcionan como **un cupo global** —5
+   altas cada 15 minutos en todo el sitio— en vez de uno por cliente, y la clave
+   compuesta del login se comporta como si solo llevara el email.
+   La revisión de seguridad pidió endurecer el encuadre y tiene razón: tal como
+   está, **un solo atacante sin credenciales puede negar el alta pública a todo el
+   sitio de forma sostenida** con un puñado de peticiones cada 15 minutos. No
+   bloquea la fusión del código, pero **sí debe bloquear la exposición de este
+   `docker-compose.yml` a Internet**: hasta que haya proxy inverso con
+   `uvicorn --proxy-headers` y `--forwarded-allow-ips` acotado a ese proxy, este
+   despliegue no sale a producción.
+2. **`token_consumido` crece sin purga** *(propietario: Fase 11)*. Una fila por
+   cada enlace de verificación o reseteo consumido, para siempre. Candidata a
+   tarea beat que borre las anteriores al TTL máximo (30 días cubre los tres
+   propósitos vigentes).
+3. **Fuga por temporización en el login** *(propietario: Fase 16)*. `autenticar` y
+   `autenticar_con_motivo` cortocircuitan si el email no existe, sin llegar a
+   ejecutar PBKDF2 (240 000 iteraciones). La diferencia es medible y permite
+   enumerar cuentas. Preexistente a esta fase; no se cerró para no ampliar el
+   alcance. Cerrarlo exige comparar contra un hash señuelo.
+4. **El reseteo no invalida las sesiones abiertas** *(propietario: Fase 16)*. No
+   hay revocación de JWT ni refresh tokens: tras un reseteo, un token robado sigue
+   sirviendo hasta 12 h. Mitigado en parte porque `get_current_user` recomprueba
+   `activo` en cada petición.
+5. **Retirado `test_t3_revision_aislada_via_stamp`** (barrera de la Fase 9.5).
+   Era insostenible por construcción: creaba el esquema con
+   `Base.metadata.create_all` —que produce siempre la forma de **HEAD**, nunca la
+   de la revisión predecesora—, marcaba la predecesora con `stamp` y aplicaba
+   encima la revisión bajo prueba, que entonces intentaba crear objetos ya
+   existentes. Con la `0006`: `duplicate column name: email_verificado`. Nunca
+   había llegado a ejecutarse porque el Bloque D dejó la cadena con una sola
+   revisión y el caso se omitía por falta de pares. Su propósito original
+   —«alcanzar la 0004 sin la 0002»— desapareció al sanearse la cadena. Lo que
+   cubría lo cubre `test_t3_par_consecutivo_por_la_cadena_natural`, que ejerce el
+   camino real y pasa con 0005→0006.
+6. **Canal de temporización en `/recuperar`** *(propietario: Fase 16)*. El cuerpo
+   y el código de respuesta son idénticos exista o no la cuenta —hay test que lo
+   fija—, pero **la latencia no**: si hay proveedor de correo configurado, el
+   camino «existe» hace una petición HTTP real o abre una conexión SMTP y el
+   camino «no existe» retorna al instante. Medir el tiempo permite distinguirlos,
+   que es justo lo que D5 quiso impedir. Se cierra encolando el envío en Celery,
+   que el proyecto ya usa, en vez de enviarlo dentro de la petición.
+7. **El limitador no reintenta Redis tras el primer fallo** *(propietario: Fase 11)*.
+   `_cliente_redis` se cachea como `False` en cuanto falla el primer `ping()` del
+   proceso y no se vuelve a intentar en toda su vida. `docker-compose.yml` cubre
+   el arranque con `depends_on: condition: service_healthy`, pero una caída de
+   Redis posterior degrada a memoria de forma silenciosa y **permanente** hasta
+   reiniciar — y con `--workers 2` eso duplica el límite efectivo.
+8. **Las cuatro páginas públicas nuevas duplican estructura** *(propietario: Fase 15)*.
+   `/registro`, `/verificar`, `/recuperar` y `/resetear` repiten envoltorio,
+   cabecera, máquina de estados y bloque de éxito, y `/login` y `/baja` ya lo
+   hacían antes. Candidato a un `<PaginaPublica>` compartido en `components/`.
+   Se deja para la Fase 15, que rehace la capa pública con la landing.
+9. **Sin CAPTCHA ni lista de contraseñas comunes en `/registro`**
+   *(propietario: Fase 16)*. El mínimo de 8 caracteres no comprueba contra
+   contraseñas frecuentes, que es lo que NIST 800-63B recomienda por encima de las
+   reglas de composición. La única barrera anti-automatización es el limitador.
+10. **Las cuentas registradas y nunca verificadas no caducan**
+   *(propietario: Fase 11)*. Mismo patrón que la deuda 2: candidatas a la misma
+   tarea de purga periódica.
+11. **El JWT de sesión vive en `localStorage`** *(propietario: Fase 16, preexistente)*.
+   `frontend/lib/api.ts`. Cualquier XSS expondría la sesión completa, lo que
+   amplificaría las deudas 3 y 4. No lo introduce esta fase; se anota porque la
+   revisión de seguridad lo señaló como amplificador de los otros hallazgos.
+
+---
+
+<details>
+<summary>Plan original de la Fase 10 (histórico, anterior a las Fases 12 y 9.5)</summary>
 
 ### Punto a confirmar antes de codificar
 - ~~**`email_service.py` como abstracción honesta sin proveedor real**~~ →
@@ -80,6 +229,8 @@ Plan aprobado en su estructura; **pendiente de arrancar la implementación.**
 
 **No se toca:** `app/engine/**` ni la gobernanza salvo lo listado.
 
+</details>
+
 ---
 
 ## ⏳ Fases 11-20 — no iniciadas
@@ -88,7 +239,7 @@ Resumen (detalle y prompts de ejecución en `docs/SEIS_Plan_Maestro_Fases_920.md
 
 | Fase | Nombre | Notas |
 |---|---|---|
-| 11 | Infraestructura de producción | render.yaml, health por componente, Sentry, runbook |
+| 11 | Infraestructura de producción | render.yaml, health por componente, Sentry, runbook. **Hereda de la Fase 10:** proxy inverso que conserve la IP de origen (hoy el límite por IP es un cupo global) y purga de `token_consumido` |
 | ~~12~~ | ~~Notificaciones multicanal + scoring~~ | ✅ **Completada** — ver sección propia más abajo |
 | 13 | Monetización (Stripe) | planes/límites, webhooks idempotentes |
 | 14 | Cumplimiento legal y RGPD | consentimientos, ARCO, textos legales (revisión de abogado) |
