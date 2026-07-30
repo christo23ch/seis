@@ -1,7 +1,7 @@
 # CLAUDE.md — Contexto maestro del proyecto SEIS
 **Repositorio:** christo23ch/seis
-**Rama de trabajo:** fase-10-alta-self-service
-**Última actualización:** 2026-07-29
+**Rama de trabajo:** main
+**Última actualización:** 2026-07-30
 **Fuente de verdad funcional/técnica:** `docs/SEIS_Especificacion_Funcional_y_Tecnica.md` (ya incorporada al repo, junto al Plan Maestro y el informe de ejemplo del §19)
 
 ---
@@ -216,7 +216,7 @@ Hereda además: purga de `token_consumido` y de las cuentas nunca verificadas, y
 
 **Renumeración de migraciones (decisión cerrada, deroga lo anterior):** la Fase 9.5 sustituye las revisiones 0001-0004 por una **revisión fundacional única numerada `0005`** con `down_revision = None`. En consecuencia, **la migración de la Fase 10 pasa a `0006`** y la de la Fase 13 a `0007`. Cualquier nota previa que reserve la `0005` para la Fase 10 está derogada.
 
-**Después: Fase 10 — Alta self-service.** Su plan detallado está en `docs/PENDIENTES.md` y reutilizará `crear_token_proposito` (`app/core/security.py`) y el patrón de email honesto de `app/notificadores/`, ya introducidos. Antes de tocar código: **exigir plan de cambios fichero a fichero y detenerse para aprobación** — es la regla de oro de este proyecto.
+**Fase 10 — Alta self-service: cerrada y fusionada a `main` (2026-07-30).** Tag `fase-10` sobre el commit `4f9c247`, ya fusionado. Ver el detalle completo en §3 y en `CHANGELOG.md`.
 
 ---
 
@@ -275,4 +275,4 @@ Caso de prueba de referencia: **§19 de la especificación**, guion completo con
 
 ## 9 · Notas para la próxima sesión
 
-**TL;DR:** El motor experto (M01-M14) y el producto de un solo tenant están completos y probados (~40 % del recorrido a SaaS comercial). Lo que falta es todo lo que convierte esto en negocio: multi-tenancy (Fase 9, **bloqueante y siguiente paso**), alta self-service, infraestructura real, monetización, legal, canales de notificación y salida a mercado. Seguir el Plan Maestro fase a fase, con plan-antes-de-código como regla no negociable.
+**TL;DR:** El motor experto (M01-M14), el producto de un solo tenant, multi-tenancy (Fase 9), el saneamiento de migraciones (Fase 9.5), notificaciones multicanal (Fase 12) y el alta self-service (Fase 10) están completos, probados y fusionados a `main`. Lo que falta es todo lo que convierte esto en negocio a partir de aquí: infraestructura real (Fase 11, **siguiente paso**), monetización, legal y salida a mercado. Seguir el Plan Maestro fase a fase, con plan-antes-de-código como regla no negociable.
