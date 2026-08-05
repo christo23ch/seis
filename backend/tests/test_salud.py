@@ -232,7 +232,7 @@ def test_detalle_con_usuario_no_superadmin_responde_403(api, headers_analista, m
 
 
 def test_detalle_con_superadmin_devuelve_entorno_revision_y_versiones(api, headers, monkeypatch):
-    from app.core.config import ENTORNOS_SOPORTADOS, entorno_normalizado, get_settings
+    from app.core.config import ENTORNOS_SOPORTADOS, Settings, entorno_normalizado
 
     _simular_sondas(monkeypatch, bd_ok=True, redis_ok=True, ms=4.2)
 
@@ -243,7 +243,13 @@ def test_detalle_con_superadmin_devuelve_entorno_revision_y_versiones(api, heade
     assert cuerpo["estado"] == "ok"
     assert cuerpo["componentes"] == {"bd": "ok", "redis": "ok"}
     assert cuerpo["entorno"] in ENTORNOS_SOPORTADOS
-    assert cuerpo["entorno"] == entorno_normalizado(get_settings().seis_env)
+    # Literal, no `entorno_normalizado(get_settings()...)`: recalcular en el test
+    # la misma expresión que usa el endpoint es una tautología que no puede
+    # fallar salvo que el endpoint deje de llamar a esa función. La suite corre
+    # con SEIS_ENV sin definir, así que el entorno efectivo es el valor por
+    # defecto del modelo.
+    assert cuerpo["entorno"] == entorno_normalizado(Settings().seis_env)
+    assert cuerpo["entorno"] == "development"
     assert isinstance(cuerpo["revision_alembic"], str) and cuerpo["revision_alembic"]
     assert isinstance(cuerpo["version_reglas"], str) and cuerpo["version_reglas"]
     assert isinstance(cuerpo["version_parametros"], str) and cuerpo["version_parametros"]
@@ -282,3 +288,62 @@ def test_detalle_sin_tabla_alembic_no_rompe_y_declara_revision_desconocida(api, 
 
     assert r.status_code == 200, r.text
     assert r.json()["revision_alembic"] == "desconocida"
+
+
+# ────────── 11-14 · Camino real de las sondas, no solo el de los dobles ──────────
+
+def test_listo_con_la_bd_real_y_redis_simulado_responde_200(api, monkeypatch):
+    """Ejercita `_comprobar_bd` DE VERDAD, contra la sesión SQLite de la fixture.
+
+    El resto de los tests de readiness doblan las dos sondas, de modo que el
+    camino feliz real —`SELECT 1`, `scalar_one()` y la rama SQLite de
+    `_aplicar_timeout_bd`— no se ejecutaba en ninguna prueba: cambiar el SQL por
+    uno inválido dejaba la suite entera verde con la readiness rota en
+    producción. Aquí se dobla **solo Redis**, que es el componente que la suite
+    no tiene; la base sí la tiene, y doblarla era regalar cobertura.
+    """
+    from app.api import salud
+
+    monkeypatch.setattr(salud, "_comprobar_redis", lambda: (True, 1.0))
+
+    r = api.get(URL_LISTO)
+
+    assert r.status_code == 200, r.text
+    assert r.json() == {"estado": "ok", "componentes": {"bd": "ok", "redis": "ok"}}
+
+
+def test_listo_con_los_dos_componentes_caidos_los_marca_a_ambos(api, monkeypatch):
+    """Cierra la matriz: (ok,ok), (ok,error), (error,ok) ya estaban; faltaba (error,error)."""
+    _simular_sondas(monkeypatch, bd_ok=False, redis_ok=False)
+
+    r = api.get(URL_LISTO)
+
+    assert r.status_code == 503, r.text
+    assert r.json() == {"estado": "degradado",
+                        "componentes": {"bd": "error", "redis": "error"}}
+
+
+def test_listo_no_filtra_la_url_de_redis_con_contrasena(api, monkeypatch):
+    """La otra mitad del test capital de no-filtración.
+
+    El test de fuga original solo saboteaba la base de datos. Pero en producción
+    la **URL de Redis también lleva contraseña** —Upstash, Redis Cloud,
+    ElastiCache con AUTH: justo el escenario PaaS al que apunta la Fase 11-B—, y
+    en la suite `redis_url` no tiene credenciales, así que una regresión que
+    filtrara el motivo por la rama de Redis pasaba desapercibida.
+
+    El puerto 1 garantiza un rechazo de conexión inmediato: el test no espera.
+    """
+    from app.api import salud
+
+    ajustes = SimpleNamespace(
+        redis_url="redis://:CLAVE_REDIS_SECRETA@127.0.0.1:1/0",
+        health_timeout_segundos=0.2)
+    monkeypatch.setattr(salud, "get_settings", lambda: ajustes)
+
+    r = api.get(URL_LISTO)
+
+    assert r.status_code == 503, r.text
+    assert r.json()["componentes"]["redis"] == "error"
+    for secreto in ("CLAVE_REDIS_SECRETA", "redis://", "127.0.0.1:1"):
+        assert secreto not in r.text, f"La respuesta filtró «{secreto}»"

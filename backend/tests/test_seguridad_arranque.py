@@ -193,6 +193,34 @@ def test_variantes_de_grafia_de_staging_siguen_siendo_estrictas():
             _validar_seguridad_entorno(_ajustes(seis_env=variante, jwt_secret=""))
 
 
+@pytest.mark.parametrize("entorno", ENTORNOS_ESTRICTOS)
+def test_get_settings_aborta_el_arranque_con_un_secreto_debil(entorno, monkeypatch):
+    """El único test que ejercita la guardia POR DONDE EL PROCESO ARRANCA.
+
+    Todos los demás llaman a `_validar_seguridad_entorno` directamente. Eso prueba
+    la función, no el comportamiento: si alguien borrase la línea que la invoca
+    dentro de `get_settings`, la guardia quedaría **completamente muerta** y los
+    veinte tests seguirían verdes. El entregable de este bloque no es que una
+    función privada devuelva un error, es que **el proceso no arranque**.
+
+    `get_settings` está cacheada con `lru_cache`, de ahí el vaciado antes y
+    después: sin el segundo, este test dejaría envenenada la caché para toda la
+    suite.
+    """
+    from app.core.config import get_settings
+
+    get_settings.cache_clear()
+    try:
+        monkeypatch.setenv("SEIS_ENV", entorno)
+        monkeypatch.setenv("JWT_SECRET", "corto")
+        monkeypatch.setenv("ADMIN_PASSWORD", "admin")
+
+        with pytest.raises(SecretoInseguroError):
+            get_settings()
+    finally:
+        get_settings.cache_clear()
+
+
 def test_el_mensaje_de_error_nombra_el_entorno_real_y_no_produccion():
     """Quien despliega staging debe leer «staging» en el error, no «production».
 
