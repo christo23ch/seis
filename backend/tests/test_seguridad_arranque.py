@@ -10,9 +10,9 @@ from pathlib import Path
 
 import pytest
 
-from app.core.config import (ENTORNOS_SOPORTADOS, EntornoNoSoportadoError, Settings,
-                             SecretoInseguroEnProduccionError,
-                             _validar_seguridad_produccion)
+from app.core.config import (ENTORNOS_ESTRICTOS, ENTORNOS_SOPORTADOS,
+                             EntornoNoSoportadoError, SecretoInseguroError, Settings,
+                             _validar_seguridad_entorno)
 
 RAIZ_REPO = Path(__file__).resolve().parents[2]
 
@@ -39,37 +39,37 @@ def _ajustes(**overrides) -> Settings:
 
 
 def test_secretos_fuertes_permiten_arrancar_en_produccion():
-    _validar_seguridad_produccion(_ajustes())      # no debe lanzar
+    _validar_seguridad_entorno(_ajustes())      # no debe lanzar
 
 
 def test_desarrollo_y_tests_no_se_ven_afectados():
     """La suite corre con los secretos triviales de conftest: no debe romperse."""
     for entorno in ("development", "test"):
-        _validar_seguridad_produccion(
+        _validar_seguridad_entorno(
             _ajustes(seis_env=entorno, jwt_secret="secreto-de-test",
                      admin_password="admin"))
 
 
 @pytest.mark.parametrize("campo", ["jwt_secret", "admin_password"])
 def test_valor_vacio_aborta_el_arranque(campo):
-    with pytest.raises(SecretoInseguroEnProduccionError):
-        _validar_seguridad_produccion(_ajustes(**{campo: ""}))
+    with pytest.raises(SecretoInseguroError):
+        _validar_seguridad_entorno(_ajustes(**{campo: ""}))
 
 
 @pytest.mark.parametrize("campo", ["jwt_secret", "admin_password"])
 def test_valor_por_defecto_del_modelo_aborta_el_arranque(campo):
     """El defecto se lee del propio modelo, no de una cadena escrita a mano."""
     defecto = Settings.model_fields[campo].default
-    with pytest.raises(SecretoInseguroEnProduccionError):
-        _validar_seguridad_produccion(_ajustes(**{campo: defecto}))
+    with pytest.raises(SecretoInseguroError):
+        _validar_seguridad_entorno(_ajustes(**{campo: defecto}))
 
 
 def test_secreto_corto_o_poco_variado_aborta_el_arranque():
-    with pytest.raises(SecretoInseguroEnProduccionError):
-        _validar_seguridad_produccion(_ajustes(jwt_secret="corto"))
-    with pytest.raises(SecretoInseguroEnProduccionError):
+    with pytest.raises(SecretoInseguroError):
+        _validar_seguridad_entorno(_ajustes(jwt_secret="corto"))
+    with pytest.raises(SecretoInseguroError):
         # Longitud suficiente pero variedad ínfima: predecible.
-        _validar_seguridad_produccion(_ajustes(jwt_secret="ababababababababababababababababab"))
+        _validar_seguridad_entorno(_ajustes(jwt_secret="ababababababababababababababababab"))
 
 
 @pytest.mark.parametrize("placeholder", [
@@ -81,8 +81,8 @@ def test_secreto_corto_o_poco_variado_aborta_el_arranque():
 ])
 def test_cualquier_placeholder_aborta_el_arranque(placeholder):
     """No depende de conocer la cadena exacta: se detecta el marcador de plantilla."""
-    with pytest.raises(SecretoInseguroEnProduccionError):
-        _validar_seguridad_produccion(_ajustes(jwt_secret=placeholder))
+    with pytest.raises(SecretoInseguroError):
+        _validar_seguridad_entorno(_ajustes(jwt_secret=placeholder))
 
 
 def test_env_example_no_entrega_secretos_utilizables():
@@ -102,15 +102,15 @@ def test_env_example_no_entrega_secretos_utilizables():
 def test_valores_de_env_example_rechazados_por_la_guardia():
     """Doble red: aunque alguien copie .env.example tal cual, producción no arranca."""
     valores = _leer_env_example()
-    with pytest.raises(SecretoInseguroEnProduccionError):
-        _validar_seguridad_produccion(_ajustes(
+    with pytest.raises(SecretoInseguroError):
+        _validar_seguridad_entorno(_ajustes(
             jwt_secret=valores.get("JWT_SECRET", ""),
             admin_password=valores.get("ADMIN_PASSWORD", "")))
 
 
 def test_seis_env_con_mayusculas_no_evade_la_guardia():
-    with pytest.raises(SecretoInseguroEnProduccionError):
-        _validar_seguridad_produccion(_ajustes(seis_env="Production", jwt_secret=""))
+    with pytest.raises(SecretoInseguroError):
+        _validar_seguridad_entorno(_ajustes(seis_env="Production", jwt_secret=""))
 
 
 # ── P1-1: un entorno desconocido no puede desactivar la validación ──────────
@@ -118,7 +118,8 @@ def test_seis_env_con_mayusculas_no_evade_la_guardia():
 @pytest.mark.parametrize("entorno", [
     "produccion",     # grafía española: desactivaba la guardia en silencio
     "prod",           # abreviatura habitual
-    "staging",
+    "stagging",       # errata de «staging»: parecerse no basta (Fase 11, Bloque D)
+    "stage",          # abreviatura de «staging»: tampoco basta
     "PROD",
     "",               # sin valor
     "producción",     # con tilde
@@ -128,20 +129,82 @@ def test_entorno_desconocido_aborta_el_arranque(entorno):
     secretos vacíos sin decir nada. Ahora el arranque se detiene de forma
     explícita en vez de continuar sin protección."""
     with pytest.raises(EntornoNoSoportadoError):
-        _validar_seguridad_produccion(_ajustes(seis_env=entorno, jwt_secret=""))
+        _validar_seguridad_entorno(_ajustes(seis_env=entorno, jwt_secret=""))
 
 
 @pytest.mark.parametrize("entorno", ENTORNOS_SOPORTADOS)
 def test_entornos_soportados_no_se_rechazan(entorno):
-    """Los tres entornos declarados siguen siendo válidos (con secretos fuertes)."""
-    _validar_seguridad_produccion(_ajustes(seis_env=entorno))
+    """Los cuatro entornos declarados son válidos con secretos fuertes.
+
+    Se parametriza sobre la constante y no sobre una lista escrita a mano: así,
+    añadir un quinto entorno obliga a que pase por aquí en vez de entrar sin que
+    ningún test lo mire.
+    """
+    _validar_seguridad_entorno(_ajustes(seis_env=entorno))
 
 
 def test_variantes_de_grafia_de_production_siguen_siendo_estrictas():
     """Mayúsculas y espacios se aceptan como `production`, pero SIN relajar nada."""
     for variante in ("Production", "PRODUCTION", "  production  "):
-        with pytest.raises(SecretoInseguroEnProduccionError):
-            _validar_seguridad_produccion(_ajustes(seis_env=variante, jwt_secret=""))
+        with pytest.raises(SecretoInseguroError):
+            _validar_seguridad_entorno(_ajustes(seis_env=variante, jwt_secret=""))
+
+
+# ── Fase 11, Bloque D: staging es un entorno soportado Y estricto ───────────
+
+def test_staging_es_un_entorno_soportado():
+    """Antes de la Fase 11, `SEIS_ENV=staging` abortaba el arranque por desconocido.
+
+    El Plan Maestro exige un entorno de pruebas idéntico al real, así que el
+    entorno tenía que existir. Lo que NO podía pasar es que existiera siendo laxo.
+    """
+    assert "staging" in ENTORNOS_SOPORTADOS
+    _validar_seguridad_entorno(_ajustes(seis_env="staging"))      # no debe lanzar
+
+
+def test_staging_es_estricto_y_esta_en_la_lista_de_estrictos():
+    assert "staging" in ENTORNOS_ESTRICTOS
+
+
+@pytest.mark.parametrize("campo", ["jwt_secret", "admin_password"])
+def test_staging_con_secreto_debil_aborta_el_arranque(campo):
+    """Test negativo capital del bloque.
+
+    Un staging es una réplica del sistema real, alcanzable desde internet y a
+    menudo poblada con una copia de los datos de producción. Soportarlo con la
+    guardia de secretos desactivada habría sido la peor combinación posible: la
+    superficie de producción con la puerta abierta.
+    """
+    with pytest.raises(SecretoInseguroError):
+        _validar_seguridad_entorno(_ajustes(seis_env="staging", **{campo: ""}))
+
+
+def test_staging_con_secreto_de_plantilla_aborta_el_arranque():
+    """La validación estructural del hallazgo C1 aplica igual en staging."""
+    with pytest.raises(SecretoInseguroError):
+        _validar_seguridad_entorno(
+            _ajustes(seis_env="staging", jwt_secret="cambia-este-secreto-en-staging"))
+
+
+def test_variantes_de_grafia_de_staging_siguen_siendo_estrictas():
+    """Normalizar mayúsculas y espacios no puede servir para colarse sin secretos."""
+    for variante in ("Staging", "STAGING", "  staging  "):
+        with pytest.raises(SecretoInseguroError):
+            _validar_seguridad_entorno(_ajustes(seis_env=variante, jwt_secret=""))
+
+
+def test_el_mensaje_de_error_nombra_el_entorno_real_y_no_produccion():
+    """Quien despliega staging debe leer «staging» en el error, no «production».
+
+    Con un mensaje que solo hablara de producción, el operador buscaría el fallo
+    en el sitio equivocado — y el arranque abortado sería un misterio en vez de
+    una instrucción.
+    """
+    with pytest.raises(SecretoInseguroError) as fallo:
+        _validar_seguridad_entorno(_ajustes(seis_env="staging", jwt_secret=""))
+
+    assert "staging" in str(fallo.value)
+    assert "SEIS_ENV=production" not in str(fallo.value)
 
 
 # ── P0-1: la contraseña de la base de datos tampoco puede ser pública ───────

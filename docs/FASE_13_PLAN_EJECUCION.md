@@ -459,7 +459,8 @@ real es:
 **Cambios v2.0:** el snippet del mapa §2.8 es un borrador **erróneo** y debe descartarse (§11).
 Seguir el patrón ya probado de `jwt_secret`/`admin_password`: defaults `""` en el modelo, y
 comprobación de prefijo (`sk_live_`, `whsec_`, `pk_live_`) dentro de
-`_validar_seguridad_produccion(s)`. **No** meter las claves en `_CAMPOS_SECRETOS`, cuyo escaneo de
+`_validar_seguridad_entorno(s)` (se llamaba `_validar_seguridad_produccion` hasta la Fase 11; ojo:
+ahora se aplica también a `staging`). **No** meter las claves en `_CAMPOS_SECRETOS`, cuyo escaneo de
 marcadores de plantilla **rechazaría claves legítimas de Stripe**.
 
 ### Bloque C — Cliente Stripe y dominio puro

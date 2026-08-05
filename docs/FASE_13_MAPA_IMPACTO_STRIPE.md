@@ -296,7 +296,8 @@ class Settings(BaseSettings):
         return v
 ```
 
-Modificar `_validar_seguridad_produccion()`:
+Modificar `_validar_seguridad_entorno()` (renombrada en la Fase 11; antes
+`_validar_seguridad_produccion`, y ahora cubre también `staging`):
 ```python
 if SEIS_ENV == 'production':
     if not STRIPE_SECRET_KEY or not STRIPE_WEBHOOK_SECRET:

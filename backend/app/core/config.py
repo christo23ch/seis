@@ -8,7 +8,7 @@ class Settings(BaseSettings):
 
     app_name: str = "SEIS — Sistema Experto de Inversión en Subastas"
     api_v1_prefix: str = "/api/v1"
-    seis_env: str = "development"                      # development | production | test
+    seis_env: str = "development"          # development | test | staging | production
     database_url: str = "sqlite:///./seis_dev.db"      # en producción: postgresql+psycopg2://...
     redis_url: str = "redis://localhost:6379/0"
     seis_cors_origins: str = "http://localhost:3000"
@@ -71,8 +71,8 @@ class EntornoNoSoportadoError(ConfiguracionInseguraError):
     """
 
 
-class SecretoInseguroEnProduccionError(ConfiguracionInseguraError):
-    """El arranque en producción se niega si algún secreto no es propio y fuerte.
+class SecretoInseguroError(ConfiguracionInseguraError):
+    """El arranque en un entorno estricto se niega si algún secreto no es propio y fuerte.
 
     Corrección de raíz del hallazgo C1: la versión anterior comparaba contra una
     lista de cadenas concretas, de modo que cualquier placeholder distinto de las
@@ -83,15 +83,30 @@ class SecretoInseguroEnProduccionError(ConfiguracionInseguraError):
     se exige longitud, variedad de caracteres y ausencia de marcadores propios de
     una plantilla, y se compara contra el valor por defecto leído del propio
     modelo (no contra una cadena escrita a mano). Un secreto de ejemplo, de
-    plantilla o trivialmente débil no puede arrancar en producción, lo haya
-    escrito el repositorio o una persona.
+    plantilla o trivialmente débil no puede arrancar en un entorno estricto, lo
+    haya escrito el repositorio o una persona.
+
+    Se llamaba `SecretoInseguroEnProduccionError` hasta la Fase 11. El nombre dejó
+    de ser cierto al entrar `staging` en `ENTORNOS_ESTRICTOS`: la excepción ya no
+    habla solo de producción, y un nombre que miente en una traza cuesta más de lo
+    que ahorra no renombrarlo.
     """
 
 
 # Entornos reconocidos. Cualquier otro valor aborta el arranque (P1-1): no se
 # ignora en silencio, porque ignorarlo desactivaría la validación de secretos.
-ENTORNOS_SOPORTADOS = ("development", "test", "production")
-ENTORNOS_ESTRICTOS = ("production",)          # exigen secretos propios y fuertes
+ENTORNOS_SOPORTADOS = ("development", "test", "staging", "production")
+
+# Entornos que exigen secretos propios y fuertes.
+#
+# `staging` entra aquí junto a `production` (Fase 11, Bloque D) y no es una
+# formalidad: un staging es una réplica del sistema real, alcanzable desde
+# internet y a menudo poblada con una copia de los datos de producción. Admitirlo
+# como entorno soportado pero laxo habría creado la peor combinación posible —una
+# puerta con la misma superficie que producción y la guardia de secretos
+# desactivada—, que es justo lo que el hallazgo P1-1 vino a cerrar. Si un entorno
+# merece existir en internet, merece secretos propios.
+ENTORNOS_ESTRICTOS = ("staging", "production")
 
 # Campos que en producción deben ser secretos propios y fuertes.
 _CAMPOS_SECRETOS = ("jwt_secret", "admin_password")
@@ -135,9 +150,14 @@ def entorno_normalizado(seis_env: str) -> str:
 
     Corrección de P1-1: la seguridad no puede depender de que el operador escriba
     exactamente «production». Se aceptan mayúsculas y espacios, pero un valor
-    desconocido (`produccion`, `prod`, `staging`…) **no se ignora en silencio**:
+    desconocido (`produccion`, `prod`, `stagging`…) **no se ignora en silencio**:
     se rechaza el arranque, porque un entorno que el sistema no reconoce no
     permite decidir con qué rigor validar los secretos. Fallar en cerrado.
+
+    Ojo con las erratas de `staging`: `stagging` o `stage` NO son el entorno
+    staging, son entornos desconocidos, y por tanto abortan. Es deliberado —
+    admitir grafías aproximadas reabriría por la puerta de atrás el agujero que
+    P1-1 cerró.
     """
     entorno = (seis_env or "").strip().lower()
     if entorno not in ENTORNOS_SOPORTADOS:
@@ -150,16 +170,17 @@ def entorno_normalizado(seis_env: str) -> str:
     return entorno
 
 
-def _validar_seguridad_produccion(s: "Settings") -> None:
+def _validar_seguridad_entorno(s: "Settings") -> None:
     """Aborta el arranque si el entorno no está soportado o los secretos son débiles.
 
-    En `production` se exige que los secretos sean propios y fuertes; en
-    `development` y `test` no se aplica (comportamiento intacto para la suite).
-    Falla en cerrado a propósito — es preferible que un secreto legítimo sea
-    rechazado por parecerse a una plantilla (y se regenere) a que uno de ejemplo
-    llegue a producción.
+    En los entornos de `ENTORNOS_ESTRICTOS` (`staging` y `production`) se exige
+    que los secretos sean propios y fuertes; en `development` y `test` no se
+    aplica (comportamiento intacto para la suite). Falla en cerrado a propósito —
+    es preferible que un secreto legítimo sea rechazado por parecerse a una
+    plantilla (y se regenere) a que uno de ejemplo llegue a internet.
     """
-    if entorno_normalizado(s.seis_env) not in ENTORNOS_ESTRICTOS:
+    entorno = entorno_normalizado(s.seis_env)
+    if entorno not in ENTORNOS_ESTRICTOS:
         return
     problemas = []
     for campo in _CAMPOS_SECRETOS:
@@ -170,9 +191,12 @@ def _validar_seguridad_produccion(s: "Settings") -> None:
         if motivo:
             problemas.append(f"  · {campo.upper()}: {motivo}")
     if problemas:
-        raise SecretoInseguroEnProduccionError(
-            "Arranque abortado: SEIS_ENV=production exige secretos propios y "
-            "fuertes, y estos no lo son:\n" + "\n".join(problemas) +
+        # El mensaje nombra el entorno REAL y no «production» a secas: con staging
+        # ya en la lista, un texto que solo hablara de producción llevaría a quien
+        # despliega a buscar el fallo en el sitio equivocado.
+        raise SecretoInseguroError(
+            f"Arranque abortado: SEIS_ENV={entorno} es un entorno estricto y exige "
+            "secretos propios y fuertes, y estos no lo son:\n" + "\n".join(problemas) +
             "\n\nGenere valores únicos antes de desplegar, por ejemplo:\n"
             "  JWT_SECRET=$(openssl rand -base64 48)\n"
             "  ADMIN_PASSWORD=$(openssl rand -base64 18)\n"
@@ -183,5 +207,5 @@ def _validar_seguridad_produccion(s: "Settings") -> None:
 @lru_cache
 def get_settings() -> Settings:
     s = Settings()
-    _validar_seguridad_produccion(s)
+    _validar_seguridad_entorno(s)
     return s

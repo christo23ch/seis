@@ -36,7 +36,7 @@ Bloques de la **Fase 11-A**. El detalle fichero a fichero de cada uno está en `
 |---|---|---|---|
 | A | Salud por componente: liveness intacto, readiness pública, detalle autenticado | Obligatorio | ✅ Completado |
 | C′ | Higiene de despliegue portable (`.dockerignore`, variables SES/SMTP propagadas, `.env.produccion.example`) | Obligatorio | ⬜ Pendiente |
-| D | `staging` como **cuarto entorno estricto**, no solo soportado | Obligatorio | ⬜ Pendiente |
+| D | `staging` como **cuarto entorno estricto**, no solo soportado | Obligatorio | ✅ Completado |
 | E | `create_all` fuera de la ruta de producción | Obligatorio | ⬜ Pendiente |
 | F′ | CI que ejecute la **suite completa** y `npm run build`, no 1 de 14 ficheros | Obligatorio | ⬜ Pendiente |
 | H | IP real tras proxy — la puerta de despliegue heredada de la Fase 10 | Obligatorio | ⬜ Pendiente |
@@ -77,6 +77,8 @@ Es la **única cifra citable** en documentación y auditorías. Las anteriores (
 
 **Tras el Bloque A (medido):** **172 recogidos · 169 pasan · 2 fallan · 1 omitido.** Es decir, **+10 verdes y 0 regresiones**; los 2 rojos siguen siendo los mismos de PDF y el omitido sigue siendo T5.
 
+**Tras el Bloque D (medido):** **181 recogidos · 178 pasan · 2 fallan · 1 omitido.** Acumulado frente a la línea base: **+19 verdes y 0 regresiones**.
+
 ## Criterio de salida (literal)
 
 > «app accesible en `https://app.tudominio.com`, staging funcionando, un deploy automático a staging al fusionar en `main`, alarma recibida al simular una caída, y restauración documentada.»
@@ -91,6 +93,7 @@ Es la **única cifra citable** en documentación y auditorías. Las anteriores (
 ## ADR de esta fase
 
 - [[ADR-0006-liveness-y-readiness-separadas]] — Bloque A. Tres endpoints en vez del `/health` único que pedía el prompt.
+- [[ADR-0003-staging-como-entorno-estricto]] — Bloque D. `staging` entra en `ENTORNOS_SOPORTADOS` **y** en `ENTORNOS_ESTRICTOS`; si un entorno merece existir en internet, merece secretos propios.
 
 Los números **0003, 0004 y 0005 están reservados** para los ADR de los bloques D, E y H, que aún no se han implementado. Ver [[contador-secuencias]].
 
