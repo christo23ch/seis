@@ -96,6 +96,12 @@
 - **Reparado de paso:** `docker-compose.yml` era YAML inválido desde el commit inicial
   (bloque duplicado tras `volumes:`); se eliminó el duplicado y se añadió `--beat` al
   worker, sin el cual el digest y el polling nunca se ejecutan. Creado `.env.example`.
+  > **Derogado en parte por la Fase 11 (Bloque C′):** el `--beat` embebido se retiró y
+  > el planificador es ahora el servicio **`beat`**, propio y único. Con el planificador
+  > dentro del worker, escalar a N réplicas hacía que las N programaran el digest y cada
+  > usuario recibiera N copias del mismo mensaje. La necesidad que motivó aquel `--beat`
+  > sigue vigente: **sin planificador, el digest y el sondeo de Telegram no se ejecutan
+  > jamás.** `beat` no debe escalarse nunca.
 
 ### ✅ Fase 10 — Alta self-service (COMPLETADA, 2026-07-29)
 - **Registro público** `POST /auth/registro`: crea `Organizacion` propia + `Usuario`

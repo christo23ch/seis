@@ -37,7 +37,7 @@ vault: <qué cambió, en 3-6 palabras>
 Ejemplos reales que se generarán con este Vault:
 
 ```
-vault: ADR-0008 invalidación de sesiones tras reseteo
+vault: RFC-0003 invalidación de sesiones tras reseteo
 vault: postmortem INC-0001 cupo global de registro
 vault: dashboard home con métricas de la Fase 11
 ```

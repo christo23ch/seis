@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import smtplib
+import ssl
 from email.mime.text import MIMEText
 
 import httpx
@@ -100,7 +101,21 @@ class NotificadorEmail(Notificador):
         mime["From"] = s.email_from
         mime["To"] = para
         with smtplib.SMTP(s.smtp_host, s.smtp_puerto, timeout=10) as smtp:
-            smtp.starttls()
+            # El contexto es OBLIGATORIO. `starttls()` sin él usa
+            # `ssl._create_stdlib_context()`, que trae `verify_mode=CERT_NONE` y
+            # `check_hostname=False`: cualquier certificado autofirmado completa
+            # el handshake sin protesta. Un atacante con posición de red entre
+            # el contenedor y el relay captaría SMTP_USUARIO y SMTP_PASSWORD
+            # —`login()` va justo debajo, ya dentro del canal— y el contenido de
+            # todos los correos, que incluye los enlaces de verificación y de
+            # reseteo de contraseña de la Fase 10: con ellos se toma cualquier
+            # cuenta del sistema.
+            #
+            # Hasta la Fase 11 este camino era inalcanzable bajo Docker, porque
+            # las credenciales SMTP no se propagaban al contenedor y
+            # `disponible()` devolvía False. El Bloque C′ lo activó al cerrar
+            # ese hueco, de modo que el defecto pasó de latente a explotable.
+            smtp.starttls(context=ssl.create_default_context())
             if s.smtp_usuario:
                 smtp.login(s.smtp_usuario, s.smtp_password)
             smtp.sendmail(s.email_from, [para], mime.as_string())

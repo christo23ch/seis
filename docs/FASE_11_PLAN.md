@@ -168,6 +168,32 @@ Sin `docs/RUNBOOK.md` (es 11-B: no se puede escribir un runbook de un proveedor 
 
 ---
 
+## 3 bis · Correcciones al plan, verificadas contra el repositorio
+
+Este plan se redactó a partir de una inspección previa. Al ejecutarlo, dos de sus
+afirmaciones resultaron **falsas**. Se dejan escritas en lugar de corregirlas en
+silencio, porque un plan que se contradice con el repositorio y nadie lo anota es
+la forma en que un documento deja de merecer confianza.
+
+| Afirmación del plan | Realidad medida |
+|---|---|
+| Bloque D: «**Los 27 tests existentes no se modifican.**» | **Falsa.** `test_entorno_desconocido_aborta_el_arranque` (`backend/tests/test_seguridad_arranque.py:121`) listaba `"staging"` entre los valores que **deben abortar** el arranque. Al pasar `staging` a entorno soportado, ese caso tenía que desaparecer por fuerza. Se sustituyó por dos erratas (`stagging`, `stage`), que sí deben seguir abortando. |
+| Bloque C′: «`.env.example` — **Añadir las 7 de SES/SMTP**.» | **Ya estaban** desde la Fase 12 (`.env.example:72-80`). El hueco existía **solo** en `docker-compose.yml`, que es lo que el P1 de la Fase 12 describía con precisión. Lo que sí faltaba en `.env.example` era `HEALTH_TIMEOUT_SEGUNDOS` (nace en el Bloque A) y `SENTRY_DSN` (H5). |
+
+Añadidos al Bloque C′ que el plan no contemplaba, con su justificación:
+
+- **Ancla YAML `x-entorno-aplicacion`.** El plan pedía «propagar las 7 variables». Hacerlo a mano habría cerrado el síntoma dejando intacto el mecanismo: la causa raíz del P1 fueron **dos bloques `environment` duplicados que derivaron**, y la siguiente variable habría repetido la historia.
+- **`healthcheck` del backend** apuntando a `/api/v1/health`. Materializa el requisito operativo que el ADR-0006 dejó escrito como prosa, y lo pone bajo test.
+- **`beat` como servicio propio** — es la decisión H7(b) del responsable, que el plan situaba solo en la IaC futura.
+- **⚠️ `backend/app/notificadores/email.py` — cambio de CÓDIGO DE APLICACIÓN dentro de un bloque de higiene.** La tabla del Bloque C′ lista cuatro ficheros y ninguno es código en ejecución; este lo es, y es el único cambio de comportamiento en tiempo de ejecución de todo el bloque. `starttls()` pasa a `starttls(context=ssl.create_default_context())`. Sin contexto, Python usa `CERT_NONE` y `check_hostname=False`, de modo que cualquier certificado autofirmado completaba el handshake y un atacante con posición de red capturaba las credenciales SMTP **y los enlaces de verificación y de reseteo de contraseña**. Entra en este bloque porque **este bloque activó ese camino**: hasta ahora las credenciales SMTP no llegaban al contenedor, `disponible()` devolvía `False` y la rama era código muerto bajo Docker. Se cerró en el mismo movimiento que lo abrió.
+- **`.gitignore`** — no figuraba en la tabla. Se le añade la familia `.env.*` con readmisión explícita de las plantillas (la Fase 11 creó la trampa al introducir `.env.produccion.example`; medido con `git check-ignore` que `.env.produccion` **no** estaba protegido) y, como ampliación no exigida, un bloque de material criptográfico (`*.pem`, `*.key`, `id_rsa*`, `.netrc`, `credentials`, `secrets/`).
+- **Propagación en el compose más allá de las siete variables.** El plan pedía «propagar SES/SMTP». Se propagan además `VERSION_REGLAS` y `VERSION_PARAMETROS` —que **no llegaban a ningún contenedor**, hallazgo con implicación directa en el principio P1: ajustarlas en `.env` no tenía efecto bajo Docker— y `JWT_EXP_HORAS` en el backend, y se envuelven `DATABASE_URL` y `REDIS_URL` en `${...:-}` para que un valor del operador gane sobre la cadena hacia el contenedor local.
+- **`backend/tests/test_despliegue.py`** — el plan no preveía fichero de test para este bloque, y aporta 34.
+- **Corrección de la fila 2 de esta misma tabla.** Decía que a `.env.example` «solo faltaban `HEALTH_TIMEOUT_SEGUNDOS` y `SENTRY_DSN`». Fueron **siete**: esas dos más `BIND_BACKEND`, `BIND_FRONTEND`, `VERSION_REGLAS`, `VERSION_PARAMETROS` y `JWT_EXP_HORAS`, varias creadas por el propio bloque. Es justo el motivo por el que la expectativa dejó de escribirse a mano y pasó a derivarse del compose.
+- **Orden de commits.** El plan §6 fija A → C′ → D; el orden real fue **A → D → C′**. Inocuo, pero es una desviación del orden aprobado.
+- **ADR no previstos.** §G′ reservaba `ADR-0003`…`ADR-0006`. El Bloque C′ no tenía ADR asignado y ha generado el **`0007`** (planificador y ancla) y el **`0008`** (loopback por defecto).
+- **⚠️ Desviación del alcance aprobado: se tocó la publicación de puertos.** El plan dice literalmente, en la tabla del Bloque C′: «**No** se toca la publicación de puertos: es Fase 16». Se ha tocado. `backend` y `frontend` pasan a `${BIND_BACKEND:-127.0.0.1}` y `${BIND_FRONTEND:-127.0.0.1}`, es decir, **loopback por defecto** en vez de todas las interfaces. El motivo es que la premisa del diferimiento **caducó dentro de este mismo bloque**: se decidió cuando el compose era «orquestación local», y este bloque le cambió el encabezado a «orquestación local **y de despliegue portable**». Con el fichero ya pensado para un VPS, publicar 8000 en `0.0.0.0` deja `/docs` y `/openapi.json` enumerando la API sin autenticar y —más grave— permite hablar con uvicorn **saltándose el proxy inverso del Bloque H**, con lo que su lista de proxies de confianza no protegería nada. El cambio no depende de H1 (hosting) y es simétrico con lo que `db` y `redis` ya hacían. Se registra aquí en vez de dejarlo pasar.
+
 ## 4 · Lo que queda en la Fase 11-B (bloqueado)
 
 IaC del proveedor (5 servicios, secretos por referencia con `sync: false`, beat aislado

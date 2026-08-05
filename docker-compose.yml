@@ -1,4 +1,73 @@
-version: "3.9"
+# SEIS — orquestación local y de despliegue portable.
+#
+# `version:` se retiró en la Fase 11: Compose v2 lo ignora y emite un aviso de
+# obsolescencia en cada invocación.
+#
+# Entorno común de los tres servicios que ejecutan código de la aplicación
+# (backend, worker y beat). Es un ancla YAML deliberada, no un adorno: el
+# hallazgo P1 de la Fase 12 —siete variables de SES/SMTP que llegaban vacías al
+# contenedor y hacían que el email fallara EN SILENCIO, con un diagnóstico que
+# además mentía («Email sin proveedor configurado» cuando sí lo estaba)— no se
+# produjo por olvidar unas variables, sino por tener dos bloques `environment`
+# duplicados que derivaron el uno del otro. Con un ancla, esa deriva es
+# estructuralmente imposible: lo que se añade aquí llega a los tres.
+#
+# ⚠️ REGLA AL AÑADIR VARIABLES: en el ancla va **lo que necesitan los tres**; lo
+# que necesita uno solo va en su propio bloque. `SEIS_CORS_ORIGINS`, `LOGIN_*` y
+# `HEALTH_TIMEOUT_SEGUNDOS` viven fuera por eso. El caso concreto que viene:
+# cuando la Fase 13 traiga `STRIPE_SECRET_KEY` y `STRIPE_WEBHOOK_SECRET`, NO van
+# aquí — el planificador y el worker no cobran a nadie, y meterlas ampliaría lo
+# que filtra un contenedor comprometido.
+x-entorno-aplicacion: &entorno-aplicacion
+  # Envueltas en ${...:-} para que un DATABASE_URL o un REDIS_URL definidos en
+  # `.env` GANEN. Sin la envoltura, quien despliegue con compose sobre un VPS y
+  # apunte a un Postgres o un Redis gestionados vería su valor **ignorado en
+  # silencio**: la pila seguiría usando los contenedores locales y los datos
+  # aterrizarían en el sitio equivocado sin un solo mensaje de aviso.
+  DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://${POSTGRES_USER:-seis}:${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD en .env antes de arrancar}@db:5432/${POSTGRES_DB:-seis}}
+  REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+  SEIS_ENV: ${SEIS_ENV:-production}
+  # Cierre Fase 12 (P0.1): SIN valor por defecto a propósito. Si `.env` no los
+  # define, el servicio arranca vacío y la guardia de app/core/config.py aborta
+  # el arranque en vez de usar el secreto público del repositorio. El worker y el
+  # beat firman los mismos JWT y enlaces de baja que el backend: comparten
+  # secreto, y ninguno puede caer en el default público.
+  JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET en .env antes de arrancar}
+  ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@seis.local}
+  # ADMIN_PASSWORD viaja a los tres servicios aunque SOLO lo consuma el backend
+  # (`scripts/init_db.py`, siembra del admin bootstrap). No es un descuido: la
+  # guardia de `app/core/config.py` se ejecuta al importar `celery_app` y exige
+  # ambos secretos, de modo que sin él el worker y el beat NO ARRANCAN en un
+  # entorno estricto. Es exceso de privilegio medido y consciente —esa
+  # contraseña es la del usuario `es_superadmin`— y queda registrado en
+  # `docs/PENDIENTES.md` para desacoplarlo de la guardia sin romper el arranque.
+  ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Defina ADMIN_PASSWORD en .env antes de arrancar}
+  # Fase 12 — notificaciones. Sin valor, el canal queda inactivo y nada rompe.
+  FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+  EMAIL_PROVIDER: ${EMAIL_PROVIDER:-}
+  EMAIL_FROM: ${EMAIL_FROM:-noreply@seis.local}
+  POSTMARK_TOKEN: ${POSTMARK_TOKEN:-}
+  # Fase 11 (Bloque C′) — cierre del P1 de la Fase 12: estas siete no se
+  # propagaban, de modo que con EMAIL_PROVIDER=ses o =smtp las credenciales
+  # llegaban vacías al contenedor y las notificaciones desaparecían sin error.
+  SES_REGION: ${SES_REGION:-}
+  SES_ACCESS_KEY: ${SES_ACCESS_KEY:-}
+  SES_SECRET_KEY: ${SES_SECRET_KEY:-}
+  SMTP_HOST: ${SMTP_HOST:-}
+  SMTP_PUERTO: ${SMTP_PUERTO:-587}
+  SMTP_USUARIO: ${SMTP_USUARIO:-}
+  SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+  TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+  TELEGRAM_BOT_NOMBRE: ${TELEGRAM_BOT_NOMBRE:-}
+  # Versiones vigentes del conocimiento T2/T3. Van en el ancla —no solo en el
+  # backend— porque el worker también ejecuta análisis, y el principio P1
+  # (determinismo) exige que cada snapshot congele estas versiones: dos
+  # servicios que las leyeran distintas producirían análisis irreproducibles
+  # entre sí. Hasta la Fase 11 NO se propagaban a ningún contenedor, de modo que
+  # ajustarlas en `.env` no tenía efecto alguno dentro de Docker — exactamente el
+  # fallo mudo que el comentario de LOGIN_* dice estar previniendo.
+  VERSION_REGLAS: ${VERSION_REGLAS:-2026.07}
+  VERSION_PARAMETROS: ${VERSION_PARAMETROS:-2026.07}
 
 services:
   db:
@@ -16,6 +85,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+    restart: unless-stopped
     ports:
       # Publicado SOLO en loopback: la BD no debe ser alcanzable desde fuera del
       # host. Los servicios internos la usan por la red de Compose (host `db`).
@@ -28,6 +98,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+    restart: unless-stopped
     ports:
       # Redis no lleva autenticación: igual que la BD, solo loopback.
       - "127.0.0.1:6379:6379"
@@ -35,63 +106,108 @@ services:
   backend:
     build: ./backend
     environment:
-      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-seis}:${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD en .env antes de arrancar}@db:5432/${POSTGRES_DB:-seis}
-      REDIS_URL: redis://redis:6379/0
-      SEIS_ENV: ${SEIS_ENV:-production}
+      <<: *entorno-aplicacion
       SEIS_CORS_ORIGINS: ${SEIS_CORS_ORIGINS:-http://localhost:3000}
-      # Cierre Fase 12 (P0.1): SIN valor por defecto a propósito. Si `.env` no los
-      # define, el backend arranca vacío y la guardia de app/core/config.py aborta
-      # el arranque en vez de usar el secreto público del repositorio.
-      JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET en .env antes de arrancar}
-      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@seis.local}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Defina ADMIN_PASSWORD en .env antes de arrancar}
       # Fase 10 — anti-abuso del login y de los endpoints públicos que envían
       # correo. Se propagan aunque tengan valor por defecto en config.py: sin
       # esta línea, ajustarlos en `.env` no tendría ningún efecto dentro del
-      # contenedor y el operador no tendría forma de notarlo (es el defecto P1
-      # que la Fase 12 dejó registrado con SES y SMTP).
+      # contenedor y el operador no tendría forma de notarlo.
       LOGIN_MAX_INTENTOS: ${LOGIN_MAX_INTENTOS:-5}
       LOGIN_VENTANA_MIN: ${LOGIN_VENTANA_MIN:-15}
-      # Fase 12 — notificaciones (sin valor: el canal queda inactivo, nada rompe)
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
-      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-}
-      EMAIL_FROM: ${EMAIL_FROM:-noreply@seis.local}
-      POSTMARK_TOKEN: ${POSTMARK_TOKEN:-}
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
-      TELEGRAM_BOT_NOMBRE: ${TELEGRAM_BOT_NOMBRE:-}
+      # Fase 11 (Bloque A) — techo de espera de las sondas de /health/listo.
+      HEALTH_TIMEOUT_SEGUNDOS: ${HEALTH_TIMEOUT_SEGUNDOS:-2.0}
+      # Vida del token de sesión. Solo aquí: los tokens de sesión los emite la
+      # API, no el worker. Sin propagarla, la única palanca de caducidad de
+      # sesión no era configurable en un despliegue — y de ella depende el
+      # impacto de la deuda «el reseteo no invalida las sesiones abiertas».
+      JWT_EXP_HORAS: ${JWT_EXP_HORAS:-12}
     command: >
       sh -c "alembic upgrade head &&
              python -m scripts.init_db &&
              uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"
+    healthcheck:
+      # Apunta a la sonda de LIVENESS, jamás a /health/listo. Es el requisito
+      # operativo del ADR-0006: /health/listo toca la base de datos y Redis, y
+      # un orquestador que reiniciara el contenedor cada vez que una dependencia
+      # se pone lenta convertiría una degradación en una caída total. La imagen
+      # es python:3.12-slim y no trae curl ni wget, de ahí que se use la
+      # biblioteca estándar.
+      #
+      # `http.client` y NO `urllib.request`: este último construye su opener por
+      # defecto con un ProxyHandler alimentado desde el entorno, y
+      # `proxy_bypass("127.0.0.1")` devuelve False. En un host con HTTP_PROXY
+      # definido —VPS o red corporativa— la sonda dejaría de medir el proceso
+      # local y saldría hacia el proxy; si este contestara 200 con su página de
+      # error, el contenedor se declararía SANO con uvicorn muerto, y el
+      # frontend arrancaría contra un backend caído. La señal de salud quedaría
+      # invertida, que es peor que no tenerla. `http.client` ignora los proxies
+      # por construcción y tampoco sigue redirecciones.
+      test: ["CMD", "python", "-c",
+             "import http.client,sys; c=http.client.HTTPConnection('127.0.0.1',8000,timeout=3); c.request('GET','/api/v1/health'); sys.exit(0 if c.getresponse().status==200 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      # Holgado a propósito: el arranque encadena `alembic upgrade head` y la
+      # siembra inicial antes de que uvicorn escuche. El margen real tolerado es
+      # start_period + retries × interval ≈ 110 s, porque durante el periodo de
+      # gracia los fallos no cuentan como intentos.
+      #
+      # Qué ocurre si NO cabe: Compose v2 no reinicia contenedores por estar
+      # «unhealthy» —eso lo hacen Swarm y Kubernetes—, así que no hay bucle de
+      # reinicios. Lo que pasa es que `frontend`, que espera
+      # `condition: service_healthy`, aborta con «dependency failed to start»
+      # señalando al FRONTEND cuando el problema está en la migración. Ese
+      # diagnóstico apunta al sitio equivocado: anotado para el runbook de 11-B.
+      start_period: 60s
+    restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
     ports:
-      - "8000:8000"
+      # Interfaz de escucha parametrizada, con LOOPBACK por defecto. Este fichero
+      # dejó de ser «solo orquestación local» en la Fase 11: publicar 8000 en
+      # 0.0.0.0 en un VPS deja `/docs` y `/openapi.json` enumerando sin
+      # autenticar toda la superficie de la API, y —más grave— permite hablar
+      # directamente con uvicorn SALTÁNDOSE el proxy inverso del Bloque H, con
+      # lo que `--forwarded-allow-ips` no protegería nada.
+      # Para exponerlo a propósito: BIND_BACKEND=0.0.0.0 en `.env`.
+      - "${BIND_BACKEND:-127.0.0.1}:8000:8000"
 
-  # --beat embebido (Fase 12): programa el digest horario y el polling de Telegram.
-  # Si en la Fase 11 se escala a varias réplicas, extraer el beat a su propio servicio
-  # para no duplicar las tareas programadas.
+  # El worker ejecuta tareas; NO programa. El `--beat` embebido se retiró en la
+  # Fase 11 (H7): con el planificador dentro del worker, escalar a N réplicas
+  # hace que las N programen el digest horario y el sondeo de Telegram, de modo
+  # que cada usuario recibiría N copias del mismo mensaje. Un planificador debe
+  # ser único aunque los ejecutores sean muchos.
   worker:
     build: ./backend
-    command: celery -A app.tasks.celery_app.celery worker --beat --loglevel=INFO --concurrency=2
+    command: celery -A app.tasks.celery_app.celery worker --loglevel=INFO --concurrency=2
     environment:
-      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-seis}:${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD en .env antes de arrancar}@db:5432/${POSTGRES_DB:-seis}
-      REDIS_URL: redis://redis:6379/0
-      SEIS_ENV: ${SEIS_ENV:-production}
-      # Cierre Fase 12 (P0.1): el worker firma los mismos JWT/enlaces de baja que
-      # el backend — debe compartir el secreto, nunca caer en el default público.
-      JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET en .env antes de arrancar}
-      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@seis.local}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Defina ADMIN_PASSWORD en .env antes de arrancar}
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
-      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-}
-      EMAIL_FROM: ${EMAIL_FROM:-noreply@seis.local}
-      POSTMARK_TOKEN: ${POSTMARK_TOKEN:-}
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
-      TELEGRAM_BOT_NOMBRE: ${TELEGRAM_BOT_NOMBRE:-}
+      <<: *entorno-aplicacion
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Planificador. Debe existir EXACTAMENTE UNA instancia: no se escala nunca.
+  # Sin este servicio, el digest de notificaciones y el sondeo de Telegram no se
+  # ejecutan jamás — que es justo el defecto que la Fase 12 corrigió añadiendo
+  # `--beat`, y que se reintroduciría al quitarlo sin poner esto en su lugar.
+  beat:
+    build: ./backend
+    command: celery -A app.tasks.celery_app.celery beat --loglevel=INFO
+    environment:
+      <<: *entorno-aplicacion
+    # Crítico en ESTE servicio por encima de los demás: `beat` es único por
+    # diseño, así que si su proceso muere (OOM, excepción no capturada en una
+    # tarea programada, reinicio del host) nadie lo levanta y el digest y el
+    # sondeo de Telegram se detienen de forma indefinida, sin error visible y
+    # —con Sentry fuera de la fase— sin que nadie se entere. Es exactamente la
+    # misma clase de fallo silencioso que el P1 que este bloque vino a cerrar.
+    restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
@@ -103,10 +219,16 @@ services:
       context: ./frontend
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    restart: unless-stopped
     ports:
-      - "3000:3000"
+      # Mismo criterio que el backend: loopback por defecto, explícito para
+      # exponer. BIND_FRONTEND=0.0.0.0 en `.env` para publicarlo.
+      - "${BIND_FRONTEND:-127.0.0.1}:3000:3000"
     depends_on:
-      - backend
+      backend:
+        # Espera a que el backend esté sano de verdad —migraciones aplicadas y
+        # uvicorn escuchando—, no solo a que su contenedor exista.
+        condition: service_healthy
 
 volumes:
   pgdata:
