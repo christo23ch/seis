@@ -23,7 +23,7 @@ SORT numero ASC
 
 ## Ruta crítica declarada
 
-`9 → 9.5 → 10 → 11 → 13 → 20`. Ver `[[Fase-10-alta-self-service]]` para el estado más reciente verificado.
+`9 → 9.5 → 10 → 11 → 13 → 20`. Ver `[[Fase-11-infraestructura]]` para la fase en curso y `[[Fase-10-alta-self-service]]` para la última cerrada.
 
 ## Por qué esta nota no duplica el contenido
 

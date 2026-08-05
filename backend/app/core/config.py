@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     login_max_intentos: int = 5
     login_ventana_min: int = 15
 
+    # Salud por componente (Fase 11): techo de espera de cada sonda de
+    # /health/listo. Corto a propósito — una sonda que tarda más que el intervalo
+    # de sondeo del balanceador es inútil. Ver app/api/salud.py.
+    health_timeout_segundos: float = 2.0
+
     # Celery
     celery_task_always_eager: bool = False # True en tests: ejecuta tareas en proceso
 

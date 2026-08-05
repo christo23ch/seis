@@ -87,7 +87,7 @@ LIMIT 5
 
 ## Ruta crítica
 
-`9 ✅ → 9.5 ✅ → [[Fase-10-alta-self-service|10 ✅]] → 11 ⬅ siguiente → 13 → 20`
+`9 ✅ → 9.5 ✅ → [[Fase-10-alta-self-service|10 ✅]] → [[Fase-11-infraestructura|11 ⬅ en curso (alcance 11-A)]] → 13 → 20`
 
 Ver [[Plan-Maestro|Plan Maestro]] para el detalle completo por fase.
 

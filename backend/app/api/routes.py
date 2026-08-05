@@ -19,6 +19,18 @@ router = APIRouter(tags=["analisis"])
 
 @router.get("/health")
 def health() -> dict:
+    """Sonda de LIVENESS. Debe seguir siendo trivial: O(1) y sin ninguna E/S.
+
+    La plataforma de hosting la consulta cada pocos segundos y por réplica. Si
+    tocara la base de datos o Redis, una dependencia lenta o caída bastaría para
+    que la plataforma matase y reiniciase los procesos web sanos, convirtiendo
+    una degradación parcial en una caída total del servicio.
+
+    Quien necesite el estado real de los componentes —monitorización externa,
+    balanceador— tiene `GET /health/listo` (readiness) y, autenticado como
+    superadministrador, `GET /health/detalle`. Ambos en `app/api/salud.py`.
+    NO añadir aquí comprobaciones de dependencias (Fase 11, Bloque A).
+    """
     return {"status": "ok", "servicio": "seis-backend"}
 
 
