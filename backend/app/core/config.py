@@ -24,6 +24,23 @@ class Settings(BaseSettings):
     login_max_intentos: int = 5
     login_ventana_min: int = 15
 
+    # Mantenimiento (Fase 11, Bloque I): días que se conserva un `jti` gastado
+    # antes de purgarlo. DEBE superar el TTL del token de un solo uso más largo
+    # —ver `TTL_MAXIMO_JTI_HORAS` más abajo, que explica cuál es y por qué NO es
+    # el que parece—, porque el `jti` es lo único que impide reutilizar un
+    # enlace: borrarlo antes de tiempo devuelve el uso único.
+    purga_tokens_dias: int = 45
+
+    # Purga de cuentas registradas y nunca verificadas (deuda 10).
+    # `informar` por defecto, a propósito: el mecanismo se entrega completo y
+    # probado, pero un borrado irreversible no debe ser el comportamiento por
+    # defecto de algo que aún no se ha visto correr contra datos reales. Pasar a
+    # `borrar` es una variable de entorno, no un despliegue de código.
+    purga_cuentas_modo: str = "informar"          # informar | borrar
+    # 30 veces el TTL del enlace de verificación (24 h). Más corto castigaría a
+    # quien se registra antes de un viaje; mucho más largo equivale a no purgar.
+    purga_cuentas_dias: int = 30
+
     # Salud por componente (Fase 11): techo de espera de cada sonda de
     # /health/listo. Corto a propósito — una sonda que tarda más que el intervalo
     # de sondeo del balanceador es inútil. Ver app/api/salud.py.
@@ -204,8 +221,67 @@ def _validar_seguridad_entorno(s: "Settings") -> None:
             "son públicos.")
 
 
+# TTL máximo, en horas, de un token que llega a reclamar su `jti`.
+#
+# NO es el token de vida más larga del proyecto. El de baja dura 30 días, pero
+# `/notificaciones/baja` **no llama a `marcar_jti`** —darse de baja dos veces es
+# inocuo—, así que nunca entra en `token_consumido`. Los únicos que sí entran son
+# los de verificación (24 h) y reseteo (1 h), ambos por `_consumir_token` en
+# `app/api/auth.py`, que es el único llamante de `marcar_jti`.
+#
+# El valor se declara aquí y no se importa de `registro_service` porque ese
+# módulo importa esta configuración y habría ciclo. Lo que impide que se quede
+# obsoleto es un test que lo deriva del código real: si alguien alarga el TTL de
+# verificación por encima de esta cifra, ese test se pone rojo.
+TTL_MAXIMO_JTI_HORAS = 24
+
+# Suelo de la ventana de purga de cuentas. Por debajo, la purga deja de limpiar
+# abandonos y empieza a castigar a usuarios legítimos: quien se registra un
+# viernes y abre el correo el lunes.
+PURGA_CUENTAS_DIAS_MINIMO = 7
+
+
+def _validar_purgas(s: "Settings") -> None:
+    """Aborta el arranque si los plazos de purga pueden destruir datos legítimos.
+
+    El módulo de purga presume como principio que «una errata en la variable de
+    entorno nunca borra», y lo cumple para `PURGA_CUENTAS_MODO`, que falla en
+    cerrado ante un valor desconocido. **No lo cumplía para los números**, que son
+    el otro parámetro que decide a quién alcanza el borrado: `PURGA_CUENTAS_DIAS=3`
+    —una errata plausible, se cae el cero de 30— es un entero perfectamente
+    válido para Pydantic, no llama la atención en ningún log, y la ejecución
+    nocturna borra de forma irreversible todas las altas de más de tres días.
+
+    Y `PURGA_TOKENS_DIAS` demasiado bajo es peor que un borrado: el `jti` es lo
+    único que impide reutilizar un enlace de un solo uso, así que purgarlo antes
+    de que el token caduque **reabre el uso único** que la Fase 10 cerró.
+    """
+    problemas = []
+    if s.purga_cuentas_dias < PURGA_CUENTAS_DIAS_MINIMO:
+        problemas.append(
+            f"  · PURGA_CUENTAS_DIAS={s.purga_cuentas_dias}: el mínimo es "
+            f"{PURGA_CUENTAS_DIAS_MINIMO} días. Por debajo, la purga borra altas "
+            "de usuarios que todavía podían verificarse.")
+
+    minimo_tokens = TTL_MAXIMO_JTI_HORAS / 24
+    if s.purga_tokens_dias <= minimo_tokens:
+        problemas.append(
+            f"  · PURGA_TOKENS_DIAS={s.purga_tokens_dias}: debe superar "
+            f"ESTRICTAMENTE los {minimo_tokens:g} días que vive el token de un "
+            "solo uso más largo; si no, la purga puede devolverle un uso a un "
+            "enlace ya consumido.")
+
+    if problemas:
+        raise ConfiguracionInseguraError(
+            "Arranque abortado: los plazos de purga destruirían datos que aún no "
+            "deben tocarse.\n" + "\n".join(problemas))
+
+
 @lru_cache
 def get_settings() -> Settings:
     s = Settings()
     _validar_seguridad_entorno(s)
+    # Se valida en TODOS los entornos, no solo en los estrictos: un borrado
+    # irreversible mal configurado es igual de destructivo en desarrollo.
+    _validar_purgas(s)
     return s

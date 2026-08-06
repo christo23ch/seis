@@ -263,7 +263,14 @@ def test_los_servicios_de_aplicacion_se_reinician_solos(servicio):
         "muere, nada lo levanta.")
 
 
-@pytest.mark.parametrize("variable", ["VERSION_REGLAS", "VERSION_PARAMETROS"])
+@pytest.mark.parametrize("variable", [
+    "VERSION_REGLAS", "VERSION_PARAMETROS",
+    # Fase 11, Bloque I. El mismo defecto ya se produjo tres veces en este
+    # proyecto —SES/SMTP, VERSION_* y estas—: una variable que el código
+    # documenta como interruptor y que no llega al contenedor. Las dos primeras
+    # veces dejaron test; esta también.
+    "PURGA_CUENTAS_MODO", "PURGA_CUENTAS_DIAS", "PURGA_TOKENS_DIAS",
+])
 def test_las_versiones_del_conocimiento_llegan_a_todos_los_servicios(variable):
     """P1 (determinismo): cada análisis congela estas versiones en su snapshot.
 
@@ -369,7 +376,8 @@ def test_la_plantilla_de_produccion_no_rompe_la_configuracion_al_copiarse():
     De ahí que las numéricas vayan comentadas con su defecto a la vista.
     """
     numericas = {"LOGIN_MAX_INTENTOS", "LOGIN_VENTANA_MIN",
-                 "HEALTH_TIMEOUT_SEGUNDOS", "SMTP_PUERTO", "JWT_EXP_HORAS"}
+                 "HEALTH_TIMEOUT_SEGUNDOS", "SMTP_PUERTO", "JWT_EXP_HORAS",
+                 "PURGA_CUENTAS_DIAS", "PURGA_TOKENS_DIAS"}
 
     vacias_y_activas = {linea.partition("=")[0].strip()
                         for linea in _lineas_utiles(ENV_PRODUCCION)

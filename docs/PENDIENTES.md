@@ -105,10 +105,18 @@ Seis hallazgos se arreglaron dentro de la propia fase, no se difirieron:
    `docker-compose.yml` a Internet**: hasta que haya proxy inverso con
    `uvicorn --proxy-headers` y `--forwarded-allow-ips` acotado a ese proxy, este
    despliegue no sale a producción.
-2. **`token_consumido` crece sin purga** *(propietario: Fase 11)*. Una fila por
-   cada enlace de verificación o reseteo consumido, para siempre. Candidata a
-   tarea beat que borre las anteriores al TTL máximo (30 días cubre los tres
-   propósitos vigentes).
+2. ~~**`token_consumido` crece sin purga**~~ → ✅ **CERRADA por la Fase 11, Bloque I.**
+   Tarea beat `seis.purgar`, diaria y con horario `crontab`. Retención por
+   defecto de **45 días**, configurable, y el arranque **aborta** si se baja por
+   debajo del TTL real.
+   > La propuesta original decía «30 días cubre los tres propósitos vigentes».
+   > Es **incorrecta por partida doble**, y conviene dejarlo escrito porque el
+   > razonamiento importa más que el número: (a) el token de baja dura
+   > exactamente `24 * 30` horas, así que 30 días dejaría **margen cero**; y (b),
+   > más importante, **ese token nunca entra en la tabla**: `marcar_jti` tiene un
+   > único llamante (`app/api/auth.py`), que sirve a `/verificar` y `/resetear`,
+   > mientras que `/notificaciones/baja` decodifica y aplica sin reclamar el
+   > `jti`. El TTL máximo que sí llega es el de verificación, **24 horas**.
 3. **Fuga por temporización en el login** *(propietario: Fase 16)*. `autenticar` y
    `autenticar_con_motivo` cortocircuitan si el email no existe, sin llegar a
    ejecutar PBKDF2 (240 000 iteraciones). La diferencia es medible y permite
@@ -136,12 +144,20 @@ Seis hallazgos se arreglaron dentro de la propia fase, no se difirieron:
    camino «no existe» retorna al instante. Medir el tiempo permite distinguirlos,
    que es justo lo que D5 quiso impedir. Se cierra encolando el envío en Celery,
    que el proyecto ya usa, en vez de enviarlo dentro de la petición.
-7. **El limitador no reintenta Redis tras el primer fallo** *(propietario: Fase 11)*.
-   `_cliente_redis` se cachea como `False` en cuanto falla el primer `ping()` del
-   proceso y no se vuelve a intentar en toda su vida. `docker-compose.yml` cubre
-   el arranque con `depends_on: condition: service_healthy`, pero una caída de
-   Redis posterior degrada a memoria de forma silenciosa y **permanente** hasta
-   reiniciar — y con `--workers 2` eso duplica el límite efectivo.
+7. ~~**El limitador no reintenta Redis tras el primer fallo**~~ → ✅ **CERRADA por la
+   Fase 11, Bloque I.** Retroceso exponencial acotado (1 s → 30 s), y un fallo de
+   **operación** —no solo de conexión— suelta el cliente: sin eso, un Redis que
+   muere a mitad de vida dejaba a cada petición pagando su timeout. El retroceso
+   se reinicia tras una operación correcta y no tras el `ping`, porque un Redis
+   que responde al `PING` pero rechaza escrituras (memoria agotada, réplica en
+   solo lectura) mantenía el ciclo en un segundo indefinidamente.
+   > Cerrarla destapó un segundo defecto, **ya corregido en el mismo bloque**:
+   > los dos almacenes no se sincronizan, de modo que un parpadeo de Redis
+   > **levantaba los bloqueos vigentes**. Se anota siempre en ambos y se lee en
+   > OR, pero **solo mientras la degradación sea reciente**: con Redis sano manda
+   > Redis, porque `limpiar()` borra la clave global y de la memoria solo la del
+   > proceso que atiende, y con `--workers 2` consultar la memoria siempre haría
+   > que un acceso correcto dejara de desbloquear.
 8. **Las cuatro páginas públicas nuevas duplican estructura** *(propietario: Fase 15)*.
    `/registro`, `/verificar`, `/recuperar` y `/resetear` repiten envoltorio,
    cabecera, máquina de estados y bloque de éxito, y `/login` y `/baja` ya lo
@@ -151,9 +167,27 @@ Seis hallazgos se arreglaron dentro de la propia fase, no se difirieron:
    *(propietario: Fase 16)*. El mínimo de 8 caracteres no comprueba contra
    contraseñas frecuentes, que es lo que NIST 800-63B recomienda por encima de las
    reglas de composición. La única barrera anti-automatización es el limitador.
-10. **Las cuentas registradas y nunca verificadas no caducan**
-   *(propietario: Fase 11)*. Mismo patrón que la deuda 2: candidatas a la misma
-   tarea de purga periódica.
+10. ~~**Las cuentas registradas y nunca verificadas no caducan**~~ → ✅ **MECANISMO
+   ENTREGADO por la Fase 11, Bloque I; BORRADO DESACTIVADO por defecto.**
+   `app/services/purga_service.py`, con predicado de nueve condiciones, borrado
+   ordenado (ninguna clave foránea declara `ondelete` y `Usuario` no tiene
+   `relationship()`, así que no hay cascada de ningún tipo) y revalidación bajo
+   bloqueo para cerrar la carrera con `/verificar`.
+   > **`PURGA_CUENTAS_MODO=informar` de fábrica**: cuenta las candidatas, lo
+   > registra y **no borra nada**. Un borrado irreversible no debe ser el
+   > comportamiento por defecto de algo que aún no se ha visto correr contra
+   > datos reales. Activarlo es una variable de entorno.
+   >
+   > **Queda abierto lo operativo**: nadie ha mirado todavía un informe real, así
+   > que **la deuda no está cerrada en producción hasta que alguien active el
+   > modo `borrar` con evidencia delante**. Propietario de ese paso: quien
+   > despliegue.
+   >
+   > Hallazgo de paso, que eleva esto de higiene a defecto funcional: una cuenta
+   > zombi **secuestra la dirección de correo indefinidamente**, porque
+   > `registrar_usuario` no crea nada si el email existe y el endpoint responde
+   > 201 neutro. Hoy cualquiera puede registrar la dirección de un tercero, no
+   > verificarla nunca y **negarle el alta a su titular para siempre**.
 11. **El JWT de sesión vive en `localStorage`** *(propietario: Fase 16, preexistente)*.
    `frontend/lib/api.ts`. Cualquier XSS expondría la sesión completa, lo que
    amplificaría las deudas 3 y 4. No lo introduce esta fase; se anota porque la
@@ -248,7 +282,7 @@ Resumen (detalle y prompts de ejecución en `docs/SEIS_Plan_Maestro_Fases_920.md
 
 | Fase | Nombre | Notas |
 |---|---|---|
-| 11 | Infraestructura de producción | 🔄 **EN CURSO** (rama `fase-11-infraestructura`). Partida en **11-A** (agnóstica del proveedor: bloques A ✅, C′ ✅, D ✅, E, F′, H, I) y **11-B** (dependiente del proveedor: IaC, jobs de despliegue, RUNBOOK — bloqueada por H1/H2/H6). **Sentry NO forma parte de la fase**: quedó fuera por decisión del responsable (H5) y no tiene fase propietaria — ver la deuda abierta más abajo. **Hereda de la Fase 10:** proxy inverso que conserve la IP de origen (Bloque H, pendiente) y purga de `token_consumido` (Bloque I, pendiente) |
+| 11 | Infraestructura de producción | 🔄 **EN CURSO** (rama `fase-11-infraestructura`). Partida en **11-A** (agnóstica del proveedor: bloques A ✅, C′ ✅, D ✅, E, F′, H, I) y **11-B** (dependiente del proveedor: IaC, jobs de despliegue, RUNBOOK — bloqueada por H1/H2/H6). **Sentry NO forma parte de la fase**: quedó fuera por decisión del responsable (H5) y no tiene fase propietaria — ver la deuda abierta más abajo. **Hereda de la Fase 10:** proxy inverso que conserve la IP de origen (Bloque H, **pendiente**) y las tres deudas del **Bloque I ✅** (purga de `token_consumido`, reintento de Redis en el limitador y caducidad de las cuentas nunca verificadas, esta última con el borrado desactivado de fábrica) |
 | ~~12~~ | ~~Notificaciones multicanal + scoring~~ | ✅ **Completada** — ver sección propia más abajo |
 | 13 | Monetización (Stripe) | planes/límites, webhooks idempotentes |
 | 14 | Cumplimiento legal y RGPD | consentimientos, ARCO, textos legales (revisión de abogado) |
@@ -451,7 +485,20 @@ corrigió dentro del propio bloque no figura aquí; esto es lo que **queda abier
    riesgo baja mucho, pero en una sesión de despliegue con varias recreaciones
    seguidas el digest puede no llegar a dispararse. Arreglo: `--schedule=` a un
    volumen nombrado.
-7. **La suite no es idempotente ante un `seis_dev.db` superviviente** *(propietario:
+7. **La suite entera corre SIN integridad referencial** *(propietario: SIN ASIGNAR;
+   preexistente, medido en la Fase 11, Bloque I)*. En SQLite las claves foráneas
+   están **desactivadas por defecto** y `app/core/db.py` no ejecuta
+   `PRAGMA foreign_keys=ON` en ninguna parte. Medido: `PRAGMA foreign_keys` → `0`.
+   Consecuencia: **cualquier borrado desordenado pasa en verde en la suite y deja
+   filas huérfanas, mientras en PostgreSQL abortaría la transacción.** Es la
+   misma clase de falso verde que esta fase ya ha corregido tres veces. Hoy solo
+   lo cubre `test_la_purga_no_deja_filas_huerfanas_con_claves_foraneas_activas`,
+   que lo activa para su propio caso y lo restaura al salir.
+   Ojo al activarlo globalmente: el PRAGMA es **por conexión** y la conexión
+   vuelve al pool, de modo que activarlo en un test se filtra a los siguientes y
+   convierte sus fallos en dependientes del orden (medido). La vía correcta es un
+   listener `connect` sobre el motor, no una llamada suelta.
+8. **La suite no es idempotente ante un `seis_dev.db` superviviente** *(propietario:
    SIN ASIGNAR; preexistente, detectado de paso en la Fase 11)*. La fixture `api`
    borra el fichero en su teardown, pero en Windows ese borrado puede fallar con
    `PermissionError: [WinError 32]` si alguna conexión sigue abierta. Cuando eso

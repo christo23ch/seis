@@ -68,6 +68,15 @@ x-entorno-aplicacion: &entorno-aplicacion
   # fallo mudo que el comentario de LOGIN_* dice estar previniendo.
   VERSION_REGLAS: ${VERSION_REGLAS:-2026.07}
   VERSION_PARAMETROS: ${VERSION_PARAMETROS:-2026.07}
+  # Fase 11 (Bloque I) — mantenimiento periódico. Van al ancla porque las ejecuta
+  # el `worker` y las importa el `beat`. Sin propagarlas, el interruptor que el
+  # código documenta («pasar a borrar es una variable de entorno, no un
+  # despliegue») sería literalmente falso en el único despliegue que existe: el
+  # contenedor no ve el `.env` de la raíz. Es el mismo fallo mudo que ya se
+  # corrigió con SES/SMTP y con VERSION_*.
+  PURGA_CUENTAS_MODO: ${PURGA_CUENTAS_MODO:-informar}
+  PURGA_CUENTAS_DIAS: ${PURGA_CUENTAS_DIAS:-30}
+  PURGA_TOKENS_DIAS: ${PURGA_TOKENS_DIAS:-45}
 
 services:
   db:

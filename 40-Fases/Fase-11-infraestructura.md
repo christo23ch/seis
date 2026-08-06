@@ -40,7 +40,7 @@ Bloques de la **Fase 11-A**. El detalle fichero a fichero de cada uno está en `
 | E | `create_all` fuera de la ruta de producción | Obligatorio | ⬜ Pendiente |
 | F′ | CI que ejecute la **suite completa** y `npm run build`, no 1 de 14 ficheros | Obligatorio | ⬜ Pendiente |
 | H | IP real tras proxy — la puerta de despliegue heredada de la Fase 10 | Obligatorio | ⬜ Pendiente |
-| I | Deudas heredadas con propietario «Fase 11» (reintento de Redis, purga de `token_consumido`, cuentas nunca verificadas) | Obligatorio | ⬜ Pendiente |
+| I | Deudas heredadas con propietario «Fase 11» (reintento de Redis, purga de `token_consumido`, cuentas nunca verificadas) | Obligatorio | ✅ **Cerrado** tras tres revisiones — con el borrado de cuentas **desactivado de fábrica** |
 
 ## Decisiones tomadas y diferidas (H0-H10)
 
@@ -81,6 +81,8 @@ Es la **única cifra citable** en documentación y auditorías. Las anteriores (
 
 **Tras el Bloque D (medido):** **181 recogidos · 178 pasan · 2 fallan · 1 omitido.** Acumulado frente a la línea base: **+19 verdes y 0 regresiones**.
 
+**Tras el Bloque I, cifra final tras sus revisiones (medida):** **260 recogidos · 257 pasan · 2 fallan · 1 omitido.** Los 2 rojos siguen siendo los de PDF y el omitido sigue siendo T5.
+
 **Tras el Bloque C′, cifra final tras las tres revisiones (medida):** **220 recogidos · 217 pasan · 2 fallan · 1 omitido.** Acumulado frente a la línea base: **+58 verdes y 0 regresiones**. Los 2 rojos siguen siendo los de PDF y el omitido sigue siendo T5. Las medidas intermedias del bloque (212 y 233) quedan derogadas por esta.
 
 > **El número de tests BAJÓ respecto de la medición intermedia de 233, y conviene decirlo sin adornar.** No es pérdida de cobertura: es lo contrario. Un test de inventario con **16 parámetros escritos a mano** se sustituyó por **2 tests derivados del propio `docker-compose.yml`**, y se retiró un test que fijaba como invariante una decisión de empaquetado reversible. **Menos elementos, más cobertura real** — contar tests mide el tamaño de la batería, no lo que la batería demuestra.
@@ -108,6 +110,7 @@ Tres revisiones independientes (`security-reviewer`, `pr-test-analyzer`, `code-r
 
 - [[ADR-0006-liveness-y-readiness-separadas]] — Bloque A. Tres endpoints en vez del `/health` único que pedía el prompt.
 - [[ADR-0003-staging-como-entorno-estricto]] — Bloque D. `staging` entra en `ENTORNOS_SOPORTADOS` **y** en `ENTORNOS_ESTRICTOS`; si un entorno merece existir en internet, merece secretos propios.
+- [[ADR-0009-purga-de-cuentas-nunca-verificadas]] — Bloque I. Predicado de nueve condiciones, borrado ordenado (no hay cascada de ningún tipo: cero `relationship()` y ninguna clave foránea con `ondelete`) y **modo `informar` de fábrica**. La auditoría no se borra jamás: una traza cuya vida depende de la existencia del auditado no es auditoría.
 - [[ADR-0007-planificador-celery-separado-del-worker]] — Bloque C′. `beat` deja de ser una bandera del worker y pasa a ser servicio propio (escalar el worker duplicaba los mensajes a cada usuario), y el entorno de `backend`, `worker` y `beat` se define **una sola vez** en un ancla YAML. El mismo bloque añade `backend/.dockerignore` —`backend/Dockerfile:8` es `COPY . .`, de modo que un `.env` presente acabaría en una capa de la imagen, y **borrarlo después no lo elimina**— y el `healthcheck` del backend contra `/api/v1/health`. Las revisiones le añadieron una regla explícita: **en el ancla va lo que necesitan los tres; lo que necesita uno solo va en su bloque** — y con ella el caso ya decidido de que **las claves de Stripe de la Fase 13 no van al ancla**.
 - [[ADR-0008-loopback-por-defecto-en-los-puertos-publicados]] — Bloque C′. `backend` y `frontend` pasan a `${BIND_BACKEND:-127.0.0.1}` y `${BIND_FRONTEND:-127.0.0.1}`. **Desviación del alcance aprobado**, que difería esto a la Fase 16: la premisa del diferimiento caducó dentro del propio bloque, al dejar de ser el compose «orquestación local» para convertirse en base de un despliegue portable. Con 8000 en `0.0.0.0`, `/docs` y `/openapi.json` enumeran la API sin autenticar y se puede hablar con uvicorn **saltándose el proxy inverso del Bloque H**.
 
