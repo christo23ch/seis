@@ -15,10 +15,48 @@ _DEJAVU = Path("/usr/share/fonts/truetype/dejavu")
 _EMOJI = re.compile(r"[\U0001F300-\U0001FAFF\u2600-\u27BF\uFE0F]")
 
 
+# Viñeta del listado. Constante y no literal suelto: era un literal concatenado
+# FUERA del saneador, y por ahí entró el carácter que rompía el informe entero.
+VINETA = "•"
+
+# Pie de página. Constante y no literal dentro de `footer()` por testabilidad:
+# embebido allí no hay forma de sustituirlo, y comprobar que pasa por el saneador
+# era imposible — el texto actual sobrevive a latin-1 por casualidad.
+PIE = "SEIS · página {n}"
+
+# Equivalencias tipográficas para el respaldo latin-1. Sin ellas,
+# `encode("latin-1", "replace")` sustituye cada carácter por «?», que es
+# técnicamente correcto y produce un informe ilegible: los guiones largos, las
+# comillas tipográficas y los operadores de comparación aparecen por todo el
+# texto que genera M14. Traducir es barato y conserva el sentido.
+_EQUIVALENCIAS = {
+    "•": "-", "‣": "-",                      # viñetas
+    "–": "-", "—": "-", "―": "-",       # guiones largos
+    "“": '"', "”": '"', "„": '"',       # comillas dobles
+    "‘": "'", "’": "'", "‚": "'",       # comillas simples
+    "…": "...",                                   # puntos suspensivos
+    "→": "->", "←": "<-", "⇒": "=>",    # flechas
+    "≥": ">=", "≤": "<=", "≠": "!=",    # comparadores
+    "™": "(TM)", "€": "EUR",                 # símbolos
+    # `δ` la emite M14 en la sección de Valoración («δ_v aplicado»). Es el ÚNICO
+    # carácter del informe dorado §19 que acababa reemplazado por «?».
+    "δ": "delta", "σ": "sigma", "Δ": "delta",
+    " ": " ", " ": " ", " ": " ",       # espacios duros y finos
+}
+
+
 def _limpiar(texto: str, unicode_ok: bool) -> str:
+    """Único punto por el que el texto puede llegar a fpdf.
+
+    Con DejaVu disponible solo se retiran emojis y marcas de Markdown. Sin ella,
+    además se translitera a latin-1: primero por equivalencias legibles y solo
+    después, como último recurso, con el reemplazo de `encode`.
+    """
     texto = _EMOJI.sub("", texto)
     texto = texto.replace("**", "").replace("`", "").replace("_", " ")
     if not unicode_ok:
+        for original, equivalente in _EQUIVALENCIAS.items():
+            texto = texto.replace(original, equivalente)
         texto = texto.encode("latin-1", "replace").decode("latin-1")
     return texto.strip()
 
@@ -39,7 +77,12 @@ class _InformePDF(FPDF):
         self.set_y(-12)
         self.set_font(self.familia, "", 8)
         self.set_text_color(120)
-        self.cell(0, 8, f"SEIS · página {self.page_no()}", align="C")
+        # También por el saneador: es texto que llega a fpdf igual que el resto,
+        # y hoy sobrevive a latin-1 por casualidad, no por diseño. El literal vive
+        # en `PIE` para que un test pueda sustituirlo: embebido aquí, comprobar
+        # que pasa por el saneador era imposible.
+        self.cell(0, 8, _limpiar(PIE.format(n=self.page_no()), self.unicode_ok),
+                  align="C")
         self.set_text_color(0)
 
 
@@ -55,7 +98,8 @@ def _volcar_tabla(pdf: _InformePDF, filas: list[list[str]]) -> None:
 
 def informe_a_pdf(markdown: str, titulo: str = "Informe de análisis SEIS") -> bytes:
     pdf = _InformePDF()
-    pdf.set_title(titulo)
+    # El título va a los metadatos del PDF, que también se codifican.
+    pdf.set_title(_limpiar(titulo, pdf.unicode_ok))
     pdf.add_page()
     tabla_actual: list[list[str]] = []
 
@@ -86,7 +130,16 @@ def informe_a_pdf(markdown: str, titulo: str = "Informe de análisis SEIS") -> b
             pdf.ln(1)
         elif raw.lstrip().startswith("- "):
             pdf.set_font(pdf.familia, "", 9)
-            pdf.multi_cell(0, 5, "  •  " + _limpiar(raw.lstrip()[2:], pdf.unicode_ok), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+            # La viñeta va DENTRO de `_limpiar`, no concatenada fuera. Esta línea
+            # era la causa raíz: con Helvetica, `•` (U+2022) no existe en latin-1
+            # y fpdf2 lanzaba FPDFUnicodeEncodingException, tirando el informe
+            # entero en cualquier máquina sin la fuente DejaVu.
+            # La viñeta se sanea CON el contenido; la sangría se añade después y
+            # por fuera, porque son espacios ASCII y no pueden romper nada. Meter
+            # también la sangría dentro costaba la indentación de todas las
+            # listas del informe: `_limpiar` termina en `.strip()`.
+            texto = "  " + _limpiar(f"{VINETA}  {raw.lstrip()[2:]}", pdf.unicode_ok)
+            pdf.multi_cell(0, 5, texto, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         else:
             negrita = "B" if raw.startswith("**") else ""
             pdf.set_font(pdf.familia, negrita, 9.5)

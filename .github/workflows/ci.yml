@@ -10,17 +10,13 @@
 # igual que hace `backend/Dockerfile`, con lo que el runner se parece a la imagen
 # que se despliega y los dos rojos de PDF desaparecen.
 #
-# ⚠️ LO QUE ESTO **NO** ARREGLA, y conviene no confundirlo con un arreglo.
-# Con la fuente instalada, `pdf_service.py` toma la rama `unicode_ok=True` y la
-# rama de respaldo —la que corre en cualquier máquina o imagen SIN la fuente,
-# incluido todo Windows de desarrollo, porque `_DEJAVU` es una ruta POSIX
-# absoluta— **queda rota y además sin cobertura**. La causa raíz está
-# identificada y medida: no es una tabla de transliteración incompleta, es un
-# literal `"  •  "` concatenado FUERA del saneador en `pdf_service.py`. El
-# arreglo es de una línea, toca fuera del alcance de esta fase y requiere
-# aprobación explícita. Detalle en `docs/PENDIENTES.md`.
-#
-# Es decir: **un verde aquí no significa que el PDF funcione sin la fuente.**
+# La fuente es cobertura ADICIONAL, no el mecanismo que tapa el problema: la
+# causa raíz del fallo de PDF se corrigió en `pdf_service.py` (una viñeta que se
+# concatenaba fuera del saneador), y `tests/test_pdf_respaldo.py` fuerza las dos
+# ramas con `monkeypatch` en lugar de depender de si la máquina tiene la fuente.
+# Instalarla aquí hace que el runner ejercite además el camino con DejaVu, que en
+# desarrollo local no se ejecuta nunca porque `_DEJAVU` es una ruta POSIX
+# absoluta y en Windows no puede existir.
 name: CI
 
 on:

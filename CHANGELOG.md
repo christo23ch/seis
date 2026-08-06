@@ -63,6 +63,16 @@ bloqueada hasta elegir hosting, dominio y proveedor de correo.
   bajo Docker hasta que este mismo trabajo la activó al propagar las credenciales.
 - **`VERSION_REGLAS` y `VERSION_PARAMETROS` no llegaban a ningún contenedor**,
   de modo que ajustarlas en `.env` no tenía efecto (principio P1).
+- **El informe PDF reventaba sin la fuente DejaVu** *(corregido con autorización
+  expresa; queda fuera del alcance original de la fase)*. Una viñeta `•` se
+  concatenaba **fuera** del saneador, y Helvetica —el respaldo— solo admite
+  latin-1, así que `fpdf2` lanzaba `FPDFUnicodeEncodingException` y **el informe
+  entero se perdía** en cualquier máquina sin la fuente: todo Windows de
+  desarrollo y cualquier imagen que no sea `backend/Dockerfile`. El backlog
+  llevaba dos fases diagnosticándolo mal («tabla de transliteración incompleta»).
+  Se corrigió la causa raíz y se añadió una tabla de equivalencias tipográficas
+  para que el respaldo produzca texto legible en vez de «?».
+  **Con esto la suite queda en 0 fallos por primera vez desde que hay registro.**
 
 ### Desviaciones del plan, registradas
 

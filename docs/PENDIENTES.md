@@ -313,7 +313,19 @@ Resumen (detalle y prompts de ejecución en `docs/SEIS_Plan_Maestro_Fases_920.md
   por `organizacion_id` cuando se creen: `export.csv`, `geo`, `resultado-real`, `/calibracion`.
 
 ### 🐛 Deuda técnica detectada durante la Fase 12 (NO corregida — decisión pendiente)
-- **`pdf_service.py` rompe sin la fuente DejaVu.** `tests/test_pdf_async.py::test_informe_pdf`
+> ✅ **CERRADA en la Fase 11 con autorización expresa del responsable** (queda fuera del
+> alcance original de la fase). Se corrigió **la causa raíz**, no la CI: la viñeta pasa a
+> constante y se sanea **dentro** de `_limpiar`; se añadió una tabla de equivalencias
+> tipográficas para que el respaldo produzca texto legible en vez de «?»; y el pie de página
+> y el título pasan también por el saneador. `tests/test_pdf_respaldo.py` fuerza **las dos
+> ramas** con `monkeypatch` de `_DEJAVU`, de modo que la rama de respaldo se ejercita aunque
+> la máquina tenga la fuente. `fonts-dejavu-core` sigue en el runner de CI como **cobertura
+> adicional**, no como mecanismo que oculte el problema.
+>
+> **Resultado: la suite queda en 0 fallos por primera vez.** Los dos rojos que se
+> arrastraban desde antes de la Fase 12 han desaparecido.
+
+- ~~**`pdf_service.py` rompe sin la fuente DejaVu.**~~ *(histórico)* `tests/test_pdf_async.py::test_informe_pdf`
   y `test_multitenant.py::…[/informe.pdf]` fallan con `FPDFUnicodeEncodingException`
   cuando `DejaVuSans.ttf` no está instalada (p. ej. Windows local). En Docker no se
   manifiesta porque la imagen incluye `fonts-dejavu-core`. **Preexistente a la
@@ -425,6 +437,22 @@ añadió `--beat` al worker (sin él, digest y polling nunca se ejecutan).
 > cuadró. Queda solo el total, con la fecha de medición y la orden que lo produce.
 
 ---
+
+## Deuda menor detectada al corregir el PDF (Fase 11)
+
+- **`_limpiar` convierte `_` en espacio en AMBAS ramas** *(propietario: SIN ASIGNAR)*.
+  `pdf_service._limpiar` hace `.replace("_", " ")` para deshacer el énfasis de
+  Markdown, y de paso degrada los nombres canónicos del producto: `P_límite` sale
+  como «P límite», `C_F` como «C F», `c_v` como «c v». Son **15 líneas del informe
+  dorado §19**. `P_límite` es término contractual —el bloqueo duro que el software
+  nunca deja superar (CLAUDE.md §4)—, así que verlo partido en el informe no es
+  cosmético. Preexistente y ajeno a la corrección de la viñeta; se anota aquí en vez
+  de ampliar el alcance. Arreglo: deshacer el énfasis solo cuando el guion bajo
+  esté rodeado de espacios, o usar una expresión regular en vez de `replace`.
+- **Sanear el título es innecesario** *(propietario: SIN ASIGNAR, trivial)*. Los
+  metadatos del PDF viajan como cadena UTF-16BE, no por `normalize_text`, así que
+  `set_title` admite cualquier carácter. Pasarlo por `_limpiar` no rompe nada pero
+  degrada el título sin motivo el día que lleve un `€`.
 
 ## Deuda abierta por la Fase 11 — alcance de la fase
 
@@ -548,13 +576,10 @@ esquema.
    por la Fase 11, Bloque F′.** Nuevo `.github/workflows/ci.yml` con la suite completa y
    `npm run build`, instalando `fonts-dejavu-core` en el runner igual que el `Dockerfile`.
    `migraciones.yml` se conserva intacto: es la barrera específica de la Fase 9.5.
-   > ⚠️ **Un verde en CI NO significa que el PDF funcione sin la fuente.** Con
-   > `fonts-dejavu-core` instalada el código toma la rama `unicode_ok=True`, de modo que la
-   > rama de respaldo —la única que corre en cualquier máquina o imagen sin la fuente,
-   > incluido todo Windows de desarrollo— queda **rota y además sin cobertura**. El defecto
-   > sigue abierto y su causa raíz está identificada más abajo (un literal fuera del
-   > saneador, no una tabla de transliteración). Cerrarlo exige tocar `pdf_service.py`,
-   > fuera del alcance de esta fase, y **requiere aprobación explícita**.
+   > La fuente en el runner es **cobertura adicional**, no el mecanismo que tapa el
+   > problema: la causa raíz de los dos rojos de PDF se corrigió en `pdf_service.py`
+   > con autorización expresa, y `tests/test_pdf_respaldo.py` fuerza las dos ramas
+   > con `monkeypatch` en lugar de depender de si la máquina tiene la fuente.
 
 **Observaciones de otras fases detectadas de paso** (no de la 9.5, no se tocan aquí):
 ~~`docker-compose.yml` conserva `version: "3.9"`~~ → **resuelto en la Fase 11 (Bloque C′)**: retirada ·
