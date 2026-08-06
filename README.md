@@ -23,7 +23,7 @@ seis/
 │   │   ├── api/                # REST /api/v1
 │   │   └── tasks/              # Celery (lotes y re-análisis por eventos)
 │   ├── scripts/init_db.py      # esquema + siembra de conocimiento
-│   └── tests/                  # ★ caso dorado §19 + vetos + precios + API + notificaciones + migraciones (118 tests)
+│   └── tests/                  # ★ caso dorado §19 + vetos + precios + API + notificaciones + migraciones + infraestructura
 └── frontend/                   # Next.js 15 · React 19 · TS · Tailwind · RHF+Zod · TanStack Query · Recharts · Leaflet
     ├── app/                    # login, dashboard, nueva (11 pasos), inversiones[/id],
     │                           # comparativa, mapa, configuracion, reglas, parametros, administracion
@@ -41,7 +41,7 @@ seis/
 cp .env.example .env            # OBLIGATORIO: rellenar JWT_SECRET y ADMIN_PASSWORD
                                 # (vienen vacíos; con SEIS_ENV=production el arranque
                                 #  falla si no se definen — ver .env.example)
-docker compose up -d --build    # db + redis + backend (siembra automática) + worker
+docker compose up -d --build    # db + redis + backend + worker + beat + frontend
 # Aplicación: http://localhost:3000   (admin@seis.local + el ADMIN_PASSWORD que definiste)
 # API:        http://localhost:8000/api/v1 · Swagger en /docs
 ```
@@ -57,9 +57,10 @@ python -m scripts.init_db && uvicorn app.main:app --reload
 ## Tests
 
 ```bash
-cd backend && python -m pytest -q        # 118 recogidos: 113 pasan, 2 fallan, 3 se omiten
-                                        # (los 2 rojos son de PDF y preexisten: falta la
-                                        #  fuente DejaVu fuera de Docker, ver docs/PENDIENTES.md)
+cd backend && python -m pytest -q        # 365 recogidos: 363 pasan, 0 fallan, 2 se omiten
+                                        # (las 2 omisiones son condicionales: T5 exige
+                                        #  SEIS_TEST_POSTGRES_URL y la rama con DejaVu se
+                                        #  omite si la fuente no está instalada)
 ```
 
 `tests/test_golden_caso19.py` reproduce **íntegro el ejemplo numérico del §19** de la especificación (ICI, ICU, matriz de riesgos, RA 40, δ_v 6 %, C_F, escalera 51,1k/60,1k/69,1k/~80k, ROI 25 %, MS 25 %, RVC 1,08, semáforo AMARILLO con condiciones) y es la prueba de regresión fundacional: cualquier cambio de reglas o parámetros que altere la decisión rompe el test de forma visible.

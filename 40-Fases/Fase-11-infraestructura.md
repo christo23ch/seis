@@ -85,9 +85,11 @@ Es la **única cifra citable** en documentación y auditorías. Las anteriores (
 
 **Tras el Bloque C′, cifra final tras las tres revisiones (medida):** **220 recogidos · 217 pasan · 2 fallan · 1 omitido.** Acumulado frente a la línea base: **+58 verdes y 0 regresiones**. Los 2 rojos siguen siendo los de PDF y el omitido sigue siendo T5. Las medidas intermedias del bloque (212 y 233) quedan derogadas por esta.
 
-**Tras los bloques E, F′ y H, cifra de cierre de la Fase 11-A (medida):** **303 recogidos · 300 pasan · 2 fallan · 1 omitido.** Acumulado frente a la línea base: **+141 verdes y 0 regresiones**. Los 2 rojos siguen siendo los de PDF y el omitido sigue siendo T5.
+**Cifra de cierre de la Fase 11-A (medida):** **365 recogidos · 363 pasan · 0 fallan · 2 omitidos.**
 
-> **Y siguen siendo rojos aquí aunque en CI no aparezcan.** El Bloque F′ instala `fonts-dejavu-core` en el runner, con lo que esos dos pasan allí. **Eso no arregla el defecto** — ver la deuda abierta, más abajo.
+> **Cero fallos, por primera vez desde que existe registro.** Los 2 rojos de PDF que se arrastraban desde antes de la Fase 12 se cerraron **por causa raíz** —una viñeta concatenada fuera del saneador— y no instalando la fuente en el runner. Las mediciones intermedias de la fase (172, 181, 212, 220, 233, 260, 303) quedan **todas derogadas** por esta.
+
+> **Las 2 omisiones son condicionales y no son fallos:** T5 exige `SEIS_TEST_POSTGRES_URL`, y el test de la rama con DejaVu se omite si la fuente no está instalada — en CI esa omisión es un **fallo** deliberado, para que un `apt-get` roto no deje de probar esa rama en silencio.
 
 > **El número de tests BAJÓ respecto de la medición intermedia de 233, y conviene decirlo sin adornar.** No es pérdida de cobertura: es lo contrario. Un test de inventario con **16 parámetros escritos a mano** se sustituyó por **2 tests derivados del propio `docker-compose.yml`**, y se retiró un test que fijaba como invariante una decisión de empaquetado reversible. **Menos elementos, más cobertura real** — contar tests mide el tamaño de la batería, no lo que la batería demuestra.
 
@@ -118,15 +120,15 @@ Tres revisiones independientes (`security-reviewer`, `pr-test-analyzer`, `code-r
 - [[ADR-0007-planificador-celery-separado-del-worker]] — Bloque C′. `beat` deja de ser una bandera del worker y pasa a ser servicio propio (escalar el worker duplicaba los mensajes a cada usuario), y el entorno de `backend`, `worker` y `beat` se define **una sola vez** en un ancla YAML. El mismo bloque añade `backend/.dockerignore` —`backend/Dockerfile:8` es `COPY . .`, de modo que un `.env` presente acabaría en una capa de la imagen, y **borrarlo después no lo elimina**— y el `healthcheck` del backend contra `/api/v1/health`. Las revisiones le añadieron una regla explícita: **en el ancla va lo que necesitan los tres; lo que necesita uno solo va en su bloque** — y con ella el caso ya decidido de que **las claves de Stripe de la Fase 13 no van al ancla**.
 - [[ADR-0008-loopback-por-defecto-en-los-puertos-publicados]] — Bloque C′. `backend` y `frontend` pasan a `${BIND_BACKEND:-127.0.0.1}` y `${BIND_FRONTEND:-127.0.0.1}`. **Desviación del alcance aprobado**, que difería esto a la Fase 16: la premisa del diferimiento caducó dentro del propio bloque, al dejar de ser el compose «orquestación local» para convertirse en base de un despliegue portable. Con 8000 en `0.0.0.0`, `/docs` y `/openapi.json` enumeran la API sin autenticar y se puede hablar con uvicorn **saltándose el proxy inverso del Bloque H**.
 
-Los números **0004 y 0005 siguen reservados** para los ADR de los bloques E y H, que aún no se han implementado. Ver [[contador-secuencias]].
+Ya no queda ningún número reservado: [[ADR-0004-create-all-fuera-de-produccion]] (Bloque E) y [[ADR-0005-confianza-en-cabeceras-de-ip-solo-tras-par-declarado]] (Bloque H) están escritos. Ver [[contador-secuencias]].
 
 ## Deuda que deja abierta
 
 - **Sentry (H5), sin fase propietaria.** Ver arriba.
 - **Toda la Fase 11-B:** IaC del proveedor, jobs de despliegue, `docs/RUNBOOK.md`, runbooks temáticos del Vault y el ADR de elección de hosting.
 - **Requisito operativo para el runbook de 11-B:** la plataforma de hosting debe apuntar su health check a `/api/v1/health`, **nunca** a `/health/listo`. Detalle y motivo en [[ADR-0006-liveness-y-readiness-separadas]].
-- **Ampliar `/health/detalle` con un apartado de red** (`par_tcp`, `ip_resuelta`, política de proxies) al ejecutar el Bloque H: es la única forma práctica de verificar **en producción** que la resolución de IP no está mal configurada.
-- Las tres deudas heredadas del Bloque I siguen abiertas mientras el bloque no se ejecute. Ver [[PENDIENTES-md|PENDIENTES.md]].
+- ~~Ampliar `/health/detalle` con un apartado de red~~ → ✅ **entregado** por el Bloque H (`salud.py::_diagnostico_de_red`).
+- ~~Las tres deudas heredadas del Bloque I~~ → ✅ **cerradas**, con el matiz de que el borrado de cuentas nace desactivado: la deuda 10 no está cerrada **en producción** hasta que alguien mire un informe real. Ver [[PENDIENTES-md|PENDIENTES.md]].
 
 ### Deuda nueva registrada por el Bloque C′
 

@@ -191,7 +191,10 @@ Añadidos al Bloque C′ que el plan no contemplaba, con su justificación:
 - **`backend/tests/test_despliegue.py`** — el plan no preveía fichero de test para este bloque, y aporta 34.
 - **Corrección de la fila 2 de esta misma tabla.** Decía que a `.env.example` «solo faltaban `HEALTH_TIMEOUT_SEGUNDOS` y `SENTRY_DSN`». Fueron **siete**: esas dos más `BIND_BACKEND`, `BIND_FRONTEND`, `VERSION_REGLAS`, `VERSION_PARAMETROS` y `JWT_EXP_HORAS`, varias creadas por el propio bloque. Es justo el motivo por el que la expectativa dejó de escribirse a mano y pasó a derivarse del compose.
 - **Orden de commits.** El plan §6 fija A → C′ → D; el orden real fue **A → D → C′**. Inocuo, pero es una desviación del orden aprobado.
-- **ADR no previstos.** §G′ reservaba `ADR-0003`…`ADR-0006`. El Bloque C′ no tenía ADR asignado y ha generado el **`0007`** (planificador y ancla) y el **`0008`** (loopback por defecto).
+- **ADR no previstos.** §G′ reservaba `ADR-0003`…`ADR-0006`. El Bloque C′ no tenía ADR asignado y ha generado el **`0007`** (planificador y ancla) y el **`0008`** (loopback por defecto); el Bloque I generó además el **`0009`** (purga de cuentas). Al cerrar la fase la serie va del 0003 al 0009, escrita fuera de orden.
+- **La siembra sigue corriendo en TODOS los entornos** (Bloque E). El plan proponía invocarla a mano en staging y producción. No se hizo: es idempotente —cada bloque comprueba antes si ya hay datos— y sacarla del arranque haría que `docker compose up` no baste para tener un sistema en pie, que es exactamente el defecto que originó la Fase 9.5. Razonado en ADR-0004.
+- **`--no-proxy-headers` en lugar de `--proxy-headers` con `--forwarded-allow-ips` acotado** (Bloque H). El plan y el backlog de la Fase 10 pedían lo segundo. Se descartó porque uvicorn no conoce `CF-Connecting-IP`, no permite fijar la profundidad de saltos, su semántica ha cambiado entre versiones —y `requirements.txt` no pone cota superior—, destruye el par TCP que es el dato con el que se decide confiar, y **`TestClient` no ejercita su middleware**, de modo que ningún test podría observar una regresión. Razonado en ADR-0005.
+- **⚠️ Corrección de `pdf_service.py`, fuera del alcance original de la fase.** Autorizada expresamente por el responsable. Cierra los 2 rojos que se arrastraban desde antes de la Fase 12, por causa raíz y no instalando la fuente en el runner. El backlog llevaba dos fases diagnosticándolo mal.
 - **⚠️ Desviación del alcance aprobado: se tocó la publicación de puertos.** El plan dice literalmente, en la tabla del Bloque C′: «**No** se toca la publicación de puertos: es Fase 16». Se ha tocado. `backend` y `frontend` pasan a `${BIND_BACKEND:-127.0.0.1}` y `${BIND_FRONTEND:-127.0.0.1}`, es decir, **loopback por defecto** en vez de todas las interfaces. El motivo es que la premisa del diferimiento **caducó dentro de este mismo bloque**: se decidió cuando el compose era «orquestación local», y este bloque le cambió el encabezado a «orquestación local **y de despliegue portable**». Con el fichero ya pensado para un VPS, publicar 8000 en `0.0.0.0` deja `/docs` y `/openapi.json` enumerando la API sin autenticar y —más grave— permite hablar con uvicorn **saltándose el proxy inverso del Bloque H**, con lo que su lista de proxies de confianza no protegería nada. El cambio no depende de H1 (hosting) y es simétrico con lo que `db` y `redis` ya hacían. Se registra aquí en vez de dejarlo pasar.
 
 ## 4 · Lo que queda en la Fase 11-B (bloqueado)
@@ -248,19 +251,20 @@ Un commit por bloque, conventional commits en español, prefijo `(fase-11)`, **s
 
 ## 7 · Criterios de salida
 
-**De la Fase 11-A (este PR):**
-- [ ] `/api/v1/health` intacto; `/health/listo` da 503 con un componente caído; `/health/detalle` exige superadmin y no filtra excepciones
-- [ ] `backend/.dockerignore` existe; la imagen no contiene `.venv` ni `.env`
-- [ ] Las 7 variables SES/SMTP propagadas (`PENDIENTES.md:318-326` cerrada)
-- [ ] `SEIS_ENV=staging` soportado **y estricto**, con tests negativos
-- [ ] `X-Forwarded-For` falsificado **no** elude el anti-fuerza-bruta, con test que lo demuestra
-- [ ] `create_all` fuera de la ruta de producción, con **T4 verde**
-- [ ] `docker compose down -v && up -d --build` ⇒ `/api/v1/health` 200
-- [ ] CI ejecuta la suite completa + `npm run build`
-- [ ] Suite y build reportados con cifras **medidas**, no citadas
-- [ ] Vault (nota de fase + 4 ADRs), `CLAUDE.md`, `PENDIENTES.md`, `CHANGELOG.md` actualizados
-- [ ] Ninguna afirmación no medida en la documentación de cierre
-- [ ] PR único revisado por el humano
+**De la Fase 11-A (este PR).** Marcado con el resultado **medido**, no con la intención:
+
+- [x] `/api/v1/health` intacto; `/health/listo` da 503 con un componente caído; `/health/detalle` exige superadmin y no filtra excepciones — `test_salud.py`, 15 tests
+- [x] `backend/.dockerignore` existe; excluye `**/.env*` y `**/.venv/` — `test_despliegue.py`. **Matiz honesto:** se verifica el *fichero*, no la imagen construida; ver la casilla de verificación manual
+- [x] Las 7 variables SES/SMTP propagadas a los tres servicios de aplicación — verificado con `docker compose config`, 7/7 × 3
+- [x] `SEIS_ENV=staging` soportado **y estricto**, con tests negativos — `test_seguridad_arranque.py`
+- [x] `X-Forwarded-For` falsificado **no** elude el anti-fuerza-bruta — `test_ip_cliente.py::test_una_ip_falsificada_no_elude_el_bloqueo_por_fuerza_bruta`
+- [x] `create_all` fuera de la ruta de producción, con **T4 verde** — `test_arranque_esquema.py` + `test_migraciones.py`
+- [ ] ⛔ **`docker compose down -v && up -d --build` ⇒ `/api/v1/health` 200 — NO VERIFICADO.** El demonio de Docker no estaba disponible al cerrar la fase (`npipe:////./pipe/dockerDesktopLinuxEngine` no responde). **Es la casilla con riesgo técnico real detrás:** el Bloque E se clasificó de riesgo ALTO precisamente porque puede impedir que el producto levante de cero, y los tests validan la condición y el fichero, no el arranque. **Debe ejecutarse antes de exponer nada**, junto con `docker run --rm <imagen> find /srv/seis -name '.env*' -o -name '*.db'`, que es la prueba directa de la tesis del Bloque C′
+- [x] CI ejecuta la suite completa + `npm run build` — `.github/workflows/ci.yml`, dos jobs
+- [x] Suite y build reportados con cifras **medidas**: `365 recogidos · 363 pasan · 0 fallan · 2 omitidos`; `npm run build` exit 0
+- [x] Vault (nota de fase + **7** ADRs: 0003-0009), `CLAUDE.md`, `PENDIENTES.md`, `CHANGELOG.md` actualizados
+- [x] Ninguna afirmación no medida en la documentación de cierre — corregido tras la auditoría de conformidad, que encontró cuatro cifras derogadas escritas como vigentes
+- [ ] PR único revisado por el humano — pendiente por definición
 
 **De la Fase 11 completa (siguen abiertos, requieren 11-B y ejecución humana):**
 - [ ] `https://app.<dominio>` sirve el login con HTTPS

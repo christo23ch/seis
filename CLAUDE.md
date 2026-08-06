@@ -37,8 +37,8 @@
 
 ### ✅ Construido y verificado
 - **Motor experto completo M01–M14** en `backend/app/engine/modules/` (un fichero por módulo, 1:1 con la especificación), **puro y sin I/O**, sobre una pizarra de hechos (`contracts.py`, `pipeline.py` como DAG).
-- **162 tests** en `backend/tests/` — 12 ficheros. A los 11 previos se sumó `test_registro.py` (45) en la Fase 10. Incluye el **caso dorado §19** como test de regresión fundacional y la batería T1-T6 que ejerce Alembic de verdad.
-  > Cifra verificada con `python -m pytest tests --collect-only -q` el 2026-07-29 (157 recogidos; parametrizaciones incluidas). Recontar antes de citarla.
+- **365 tests** en `backend/tests/` — 20 ficheros (medido al cerrar la Fase 11-A: 363 pasan, 0 fallan, 2 se omiten por configuración ausente). Incluye el **caso dorado §19** como test de regresión fundacional y la batería T1-T6 que ejerce Alembic de verdad.
+  > Cifra medida con `python -m pytest tests -q` al cerrar la Fase 11-A. **Recontar antes de citarla**: durante la Fase 11 circularon siete cifras distintas y varias acabaron escritas en documentación de cierre como si fueran vigentes.
 - **API REST completa** con JWT y roles (`backend/app/api/`: `auth.py`, `routes.py`, `conocimiento.py`, `deps.py`), Swagger en `/docs`.
 - **Gobernanza del conocimiento versionada (T2/T3)**: reglas en YAML versionadas con vigencia temporal (`app/engine/rules/`), parámetros legales/fiscales versionados por ámbito (`app/engine/params/`), editables sin desplegar código.
 - **Frontend Next.js 15 completo**: login, dashboard, asistente de nueva inversión (11 pasos), detalle de inversión, comparativa, mapa, configuración, reglas, parámetros, administración.
@@ -161,7 +161,35 @@
 > **Backlog vivo:** el trabajo planificado y no implementado se registra en
 > `docs/PENDIENTES.md`.
 
-### ⏳ No construido (Fases 11-20 del Plan Maestro — ver §5)
+### 🔄 Fase 11-A — Infraestructura de producción, parte agnóstica del proveedor (IMPLEMENTADA, 2026-08-05)
+
+Siete bloques en la rama `fase-11-infraestructura`. **La Fase 11 NO está cerrada:** sus
+criterios de salida son operativos y ninguno es alcanzable sin la 11-B.
+
+- **Salud por componente** (A): `/health` intacto como liveness, `/health/listo` como
+  readiness pública que da 503, y `/health/detalle` autenticado con revisión de Alembic,
+  versiones T2/T3, latencias y diagnóstico de red. Tres audiencias con necesidades
+  opuestas, no una. Ver `ADR-0006`.
+- **`staging` como cuarto entorno, y estricto** (D). Ver `ADR-0003`.
+- **Higiene de despliegue portable** (C′): `.dockerignore`, ancla YAML de entorno
+  compartida, `beat` como servicio propio, `healthcheck` y puertos en loopback por
+  defecto. Ver `ADR-0007` y `ADR-0008`.
+- **`create_all` fuera de la ruta de producción** (E). Ver `ADR-0004`.
+- **CI con la suite completa** y `npm run build` (F′).
+- **IP real tras proxy** (H): `app/core/red.py`. Cierra la puerta de despliegue de la
+  Fase 10. Ver `ADR-0005`.
+- **Purgas y reintento de Redis** (I): tarea `seis.purgar` diaria. **El borrado de
+  cuentas nace desactivado** (`PURGA_CUENTAS_MODO=informar`). Ver `ADR-0009`.
+- **Corregida de paso, con autorización expresa**, la causa raíz de los 2 rojos de PDF.
+  **La suite queda en 0 fallos por primera vez desde que hay registro.**
+
+**Verificación que NO se ejecutó y debe hacerse antes de exponer nada:**
+`docker compose down -v && up -d --build ⇒ /api/v1/health 200`, y la inspección de la
+imagen construida en busca de `.env` o `.venv`. El demonio de Docker no estaba
+disponible al cerrar la fase. Los tests validan el fichero y la condición, **no el
+arranque en frío**.
+
+### ⏳ No construido (Fases 12-20 del Plan Maestro — ver §5)
 Infraestructura de producción real, monetización con Stripe, cumplimiento RGPD, landing pública, endurecimiento de seguridad, escalado de captación (el conector BOE existe pero defensivo, sin ajuste empírico contra el portal real), analítica de negocio, beta cerrada.
 
 ### 🐛 Gotchas conocidos
@@ -219,7 +247,7 @@ TokenConsumido (Fase 10: `jti` gastado de un token de propósito, uso único)
 
 > **Sentry queda fuera de la fase** por decisión del responsable (H5). Incumple deliberadamente el requisito 2 del prompt del Plan Maestro y **no tiene fase propietaria**: mientras `SENTRY_DSN` no tenga consumidor, **un error 500 en producción no avisa a nadie**.
 
-> ✅ **Puerta de despliegue heredada de la Fase 10: CERRADA por el Bloque H de la Fase 11.** `app/core/red.py` resuelve la IP real del cliente **solo tras un par TCP declarado de confianza**, tomando el N-ésimo valor por la derecha con N fijo y exigiendo que las posiciones a su derecha sean proxies conocidos. Tres variables (`PROXIES_DE_CONFIANZA`, `CABECERA_IP_CLIENTE`, `SALTOS_DE_PROXY`), **todas inertes mientras la primera esté vacía**: el defecto de fábrica es el seguro y hay una sola puerta. En `staging` y `production` el arranque **aborta** si nadie se pronuncia, con el centinela `ninguno` como salida legítima. `--no-proxy-headers` explícito en compose y Dockerfile: uvicorn reescribiría `scope["client"]` por su cuenta y destruiría el par TCP, que es justamente el dato con el que se decide confiar.
+> ⚠️ **Puerta de despliegue heredada de la Fase 10: cerrada EN EL CÓDIGO por el Bloque H de la Fase 11, y CONDICIONADA a que el despliegue declare su proxy.** No está cerrada sin más: si se despliega con `PROXIES_DE_CONFIANZA` sin declarar —o con el centinela `ninguno` cuando sí hay un proxy delante—, todo el tráfico vuelve a llegar con la misma IP y **reaparece íntegro el defecto de la Fase 10**: cupo global de alta pública, y bloqueo indefinido de la cuenta de un tercero con cinco contraseñas erróneas, porque el bloqueo se comprueba antes que la contraseña. `app/core/red.py` resuelve la IP real del cliente **solo tras un par TCP declarado de confianza**, tomando el N-ésimo valor por la derecha con N fijo y exigiendo que las posiciones a su derecha sean proxies conocidos. Tres variables (`PROXIES_DE_CONFIANZA`, `CABECERA_IP_CLIENTE`, `SALTOS_DE_PROXY`), **todas inertes mientras la primera esté vacía**: el defecto de fábrica es el seguro y hay una sola puerta. En `staging` y `production` el arranque **aborta** si nadie se pronuncia, con el centinela `ninguno` como salida legítima. `--no-proxy-headers` explícito en compose y Dockerfile: uvicorn reescribiría `scope["client"]` por su cuenta y destruiría el par TCP, que es justamente el dato con el que se decide confiar.
 >
 > ⚠️ **Lo que el código no puede impedir:** declarar de confianza la pasarela de Docker (`172.18.0.1`) con el puerto publicado en `0.0.0.0` es **peor que no tener el bloque** —cualquiera llegaría con esa IP y elegiría su propia identidad—. Si se declara la pasarela, `BIND_BACKEND` debe seguir en `127.0.0.1`. Avisos en `.env.produccion.example`.
 

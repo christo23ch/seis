@@ -438,6 +438,42 @@ añadió `--beat` al worker (sin él, digest y polling nunca se ejecutan).
 
 ---
 
+## Requisitos que BLOQUEAN el despliegue, de la auditoría final de la Fase 11-A
+
+Ninguno bloquea la fusión del código —la rama no despliega nada por sí sola—, pero
+**todos deben resolverse antes de que exista un despliegue en internet**.
+*(propietario de los seis: **Fase 11-B**)*
+
+1. **`/docs`, `/redoc` y `/openapi.json` siguen abiertos.** `main.py` construye
+   `FastAPI()` sin `docs_url=None` condicionado al entorno, y en un PaaS el puerto es
+   público por definición. Enumeran toda la superficie de la API sin autenticar,
+   incluidos los endpoints de superadministrador. El proxy inverso debe bloquearlos,
+   o deben apagarse en `ENTORNOS_ESTRICTOS`.
+2. **`/health/listo` es E/S sin autenticar y sin límite de tasa**, y no acota el
+   establecimiento de la conexión TCP a la base (`db.py` no pasa `connect_timeout`).
+   Peor: tanto esa sonda como `/health` son `def` síncronos y comparten el threadpool,
+   así que un flujo anónimo contra la readiness durante una degradación **puede dejar
+   sin responder también al liveness** — justo lo que el ADR-0006 existe para impedir.
+3. **`/health/listo` revela el estado POR COMPONENTE sin autenticar.** Es un oráculo
+   público de «cuándo está Redis caído», que es precisamente la ventana en que el
+   limitador degrada a memoria de proceso y sus claves pueden desalojarse por FIFO.
+   El desglose pertenece a `/health/detalle`, que ya está autenticado.
+4. **Las dependencias no están fijadas ni auditadas.** Quince `>=` sin cota superior,
+   sin lockfile ni hashes, y el pipeline no incluye `pip-audit` ni escaneo de secretos.
+   La Fase 11 convierte la CI en puerta de despliegue, así que hereda el hueco: dos
+   ejecuciones del mismo commit pueden probar árboles distintos.
+5. **La purga en modo informe no deja rastro cuando no hay candidatas.** El
+   procedimiento documentado dice «deje correr unos días el informe y mire el
+   recuento», pero en un día normal la tarea no escribe ni una línea, de modo que el
+   operador no puede distinguir «cero candidatas» de «`beat` está muerto» o «la tarea
+   no está registrada». Y de esa ambigüedad depende activar un borrado irreversible.
+   **Es el único fallo mudo que esta fase deja en un mecanismo que ella misma
+   construyó.** Arreglo: registrar siempre una línea, incluidos los ceros.
+6. **Aviso operativo, ya escrito pero que conviene repetir aquí:** declarar
+   `PROXIES_DE_CONFIANZA=ninguno` cuando SÍ hay un proxy delante reabre íntegro el
+   defecto de la Fase 10 — cupo global de alta pública y bloqueo indefinido de cuentas
+   ajenas. La guardia obliga a pronunciarse, no puede comprobar que se acierte.
+
 ## Deuda menor detectada al corregir el PDF (Fase 11)
 
 - **`_limpiar` convierte `_` en espacio en AMBAS ramas** *(propietario: SIN ASIGNAR)*.

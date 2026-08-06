@@ -83,6 +83,10 @@ bloqueada hasta elegir hosting, dominio y proveedor de correo.
 - Se tocó **la publicación de puertos**, que el plan difería a la Fase 16: la
   premisa del diferimiento caducó cuando este trabajo convirtió el compose en
   base de un despliegue portable.
+- **`--no-proxy-headers`** en lugar del `--proxy-headers` con `--forwarded-allow-ips`
+  que pedían el plan y el backlog de la Fase 10. Razonado en `ADR-0005`.
+- **La corrección de `pdf_service.py`**, fuera del alcance original y autorizada
+  expresamente por el responsable.
 
 ### Deuda que queda abierta
 
@@ -91,9 +95,35 @@ bloqueada hasta elegir hosting, dominio y proveedor de correo.
   propietaria**. Mientras siga así, **un error 500 en producción no avisa a nadie**.
 - **La purga de cuentas nace desactivada**: la deuda no está cerrada en
   producción hasta que alguien mire un informe real y active el modo `borrar`.
-- **Un verde en CI no significa que el PDF funcione sin la fuente DejaVu**: la
-  rama de respaldo sigue rota y ahora además sin cobertura.
+- **El arranque en frío desde volumen destruido no se ha verificado** (ver Evidencia).
+- **Seis requisitos que bloquean el despliegue**, inventariados en `docs/PENDIENTES.md`
+  con propietario Fase 11-B: `/docs` y `/openapi.json` abiertos · `/health/listo` sin
+  límite de tasa y revelando el estado por componente · dependencias sin fijar ni
+  auditar bajo una CI que ahora es puerta de despliegue · la purga en modo informe no
+  deja rastro cuando no hay candidatas.
 - Toda la **Fase 11-B**.
+
+### Evidencia
+
+Cifras **medidas** al cerrar, no citadas:
+
+```
+suite      365 recogidos · 363 pasan · 0 fallan · 2 omitidos
+build      npm run build → exit 0
+compose    docker compose config → exit 0, 6 servicios
+```
+
+Las 2 omisiones son condicionales y no son fallos: T5 exige `SEIS_TEST_POSTGRES_URL`, y
+el test de la rama con la fuente DejaVu se omite si no está instalada — **en CI esa
+omisión es un fallo deliberado**, para que un `apt-get` roto no deje de probar esa rama
+en silencio.
+
+**Verificación manual NO ejecutada:** `docker compose down -v && up -d --build ⇒
+/api/v1/health 200`, y la inspección de la imagen en busca de `.env` o `.venv`. El
+demonio de Docker no estaba disponible al cerrar la fase. Los tests validan el fichero y
+la condición, **no el arranque en frío**, y el Bloque E se clasificó de riesgo ALTO
+precisamente porque puede impedir que el producto levante de cero. Debe ejecutarse antes
+de exponer nada.
 
 ### Sin cambios de esquema
 
