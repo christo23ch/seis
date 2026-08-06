@@ -92,8 +92,21 @@ Seis hallazgos se arreglaron dentro de la propia fase, no se difirieron:
 
 ### Deuda que deja la Fase 10
 
-1. **⛔ PUERTA DE DESPLIEGUE — la IP de origen no sobrevive a `docker compose`**
-   *(propietario: Fase 11)*. Medido: todas las peticiones externas llegan con la
+1. ~~**⛔ PUERTA DE DESPLIEGUE — la IP de origen no sobrevive a `docker compose`**~~
+   → ✅ **CERRADA por la Fase 11, Bloque H.** `app/core/red.py` resuelve la IP real
+   solo tras un par TCP declarado de confianza, tomando el N-ésimo por la derecha
+   con N fijo y exigiendo que la cola sean proxies conocidos. Guardia de arranque
+   que **aborta en entornos estrictos** si nadie se pronuncia, con `ninguno` como
+   salida legítima; `--no-proxy-headers` explícito para que uvicorn no reescriba
+   el par TCP por su cuenta.
+   > **La puerta sigue cerrada hasta que el despliegue la abra bien.** El código
+   > deja de ser el impedimento, pero declarar de confianza la pasarela de Docker
+   > con el puerto publicado en `0.0.0.0` es **peor que no tener el bloque**:
+   > cualquiera llegaría con la IP de la pasarela y elegiría su propia identidad.
+   > Ver los avisos de `.env.produccion.example`.
+
+   *(Texto original, conservado por ser el registro de lo medido en la Fase 10:)*
+   Medido: todas las peticiones externas llegan con la
    IP de la pasarela (`172.18.0.1`), de modo que los límites por origen de
    `/registro` y `/reenviar-verificacion` funcionan como **un cupo global** —5
    altas cada 15 minutos en todo el sitio— en vez de uno por cliente, y la clave
@@ -531,11 +544,17 @@ esquema.
 3. **La prueba de mutación de T4 se ejecuta a mano.** El Bloque G la ejecutó (5/5 dimensiones) y el
    Bloque I demostró que el pipeline pasa a `exit 1` ante deriva real, pero ninguna de las dos está
    automatizada como test permanente. RC-3 exige «T4 en CI» —cubierto— pero no la mutación.
-4. **La CI cubre solo `tests/test_migraciones.py`, no la suite completa.** Decisión deliberada del
-   Bloque I: la suite arrastra dos fallos preexistentes de PDF que dejarían el pipeline
-   permanentemente en rojo, y una barrera siempre roja no vigila nada. Ampliarla exige instalar
-   `fonts-dejavu-core` en el runner —el `Dockerfile` ya lo hace—, lo que probablemente resolvería
-   también esos dos rojos.
+4. ~~**La CI cubre solo `tests/test_migraciones.py`, no la suite completa.**~~ → ✅ **CERRADA
+   por la Fase 11, Bloque F′.** Nuevo `.github/workflows/ci.yml` con la suite completa y
+   `npm run build`, instalando `fonts-dejavu-core` en el runner igual que el `Dockerfile`.
+   `migraciones.yml` se conserva intacto: es la barrera específica de la Fase 9.5.
+   > ⚠️ **Un verde en CI NO significa que el PDF funcione sin la fuente.** Con
+   > `fonts-dejavu-core` instalada el código toma la rama `unicode_ok=True`, de modo que la
+   > rama de respaldo —la única que corre en cualquier máquina o imagen sin la fuente,
+   > incluido todo Windows de desarrollo— queda **rota y además sin cobertura**. El defecto
+   > sigue abierto y su causa raíz está identificada más abajo (un literal fuera del
+   > saneador, no una tabla de transliteración). Cerrarlo exige tocar `pdf_service.py`,
+   > fuera del alcance de esta fase, y **requiere aprobación explícita**.
 
 **Observaciones de otras fases detectadas de paso** (no de la 9.5, no se tocan aquí):
 ~~`docker-compose.yml` conserva `version: "3.9"`~~ → **resuelto en la Fase 11 (Bloque C′)**: retirada ·

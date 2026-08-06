@@ -37,9 +37,9 @@ Bloques de la **Fase 11-A**. El detalle fichero a fichero de cada uno está en `
 | A | Salud por componente: liveness intacto, readiness pública, detalle autenticado | Obligatorio | ✅ Completado |
 | C′ | Higiene de despliegue portable (`.dockerignore`, ancla de entorno, `beat` propio, `.env.produccion.example`, loopback por defecto) | Obligatorio | ✅ **Cerrado** tras tres revisiones |
 | D | `staging` como **cuarto entorno estricto**, no solo soportado | Obligatorio | ✅ Completado |
-| E | `create_all` fuera de la ruta de producción | Obligatorio | ⬜ Pendiente |
-| F′ | CI que ejecute la **suite completa** y `npm run build`, no 1 de 14 ficheros | Obligatorio | ⬜ Pendiente |
-| H | IP real tras proxy — la puerta de despliegue heredada de la Fase 10 | Obligatorio | ⬜ Pendiente |
+| E | `create_all` fuera de la ruta de producción | Obligatorio | ✅ Completado — la siembra, en cambio, **sigue corriendo en todos los entornos** |
+| F′ | CI que ejecute la **suite completa** y `npm run build`, no 1 de 14 ficheros | Obligatorio | ✅ Completado — con la advertencia sobre el PDF, abajo |
+| H | IP real tras proxy — la puerta de despliegue heredada de la Fase 10 | Obligatorio | ✅ **Cerrado** tras la revisión técnica — **2 CRITICAL**, ambos regresiones del propio bloque, corregidos y verificados ejecutando |
 | I | Deudas heredadas con propietario «Fase 11» (reintento de Redis, purga de `token_consumido`, cuentas nunca verificadas) | Obligatorio | ✅ **Cerrado** tras tres revisiones — con el borrado de cuentas **desactivado de fábrica** |
 
 ## Decisiones tomadas y diferidas (H0-H10)
@@ -84,6 +84,10 @@ Es la **única cifra citable** en documentación y auditorías. Las anteriores (
 **Tras el Bloque I, cifra final tras sus revisiones (medida):** **260 recogidos · 257 pasan · 2 fallan · 1 omitido.** Los 2 rojos siguen siendo los de PDF y el omitido sigue siendo T5.
 
 **Tras el Bloque C′, cifra final tras las tres revisiones (medida):** **220 recogidos · 217 pasan · 2 fallan · 1 omitido.** Acumulado frente a la línea base: **+58 verdes y 0 regresiones**. Los 2 rojos siguen siendo los de PDF y el omitido sigue siendo T5. Las medidas intermedias del bloque (212 y 233) quedan derogadas por esta.
+
+**Tras los bloques E, F′ y H, cifra de cierre de la Fase 11-A (medida):** **303 recogidos · 300 pasan · 2 fallan · 1 omitido.** Acumulado frente a la línea base: **+141 verdes y 0 regresiones**. Los 2 rojos siguen siendo los de PDF y el omitido sigue siendo T5.
+
+> **Y siguen siendo rojos aquí aunque en CI no aparezcan.** El Bloque F′ instala `fonts-dejavu-core` en el runner, con lo que esos dos pasan allí. **Eso no arregla el defecto** — ver la deuda abierta, más abajo.
 
 > **El número de tests BAJÓ respecto de la medición intermedia de 233, y conviene decirlo sin adornar.** No es pérdida de cobertura: es lo contrario. Un test de inventario con **16 parámetros escritos a mano** se sustituyó por **2 tests derivados del propio `docker-compose.yml`**, y se retiró un test que fijaba como invariante una decisión de empaquetado reversible. **Menos elementos, más cobertura real** — contar tests mide el tamaño de la batería, no lo que la batería demuestra.
 

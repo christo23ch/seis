@@ -117,7 +117,21 @@ Abre en el navegador `http://TU_IP:3000`. Puertos a permitir en el firewall: **3
 3. Variables de entorno del servicio:
    `DATABASE_URL=postgresql+psycopg2://…` (la URL anterior, cambiando `postgres://` por `postgresql+psycopg2://`)
    `JWT_SECRET=…` · `ADMIN_PASSWORD=…` · `SEIS_CORS_ORIGINS=https://TU-APP.vercel.app`
-4. *Start command*: `sh -c "python -m scripts.init_db && uvicorn app.main:app --host 0.0.0.0 --port $PORT"`
+   **`SEIS_ENV=production`** y **`PROXIES_DE_CONFIANZA=…`** (la IP del balanceador del
+   proveedor, o `ninguno`) más `CABECERA_IP_CLIENTE=x-forwarded-for` si declara proxy.
+4. *Start command*:
+   `sh -c "alembic upgrade head && python -m scripts.init_db && uvicorn app.main:app --host 0.0.0.0 --port $PORT --no-proxy-headers"`
+
+> ⚠️ **Los cuatro elementos en negrita no son opcionales, y omitir uno solo relaja
+> tres controles a la vez.** `SEIS_ENV` vale `development` por defecto, y en ese
+> entorno: (a) `scripts/init_db` ejecuta `create_all` contra la base gestionada,
+> creando en silencio lo que ninguna migración declaró y dejando `alembic_version`
+> vacía —deriva de esquema permanente e invisible—; (b) no se validan los secretos;
+> (c) no se exige declarar la política de proxies. Y sin `--no-proxy-headers`,
+> uvicorn reescribe el par TCP por su cuenta si el proveedor define
+> `FORWARDED_ALLOW_IPS=*`, con lo que la resolución de IP pasa a opinar sobre un
+> dato del atacante. `alembic upgrade head` va delante porque es quien debe
+> gobernar el esquema.
 5. Comprueba `https://TU-BACKEND.onrender.com/docs`.
 
 **Frontend en Vercel:**

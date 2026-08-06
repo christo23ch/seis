@@ -24,6 +24,21 @@ class Settings(BaseSettings):
     login_max_intentos: int = 5
     login_ventana_min: int = 15
 
+    # Resolución de la IP real tras proxy (Fase 11, Bloque H). Ver app/core/red.py.
+    #
+    # VACÍO ES EL VALOR SEGURO y no un descuido: con `proxies_de_confianza` sin
+    # declarar NO se lee ninguna cabecera, pase lo que pase con las otras dos, y
+    # el comportamiento es el de antes del bloque. Fiarse de `X-Forwarded-For`
+    # sin declarar de quién permitiría eludir el anti-fuerza-bruta enviando una
+    # IP distinta en cada intento.
+    #
+    # CSV de IPs o CIDR; el centinela `ninguno` significa «no hay proxy delante y
+    # lo declaro conscientemente», que es lo que distingue una decisión de un
+    # olvido en los entornos estrictos.
+    proxies_de_confianza: str = ""
+    cabecera_ip_cliente: str = ""          # x-forwarded-for | cf-connecting-ip | …
+    saltos_de_proxy: int = 1               # solo aplica a cabeceras de lista
+
     # Mantenimiento (Fase 11, Bloque I): días que se conserva un `jti` gastado
     # antes de purgarlo. DEBE superar el TTL del token de un solo uso más largo
     # —ver `TTL_MAXIMO_JTI_HORAS` más abajo, que explica cuál es y por qué NO es
@@ -277,10 +292,91 @@ def _validar_purgas(s: "Settings") -> None:
             "deben tocarse.\n" + "\n".join(problemas))
 
 
+def _validar_politica_de_proxy(s: "Settings") -> None:
+    """Exige pronunciarse sobre los proxies en los entornos estrictos.
+
+    El modo de fallo más caro de este bloque no es la falsificación: es que
+    alguien despliegue tras un proxy y **olvide** declararlo. El sistema
+    funciona, nadie nota nada, y el límite por origen vuelve a ser un cupo global
+    —la deuda que el bloque existe para cerrar— pero ya en internet y sin nadie
+    mirando. Un silencio así no se detecta jamás; un arranque abortado, en medio
+    minuto.
+
+    Por eso `PROXIES_DE_CONFIANZA` vacío aborta en `staging` y `production`, con
+    las dos salidas legítimas a la vista: declarar los proxies, o escribir
+    `ninguno` si de verdad no hay ninguno delante.
+    """
+    from app.core.red import (CABECERAS_ADMITIDAS, MAX_ELEMENTOS,
+                              PREFIJO_MINIMO_IPV4, PREFIJO_MINIMO_IPV6, SIN_PROXY,
+                              parsear_redes, redes_invalidas)
+
+    if entorno_normalizado(s.seis_env) not in ENTORNOS_ESTRICTOS:
+        return
+
+    declarado = s.proxies_de_confianza.strip()
+    cabecera = s.cabecera_ip_cliente.strip().lower()
+    problemas = []
+
+    if not declarado:
+        problemas.append(
+            "  · PROXIES_DE_CONFIANZA está vacío. Declare las IPs o CIDR de sus "
+            f"proxies, o escriba «{SIN_PROXY}» si no hay ninguno delante. "
+            "Sin pronunciarse, el límite por origen sería un cupo global para "
+            "todo el sitio sin que nada lo delate.")
+    elif declarado.lower() != SIN_PROXY:
+        redes = parsear_redes(declarado)
+        invalidas = redes_invalidas(declarado)
+        if not redes:
+            problemas.append(
+                f"  · PROXIES_DE_CONFIANZA={declarado!r} no contiene ninguna red "
+                "válida. Use IPs o CIDR separados por comas.")
+        if invalidas:
+            # Aborta en vez de descartarlas en silencio: con una entrada mala
+            # entre dos buenas, el sistema arrancaba fiándose de la mitad de sus
+            # proxies y el tráfico del resto volvía al cupo global sin aviso.
+            problemas.append(
+                f"  · PROXIES_DE_CONFIANZA tiene entradas ilegibles: {invalidas}. "
+                "Se descartarían en silencio y ese proxy quedaría sin resolver.")
+        for red_declarada in redes:
+            minimo = (PREFIJO_MINIMO_IPV4 if red_declarada.version == 4
+                      else PREFIJO_MINIMO_IPV6)
+            if red_declarada.prefixlen < minimo:
+                problemas.append(
+                    f"  · PROXIES_DE_CONFIANZA incluye {red_declarada}, demasiado "
+                    f"amplia (mínimo /{minimo}). Confiar en una red enorme "
+                    "equivale a leer la cabecera a ciegas; declare la IP de su "
+                    "proxy o un bloque pequeño.")
+        if not cabecera:
+            problemas.append(
+                "  · Hay proxies declarados pero CABECERA_IP_CLIENTE está vacía, "
+                "así que no se leería ninguna y la declaración no serviría de nada.")
+
+    if cabecera and cabecera not in CABECERAS_ADMITIDAS:
+        problemas.append(
+            f"  · CABECERA_IP_CLIENTE={cabecera!r} no está admitida. Valores: "
+            f"{', '.join(CABECERAS_ADMITIDAS)}.")
+
+    if not 1 <= s.saltos_de_proxy <= MAX_ELEMENTOS:
+        # Un valor fuera de rango deja el bloque INERTE en silencio: con saltos
+        # mayores que la cadena real, `resolver_ip` cae siempre al par TCP y el
+        # cupo vuelve a ser global con todo aparentemente funcionando. La guardia
+        # cubría el olvido; esto cubre el error.
+        problemas.append(
+            f"  · SALTOS_DE_PROXY={s.saltos_de_proxy} está fuera de rango "
+            f"(1..{MAX_ELEMENTOS}). Un valor mayor que la cadena real de proxies "
+            "hace que NUNCA se resuelva la IP y el límite vuelva a ser global.")
+
+    if problemas:
+        raise ConfiguracionInseguraError(
+            "Arranque abortado: la política de proxies no permite resolver la IP "
+            "real del cliente.\n" + "\n".join(problemas))
+
+
 @lru_cache
 def get_settings() -> Settings:
     s = Settings()
     _validar_seguridad_entorno(s)
+    _validar_politica_de_proxy(s)
     # Se valida en TODOS los entornos, no solo en los estrictos: un borrado
     # irreversible mal configurado es igual de destructivo en desarrollo.
     _validar_purgas(s)

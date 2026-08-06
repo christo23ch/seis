@@ -235,6 +235,30 @@ def test_el_planificador_es_un_servicio_propio():
         "aquí devuelve el defecto que la separación vino a cerrar.")
 
 
+def test_el_backend_migra_antes_de_sembrar_y_no_confia_en_uvicorn():
+    """Toda la garantía de los bloques E y H vive en este `command`, y hasta ahora
+    nada lo afirmaba.
+
+    `alembic upgrade head` debe ir **antes** de la siembra: es Alembic quien
+    gobierna el esquema, y `scripts/init_db` ya no lo crea fuera de desarrollo.
+    Y `--no-proxy-headers` es lo que impide que uvicorn reescriba `scope["client"]`
+    por su cuenta: sin él destruiría el par TCP, que es justamente el dato con el
+    que se decide si una cabecera merece confianza.
+    """
+    comando = str(_compose()["services"]["backend"]["command"])
+
+    assert comando.index("alembic upgrade head") < comando.index("scripts.init_db")
+    assert "--no-proxy-headers" in comando
+    assert "--proxy-headers" not in comando.replace("--no-proxy-headers", "")
+
+
+def test_el_dockerfile_tampoco_confia_en_las_cabeceras_de_uvicorn():
+    """El `CMD` de la imagen se usa cuando nadie lo sobrescribe (PaaS, `docker run`)."""
+    dockerfile = (RAIZ_REPO / "backend" / "Dockerfile").read_text(encoding="utf-8")
+
+    assert "--no-proxy-headers" in dockerfile
+
+
 def test_el_planificador_no_declara_replicas_multiples():
     """`beat` es único por diseño; dos instancias duplican cada tarea programada."""
     beat = _compose()["services"]["beat"]

@@ -256,6 +256,33 @@ def test_detalle_con_superadmin_devuelve_entorno_revision_y_versiones(api, heade
     assert cuerpo["latencias_ms"] == {"bd": 4.2, "redis": 4.2}
 
 
+def test_detalle_publica_la_politica_de_red_vigente(api, headers, monkeypatch):
+    """El apartado que el ADR-0006 dejó pendiente y que el Bloque H cerró.
+
+    Es el único instrumento para detectar en producción una política de proxies
+    mal declarada, cuyo modo de fallo es **mudo**: el sistema responde con
+    normalidad y el límite por origen vuelve a ser un cupo global. Comparar
+    `par_tcp` con `ip_resuelta` en una petición real lo delata en un vistazo.
+    """
+    _simular_sondas(monkeypatch)
+
+    cuerpo = api.get(URL_DETALLE, headers=headers).json()
+
+    assert set(cuerpo["red"]) == {"par_tcp", "ip_resuelta", "politica_activa",
+                                  "cabecera", "saltos", "redes_de_confianza"}
+    assert cuerpo["red"]["politica_activa"] is False      # sin proxies declarados
+    assert cuerpo["red"]["par_tcp"] == cuerpo["red"]["ip_resuelta"]
+
+
+def test_detalle_no_vuelca_las_cabeceras_crudas(api, headers, monkeypatch):
+    """El diagnóstico no debe convertirse en un espejo de lo que envía quien llama."""
+    _simular_sondas(monkeypatch)
+
+    r = api.get(URL_DETALLE, headers={**headers, "X-Forwarded-For": "6.6.6.6"})
+
+    assert "6.6.6.6" not in r.text
+
+
 def test_detalle_refleja_la_revision_real_de_la_tabla_alembic_version(api, headers, monkeypatch):
     """La revisión se lee de `alembic_version`, no de una constante del código.
 

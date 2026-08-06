@@ -1,0 +1,105 @@
+# Integración continua de la Fase 11 (Bloque F′).
+#
+# Hasta ahora la CI ejecutaba **un fichero de test de dieciséis**
+# (`migraciones.yml`), y el motivo estaba bien razonado: la suite arrastra dos
+# fallos preexistentes de PDF que dejarían el pipeline permanentemente en rojo,
+# y una barrera siempre roja no vigila nada. Pero automatizar despliegues sobre
+# esa base sería automatizar la propagación de regresiones.
+#
+# Este pipeline cierra ese hueco instalando `fonts-dejavu-core` en el runner,
+# igual que hace `backend/Dockerfile`, con lo que el runner se parece a la imagen
+# que se despliega y los dos rojos de PDF desaparecen.
+#
+# ⚠️ LO QUE ESTO **NO** ARREGLA, y conviene no confundirlo con un arreglo.
+# Con la fuente instalada, `pdf_service.py` toma la rama `unicode_ok=True` y la
+# rama de respaldo —la que corre en cualquier máquina o imagen SIN la fuente,
+# incluido todo Windows de desarrollo, porque `_DEJAVU` es una ruta POSIX
+# absoluta— **queda rota y además sin cobertura**. La causa raíz está
+# identificada y medida: no es una tabla de transliteración incompleta, es un
+# literal `"  •  "` concatenado FUERA del saneador en `pdf_service.py`. El
+# arreglo es de una línea, toca fuera del alcance de esta fase y requiere
+# aprobación explícita. Detalle en `docs/PENDIENTES.md`.
+#
+# Es decir: **un verde aquí no significa que el PDF funcione sin la fuente.**
+name: CI
+
+on:
+  push:
+    paths-ignore:
+      - '**.md'
+      - '02-Diario/**'
+      - '30-Decisiones/**'
+      - '40-Fases/**'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+      - '02-Diario/**'
+      - '30-Decisiones/**'
+      - '40-Fases/**'
+
+# Mínimo privilegio: estos jobs clonan y prueban. No escriben nada, no publican
+# artefactos y no hablan con la API de GitHub.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  suite:
+    name: Suite completa del backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      SEIS_ENV: test
+      JWT_SECRET: secreto-de-ci-sin-valor-productivo
+      ADMIN_PASSWORD: admin-de-ci
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+
+      # Misma fuente que instala `backend/Dockerfile`: el runner debe parecerse
+      # al artefacto que se despliega, no a una máquina cualquiera.
+      - name: Instalar la fuente DejaVu
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fonts-dejavu-core
+
+      - name: Instalar dependencias
+        run: pip install -r requirements-dev.txt
+
+      # `-rs` en la MISMA ejecución y no en un paso aparte: repetir la suite solo
+      # para listar omisiones duplicaría el tiempo de CI. Los `skip` no son
+      # verdes, y dejarlos visibles impide que un test omitido por configuración
+      # ausente pase por un test que pasa.
+      - name: Suite completa
+        run: python -m pytest tests -q -rs --no-header
+
+  frontend:
+    name: Compilación del frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      # `npm run build` es la barrera de tipos del proyecto: TypeScript estricto,
+      # y el build falla ante cualquier error de tipado.
+      - name: Compilar
+        run: npm run build

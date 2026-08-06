@@ -43,13 +43,14 @@ from __future__ import annotations
 import logging
 import time
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app import models
 from app.api.deps import require_superadmin
+from app.core import red
 from app.core.config import entorno_normalizado, get_settings
 from app.core.db import get_db
 from app.services import conocimiento_service
@@ -229,8 +230,33 @@ def salud_listo(db: Session = Depends(get_db)):
                         content={"estado": ESTADO_DEGRADADO, "componentes": componentes})
 
 
+def _diagnostico_de_red(peticion: Request) -> dict:
+    """Par TCP, IP resuelta y política de proxies vigente.
+
+    Cierra lo que el ADR-0006 dejó pendiente. Una política mal declarada —la
+    cabecera equivocada, saltos que no coinciden con la topología— **no da
+    ningún síntoma**: el sistema responde con normalidad y el límite por origen
+    vuelve a ser un cupo global. Sin este apartado, eso solo se descubre cuando
+    alguien ya ha eludido el limitador. Comparar `par_tcp` con `ip_resuelta` en
+    una petición real es la comprobación que lo delata en un vistazo.
+
+    No se vuelcan las cabeceras crudas: el diagnóstico no debe convertirse en un
+    espejo de lo que envía quien llama.
+    """
+    politica = red.politica_actual()
+    return {
+        "par_tcp": peticion.client.host if peticion.client else red.IP_DESCONOCIDA,
+        "ip_resuelta": red.ip_cliente(peticion),
+        "politica_activa": politica.activa,
+        "cabecera": politica.cabecera or None,
+        "saltos": politica.saltos,
+        "redes_de_confianza": len(politica.redes),
+    }
+
+
 @router.get("/detalle")
-def salud_detalle(_admin: models.Usuario = Depends(require_superadmin),
+def salud_detalle(peticion: Request,
+                  _admin: models.Usuario = Depends(require_superadmin),
                   db: Session = Depends(get_db)) -> dict:
     """Diagnóstico completo para el superadministrador de plataforma.
 
@@ -250,4 +276,5 @@ def salud_detalle(_admin: models.Usuario = Depends(require_superadmin),
         "revision_alembic": _revision_alembic(db),
         "version_reglas": version_reglas,
         "version_parametros": version_parametros,
+        "red": _diagnostico_de_red(peticion),
     }

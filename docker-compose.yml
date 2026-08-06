@@ -74,6 +74,17 @@ x-entorno-aplicacion: &entorno-aplicacion
   # despliegue») sería literalmente falso en el único despliegue que existe: el
   # contenedor no ve el `.env` de la raíz. Es el mismo fallo mudo que ya se
   # corrigió con SES/SMTP y con VERSION_*.
+  # Fase 11 (Bloque H) — resolución de la IP real tras proxy.
+  #
+  # Van al ANCLA aunque solo las consuma el limitador, que vive en la API. El
+  # motivo es el mismo que ya obligó a poner aquí ADMIN_PASSWORD: `celery_app.py`
+  # llama a `get_settings()` al IMPORTARSE, de modo que la guardia de arranque
+  # corre también en el worker y en el beat. Declararlas solo en `backend` es
+  # cierto sobre el consumo y falso sobre la validación: worker y beat entrarían
+  # en bucle de reinicio en cuanto el entorno fuese estricto.
+  PROXIES_DE_CONFIANZA: ${PROXIES_DE_CONFIANZA:-}
+  CABECERA_IP_CLIENTE: ${CABECERA_IP_CLIENTE:-}
+  SALTOS_DE_PROXY: ${SALTOS_DE_PROXY:-1}
   PURGA_CUENTAS_MODO: ${PURGA_CUENTAS_MODO:-informar}
   PURGA_CUENTAS_DIAS: ${PURGA_CUENTAS_DIAS:-30}
   PURGA_TOKENS_DIAS: ${PURGA_TOKENS_DIAS:-45}
@@ -133,7 +144,7 @@ services:
     command: >
       sh -c "alembic upgrade head &&
              python -m scripts.init_db &&
-             uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"
+             uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2 --no-proxy-headers"
     healthcheck:
       # Apunta a la sonda de LIVENESS, jamás a /health/listo. Es el requisito
       # operativo del ADR-0006: /health/listo toca la base de datos y Redis, y
