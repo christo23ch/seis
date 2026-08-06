@@ -103,6 +103,23 @@ bloqueada hasta elegir hosting, dominio y proveedor de correo.
   deja rastro cuando no hay candidatas.
 - Toda la **Fase 11-B**.
 
+### ⚠️ Cambio incompatible al actualizar una instalación existente
+
+**Un `.env` anterior a esta fase impide arrancar toda la pila.** Medido sobre una
+instalación real: `SEIS_ENV` sin declarar vale `production` por el defecto del compose,
+que es entorno estricto, y ahí la guardia del Bloque H **aborta** si
+`PROXIES_DE_CONFIANZA` no está. No solo el backend: `worker` y `beat` también, porque
+`celery_app` valida al importarse.
+
+El mensaje es accionable y la guardia está haciendo su trabajo —forzar una decisión que,
+tomada mal en silencio, deja el límite por origen como cupo global para todo el sitio—,
+pero exige **una línea nueva** en cada `.env` existente:
+
+```
+PROXIES_DE_CONFIANZA=ninguno        # si no hay proxy delante
+PROXIES_DE_CONFIANZA=10.0.0.5/32    # o la IP/CIDR de su proxy, con CABECERA_IP_CLIENTE
+```
+
 ### Evidencia
 
 Cifras **medidas** al cerrar, no citadas:
@@ -118,12 +135,25 @@ el test de la rama con la fuente DejaVu se omite si no está instalada — **en 
 omisión es un fallo deliberado**, para que un `apt-get` roto no deje de probar esa rama
 en silencio.
 
-**Verificación manual NO ejecutada:** `docker compose down -v && up -d --build ⇒
-/api/v1/health 200`, y la inspección de la imagen en busca de `.env` o `.venv`. El
-demonio de Docker no estaba disponible al cerrar la fase. Los tests validan el fichero y
-la condición, **no el arranque en frío**, y el Bloque E se clasificó de riesgo ALTO
-precisamente porque puede impedir que el producto levante de cero. Debe ejecutarse antes
-de exponer nada.
+**Verificación de arranque en frío: EJECUTADA y satisfactoria**, sobre volumen
+destruido (`docker compose down -v && up -d --build`):
+
+```
+servicios          6/6 arriba; backend healthy
+/health            200  {"status":"ok"}
+/health/listo      200  {"estado":"ok","componentes":{"bd":"ok","redis":"ok"}}
+/health/detalle    401 sin token
+alembic_version    0006 · 26 tablas
+create_all         NO ejecutado: «entorno production: el esquema lo gobierna Alembic»
+siembra            1 usuario · 7 fuentes · 6 perfiles · 17 reglas
+idempotencia       tras reiniciar el backend: cifras idénticas, 26 tablas
+login del admin    200 con la contraseña sembrada, sin intervención manual
+frontend           200
+imagen             824 K, sin `.env`, sin `*.db`, sin `.venv`
+```
+
+Los 824 K contrastan con los **147 MB** de contexto de build que se medían antes del
+`.dockerignore`, y son la prueba directa de la tesis del Bloque C′.
 
 ### Sin cambios de esquema
 

@@ -183,11 +183,13 @@ criterios de salida son operativos y ninguno es alcanzable sin la 11-B.
 - **Corregida de paso, con autorización expresa**, la causa raíz de los 2 rojos de PDF.
   **La suite queda en 0 fallos por primera vez desde que hay registro.**
 
-**Verificación que NO se ejecutó y debe hacerse antes de exponer nada:**
-`docker compose down -v && up -d --build ⇒ /api/v1/health 200`, y la inspección de la
-imagen construida en busca de `.env` o `.venv`. El demonio de Docker no estaba
-disponible al cerrar la fase. Los tests validan el fichero y la condición, **no el
-arranque en frío**.
+**Arranque en frío verificado** sobre volumen destruido: 6/6 servicios, `/health` 200,
+`alembic_version=0006`, `create_all` NO ejecutado en `production`, siembra idempotente
+y la imagen en **824 K** sin `.env` ni `.venv`.
+
+> ⚠️ **Cambio incompatible al actualizar:** un `.env` anterior a esta fase **impide
+> arrancar la pila entera** —backend, worker y beat—, porque `SEIS_ENV` sin declarar vale
+> `production` y ahí la guardia exige `PROXIES_DE_CONFIANZA`. Hay que añadir esa línea.
 
 ### ⏳ No construido (Fases 12-20 del Plan Maestro — ver §5)
 Infraestructura de producción real, monetización con Stripe, cumplimiento RGPD, landing pública, endurecimiento de seguridad, escalado de captación (el conector BOE existe pero defensivo, sin ajuste empírico contra el portal real), analítica de negocio, beta cerrada.
