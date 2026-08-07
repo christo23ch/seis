@@ -12,6 +12,7 @@ verde **enterrando** el defecto del respaldo en vez de arreglarlo.
 from __future__ import annotations
 
 import os
+import pathlib
 
 import pytest
 
@@ -172,6 +173,34 @@ def test_las_equivalencias_conservan_el_sentido(original, esperado):
     assert pdf_service._limpiar(original, False) == esperado
 
 
+def test_ningun_caracter_del_informe_DORADO_se_pierde_en_el_respaldo():
+    """Corpus DERIVADO del informe real, no escrito a mano.
+
+    El corpus de este fichero es una constante, así que solo protege las cinco
+    equivalencias que alguien acordó meter en él: borrar `’`, `≤`, `≠`, `δ` o los
+    espacios duros dejaba la suite verde. Y `δ` es precisamente el carácter que
+    el informe dorado §19 perdía —está documentado como tal en `pdf_service`— y
+    no aparecía en la constante.
+
+    Leyendo el informe de referencia entero, la tabla queda vigilada por el texto
+    que el sistema genera de verdad, y crece con él.
+    """
+    informe = pathlib.Path(__file__).resolve().parents[2] / "docs" / "SEIS_informe_ejemplo_caso19.md"
+    if not informe.exists():
+        pytest.skip("no está el informe de referencia del §19")
+
+    perdidos = []
+    for linea in informe.read_text(encoding="utf-8").splitlines():
+        limpio = pdf_service._limpiar(linea, False)
+        if "?" in limpio and "?" not in linea:
+            perdidos.append((linea, limpio))
+
+    assert not perdidos, (
+        f"{len(perdidos)} líneas del informe dorado pierden algún carácter al "
+        f"transliterar. Primera: {perdidos[0][0]!r} → {perdidos[0][1]!r}. "
+        "Añada su equivalencia en `_EQUIVALENCIAS`.")
+
+
 def test_ningun_caracter_del_informe_se_pierde_en_el_respaldo():
     """Invariante REAL del respaldo, no una tautología.
 
@@ -190,16 +219,32 @@ def test_ningun_caracter_del_informe_se_pierde_en_el_respaldo():
             "Añada su equivalencia en `_EQUIVALENCIAS`.")
 
 
-def test_las_viñetas_conservan_su_sangria(sin_dejavu):
+def test_las_viñetas_conservan_su_sangria(sin_dejavu, monkeypatch):
     """La sangría va FUERA del saneador, que termina en `.strip()`.
 
     Meterla dentro se la comía y todas las listas del informe —plan de puja,
     checklist bloqueante, vetos— perdían su indentación en silencio.
-    """
-    con_sangria = pdf_service.informe_a_pdf("- Punto\n")
-    sin_sangria = pdf_service.informe_a_pdf("Punto\n")
 
-    assert len(con_sangria) != len(sin_sangria)
+    Se afirma sobre la **cadena que llega a `multi_cell`**, no sobre longitudes en
+    bytes del PDF: quitar la sangría conservando la viñeta también cambia el
+    tamaño, así que la comparación anterior pasaba con el defecto que decía
+    vigilar.
+    """
+    escritas = []
+    original = pdf_service._InformePDF.multi_cell
+
+    def _capturar(self, w, h, txt="", *a, **k):
+        escritas.append(txt)
+        return original(self, w, h, txt, *a, **k)
+
+    monkeypatch.setattr(pdf_service._InformePDF, "multi_cell", _capturar)
+
+    pdf_service.informe_a_pdf("- Punto de lista\n")
+
+    vinetas = [t for t in escritas if "Punto de lista" in t]
+    assert vinetas, "no se escribió la línea de lista"
+    assert vinetas[0].startswith("  "), (
+        f"la viñeta perdió su sangría: {vinetas[0]!r}")
 
 
 def test_con_dejavu_no_se_transliteran_los_caracteres(monkeypatch):
@@ -208,13 +253,8 @@ def test_con_dejavu_no_se_transliteran_los_caracteres(monkeypatch):
     assert pdf_service._limpiar("ROI ≥ 18 % → «sí»", True) == "ROI ≥ 18 % → «sí»"
 
 
-def test_el_pie_de_pagina_tambien_pasa_por_el_saneador(sin_dejavu):
-    """El pie llega a fpdf como cualquier otro texto.
-
-    Hoy sobrevive a latin-1 por casualidad —`·` y `á` sí existen ahí—, no por
-    diseño; el día que alguien lo cambie por un carácter tipográfico volvería a
-    romper el informe entero por la misma vía que la viñeta.
-    """
-    pdf = pdf_service.informe_a_pdf("# Titulo\n\nCuerpo.\n")
-
-    assert pdf.startswith(b"%PDF")
+# Retirado `test_el_pie_de_pagina_tambien_pasa_por_el_saneador`: era un duplicado
+# del humo de arriba con un nombre que prometía una garantía que no daba —el pie
+# actual sobrevive a latin-1 por casualidad, así que el test no podía fallar—. El
+# test real del pie es `test_el_pie_no_latin1_no_rompe_el_informe`, que sustituye
+# `PIE` por un texto que sí rompería sin saneador.

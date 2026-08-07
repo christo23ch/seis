@@ -474,6 +474,33 @@ Ninguno bloquea la fusión del código —la rama no despliega nada por sí sola
    defecto de la Fase 10 — cupo global de alta pública y bloqueo indefinido de cuentas
    ajenas. La guardia obliga a pronunciarse, no puede comprobar que se acierte.
 
+## Huecos de cobertura detectados en la revisión final de la Fase 11-A
+
+Ninguno bloquea la fusión —los dos que sí lo hacían se cerraron en la rama—, pero
+todos son puntos donde una mutación plausible sobrevive a la suite.
+
+1. **`init_db.main()` no lo ejecuta ningún test** *(propietario: **Fase 11-B**, y no
+   debería cruzar su puerta sin cerrarse)*. Los tests prueban las tres piezas por
+   separado, nunca la orquestación. Mutación que sobrevive: envolver la siembra en
+   `if creado:`. En `development` y `test` no cambia nada y la suite queda verde; en
+   `staging` y `production`, donde `create_all` ya no corre, **la instalación arranca
+   sin reglas, sin parámetros y sin administrador** — el defecto de la Fase 9.5 por
+   otra puerta.
+2. **La CI no levanta PostgreSQL, así que T5 está omitido también allí, de forma
+   permanente** *(propietario: **Fase 11-B**)*. Consecuencia concreta: esta fase añadió
+   **tres caminos exclusivos de PostgreSQL que no ejecuta ningún test en ninguna
+   plataforma** — `SET LOCAL statement_timeout` en la sonda de salud,
+   `with_for_update(skip_locked=True)` en la purga, y el motivo de
+   `_rollback_silencioso`. Añadir `services: postgres:16` al workflow es barato y
+   elimina una de las dos omisiones para siempre.
+3. **La purga en modo `borrar` nunca ha corrido por la ruta de la tarea**
+   *(propietario: quien active el modo)*. Todos los tests de borrado pasan `modo=`
+   explícito y la sesión de la fixture. El día que alguien ponga
+   `PURGA_CUENTAS_MODO=borrar`, la combinación tarea + `SessionLocal` + ajustes reales
+   **se estrena a las 04:30 en producción**.
+4. **`/health/listo` sin límite de tasa** *(ya inventariado más arriba entre los
+   requisitos que bloquean el despliegue; se repite aquí porque tampoco tiene test)*.
+
 ## Deuda menor detectada al corregir el PDF (Fase 11)
 
 - **`_limpiar` convierte `_` en espacio en AMBAS ramas** *(propietario: SIN ASIGNAR)*.

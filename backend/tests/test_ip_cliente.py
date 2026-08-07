@@ -392,6 +392,57 @@ def test_una_ip_falsificada_no_elude_el_bloqueo_por_fuerza_bruta(api, monkeypatc
     rate_limit.limpiar_todo()
 
 
+def test_la_politica_se_activa_desde_el_entorno_y_llega_al_limitador(api, monkeypatch):
+    """El cableado completo, SIN doblar `politica_actual`.
+
+    Es la única garantía del Bloque H que no verificaba nadie: los tests
+    unitarios construyen `PoliticaProxy` a mano y los de integración sustituyen
+    `red.politica_actual` por un doble, de modo que **la mutación
+    `return PoliticaProxy(redes=(), cabecera="", saltos=1)` dejaba los 365 tests
+    en verde con la política permanentemente inerte** — exactamente el fallo mudo
+    que el bloque existe para cerrar, y en el punto que la Fase 11-B ejercitará
+    el primer día.
+
+    Recorre: variables de entorno → `politica_actual` → `resolver_ip` → clave del
+    limitador.
+    """
+    from app.core import rate_limit
+    from app.core.config import get_settings
+
+    rate_limit.limpiar_todo()
+    get_settings.cache_clear()
+    try:
+        monkeypatch.setenv("PROXIES_DE_CONFIANZA", f"{PROXY}/32")
+        monkeypatch.setenv("CABECERA_IP_CLIENTE", "x-forwarded-for")
+
+        politica = red.politica_actual()
+
+        assert politica.activa is True, "la política no se activó desde el entorno"
+        assert len(politica.redes) == 1
+        assert politica.cabecera == "x-forwarded-for"
+
+        # Y la IP resuelta es la del cliente, no la del par: es lo que hace que
+        # la clave del limitador deje de ser la misma para todo el mundo.
+        cliente = _cliente(PROXY)
+        codigos = [
+            cliente.post("/api/v1/auth/login",
+                         data={"username": "a@example.com", "password": "mala"},
+                         headers={"X-Forwarded-For": CLIENTE}).status_code
+            for _ in range(6)]
+        assert codigos[-1] == 429
+
+        otro = cliente.post("/api/v1/auth/login",
+                            data={"username": "a@example.com", "password": "mala"},
+                            headers={"X-Forwarded-For": "203.0.113.99"})
+
+        assert otro.status_code != 429, (
+            "un cliente tras el proxy agotó el cupo de otro: la política está "
+            "activa pero la IP resuelta no llega a la clave del limitador")
+    finally:
+        get_settings.cache_clear()
+        rate_limit.limpiar_todo()
+
+
 def test_tras_un_proxy_declarado_dos_clientes_no_comparten_cupo(api, monkeypatch):
     """Demuestra que la deuda queda CERRADA, no solo que no se puede falsificar.
 
