@@ -57,7 +57,7 @@ python -m scripts.init_db && uvicorn app.main:app --reload
 ## Tests
 
 ```bash
-cd backend && python -m pytest -q        # 365 recogidos: 363 pasan, 0 fallan, 2 se omiten
+cd backend && python -m pytest -q        # 393 recogidos: 391 pasan, 0 fallan, 2 se omiten
                                         # (las 2 omisiones son condicionales: T5 exige
                                         #  SEIS_TEST_POSTGRES_URL y la rama con DejaVu se
                                         #  omite si la fuente no está instalada)

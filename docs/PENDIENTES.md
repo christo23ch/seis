@@ -474,6 +474,62 @@ Ninguno bloquea la fusión del código —la rama no despliega nada por sí sola
    defecto de la Fase 10 — cupo global de alta pública y bloqueo indefinido de cuentas
    ajenas. La guardia obliga a pronunciarse, no puede comprobar que se acierte.
 
+7. **Con cabecera de valor único, el proxy es el ÚNICO control.** `cf-connecting-ip`,
+   `true-client-ip` y `x-real-ip` se aceptan íntegras en cuanto el par TCP es de
+   confianza: no hay posición fija ni validación de cola que las respalde. nginx no
+   borra por omisión las cabeceras del cliente, así que **si el borde no las borra o
+   reescribe, un atacante elige su identidad en cada petición** y elude entero el
+   anti-fuerza-bruta del login y el cupo de alta pública, sin síntoma alguno. Escrito
+   ya en `red.py`, en `ADR-0005` y en `.env.produccion.example`; falta el runbook.
+8. **Cuatro de los quince rangos IPv4 de Cloudflare abortan el arranque.**
+   `104.16.0.0/13`, `104.24.0.0/14`, `162.158.0.0/15` y `172.64.0.0/13` son más
+   amplios que `PREFIJO_MINIMO_IPV4 = 16`. Hay que trocearlos a mano en bloques `/16`
+   —ocho entradas solo para el primero— y el procedimiento de refresco no existe.
+9. **`DATABASE_URL` cae a SQLite en un entorno estricto sin una sola queja.** Ninguna
+   guardia mira esa variable. En un despliegue sin Docker (VPS+systemd, o un PaaS que
+   no la inyecte, ambos escenarios vivos de la 11-B) la aplicación arranca en
+   `production` sobre `sqlite:///./seis_dev.db`: las migraciones pasan, la siembra
+   pasa, `/health/listo` da 200 — y los datos viven en un fichero efímero que se
+   pierde en cada redespliegue, con `--workers 2` encima. Es la misma clase de fallo
+   mudo que el Bloque H persigue, en la variable más importante del sistema. **No se
+   corrigió aquí por no abrir un frente nuevo en el cierre**; cuesta tres líneas en
+   `_validar_seguridad_entorno`.
+10. **`SEIS_CORS_ORIGINS` tampoco tiene guardia.** `allow_credentials=True` con
+    `allow_origins=["*"]` es un atajo de operador plausible y se acepta sin ruido. El
+    aviso existe solo como comentario en `.env.produccion.example`. Mismo criterio que
+    se aplicó a los proxies: si la consecuencia es invisible, la guardia va en código.
+11. **Abortar por una variable de proxy detiene también `worker` y `beat`**, a los que
+    esas tres variables les son completamente inertes: ninguno sirve HTTP ni lee una
+    cabecera. Se detienen porque `celery_app.py` llama a `get_settings()` al importarse.
+    Consecuencia: una errata en una variable que solo consume la API detiene el digest,
+    el sondeo de Telegram y la purga diaria. `docker-compose.yml` ya reconoce este
+    acoplamiento para `ADMIN_PASSWORD` con propietario Fase 16; esta es la segunda
+    instancia del mismo defecto.
+
+## Deuda de producto detectada en la auditoría final (no de la Fase 11)
+
+*(propietario: **sin asignar** — ninguna es regresión de esta fase)*
+
+- **El informe PDF admite inyección estructural desde texto libre del usuario.**
+  `_limpiar` es correcto **a nivel de carácter** —verificado sobre 69.632 puntos de
+  código: cero escapan a latin-1— pero las decisiones estructurales (`# ` encabezado,
+  `| ` fila de tabla, `- ` viñeta) se toman sobre la línea **cruda**, antes de sanear.
+  `municipio` y `provincia` no declaran `max_length` ni patrón y M14 los interpola
+  directamente, así que un municipio con saltos de línea puede forjar un encabezado de
+  sección y una fila de tabla en el entregable auditable del producto. No cruza
+  organizaciones. Arreglo: que M14 escape los campos libres al construir el Markdown.
+- **Campos de texto libre sin cota.** Medido: 200 KB en un campo ⇒ 1,59 s de CPU por
+  cada `GET /informe.pdf`, en endpoint síncrono sobre el threadpool compartido.
+  Almacenado una vez, amplificado en cada descarga.
+- **Controles C0/C1 sobreviven a `_limpiar`** (54 puntos de código son latin-1 válidos).
+  No revientan ni permiten inyectar sintaxis PDF; producen glifos basura en WinAnsi.
+- **Acciones de GitHub ancladas a etiqueta mutable** (`checkout@v4`, `setup-python@v5`,
+  `setup-node@v4`). Es la otra mitad del punto 4 de la lista anterior.
+- **`init_db.main()` y `sembrar.main()` duplican la orquestación de siembra** (abrir
+  sesión, sembrar conocimiento, sembrar admin, cerrar). Es el modo de fallo que el
+  ancla YAML de `docker-compose.yml` documenta como razón de existir, y `init_db.main()`
+  no lo ejecuta ningún test, así que la copia duplicada tampoco.
+
 ## Huecos de cobertura detectados en la revisión final de la Fase 11-A
 
 Ninguno bloquea la fusión —los dos que sí lo hacían se cerraron en la rama—, pero

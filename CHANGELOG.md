@@ -95,7 +95,6 @@ bloqueada hasta elegir hosting, dominio y proveedor de correo.
   propietaria**. Mientras siga así, **un error 500 en producción no avisa a nadie**.
 - **La purga de cuentas nace desactivada**: la deuda no está cerrada en
   producción hasta que alguien mire un informe real y active el modo `borrar`.
-- **El arranque en frío desde volumen destruido no se ha verificado** (ver Evidencia).
 - **Seis requisitos que bloquean el despliegue**, inventariados en `docs/PENDIENTES.md`
   con propietario Fase 11-B: `/docs` y `/openapi.json` abiertos · `/health/listo` sin
   límite de tasa y revelando el estado por componente · dependencias sin fijar ni
@@ -125,7 +124,7 @@ PROXIES_DE_CONFIANZA=10.0.0.5/32    # o la IP/CIDR de su proxy, con CABECERA_IP_
 Cifras **medidas** al cerrar, no citadas:
 
 ```
-suite      365 recogidos · 363 pasan · 0 fallan · 2 omitidos
+suite      393 recogidos · 391 pasan · 0 fallan · 2 omitidos
 build      npm run build → exit 0
 compose    docker compose config → exit 0, 6 servicios
 ```

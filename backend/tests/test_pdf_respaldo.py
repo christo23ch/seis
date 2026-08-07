@@ -173,26 +173,67 @@ def test_las_equivalencias_conservan_el_sentido(original, esperado):
     assert pdf_service._limpiar(original, False) == esperado
 
 
+# Corpus CONGELADO: un literal, deliberadamente no derivado de `_EQUIVALENCIAS`.
+#
+# Es la única red que sobrevive a borrar una entrada de la tabla. Los otros dos
+# guardianes no lo son, y conviene saber por qué antes de tocar esto:
+#   · `test_toda_la_tabla_de_equivalencias_se_translitera` se parametriza sobre
+#     la propia tabla, así que borrar una entrada borra también su caso.
+#   · el barrido del informe dorado solo ve los caracteres que el informe usa,
+#     que medidos son 6 de 26.
+# Cada carácter aquí es su propio caso de prueba, y el test de sincronía de más
+# abajo impide que la tabla crezca sin que crezca el corpus.
+CORPUS_CONGELADO = "• ‣ – — ― “ ” „ ‘ ’ ‚ … → ← ⇒ ≥ ≤ ≠ ™ € δ σ Δ \xa0    "
+
+
+@pytest.mark.parametrize("caracter", sorted(set(CORPUS_CONGELADO) - {" "}))
+def test_cada_caracter_del_corpus_congelado_sobrevive_al_respaldo(caracter):
+    """Borrar una entrada de `_EQUIVALENCIAS` debe poner ESTE test en rojo.
+
+    Es la comprobación que faltaba. Medido por mutación antes de existir: de las
+    26 equivalencias, borrar 20 de ellas —entre otras `’`, `≠`, `σ`, `Δ` y dos de
+    los tres espacios duros— dejaba la suite entera en verde.
+
+    Cobertura real, también medida: **25 de 26**. La excepción es `\\xa0`, y no es
+    un hueco sino la consecuencia correcta de lo que este test afirma: U+00A0 ya
+    ES latin-1, así que su equivalencia normaliza el espacio por estética y
+    quitarla no rompe nada observable. Las otras 25 no son codificables y su
+    equivalencia es obligatoria.
+    """
+    limpio = pdf_service._limpiar(f"x{caracter}x", False)
+    assert "?" not in limpio, f"{caracter!r} (U+{ord(caracter):04X}) no tiene equivalencia"
+    limpio.encode("latin-1")  # lo que fpdf2 hará con Helvetica; si revienta, revienta aquí
+
+
+def test_el_corpus_congelado_cubre_la_tabla_entera():
+    """Añadir una equivalencia sin añadirla al corpus deja el hueco abierto en
+    silencio, que es exactamente como llegaron aquí `δ`, `σ` y `Δ`."""
+    sin_cubrir = set(pdf_service._EQUIVALENCIAS) - set(CORPUS_CONGELADO)
+    assert not sin_cubrir, (
+        "equivalencias sin caso de prueba propio: "
+        + ", ".join(f"{c!r} (U+{ord(c):04X})" for c in sorted(sin_cubrir))
+        + ". Añádalas a CORPUS_CONGELADO.")
+
+
 def test_ningun_caracter_del_informe_DORADO_se_pierde_en_el_respaldo():
-    """Corpus DERIVADO del informe real, no escrito a mano.
+    """Barrido del informe real: vigila lo que el sistema genera de verdad.
 
-    El corpus de este fichero es una constante, así que solo protege las cinco
-    equivalencias que alguien acordó meter en él: borrar `’`, `≤`, `≠`, `δ` o los
-    espacios duros dejaba la suite verde. Y `δ` es precisamente el carácter que
-    el informe dorado §19 perdía —está documentado como tal en `pdf_service`— y
-    no aparecía en la constante.
-
-    Leyendo el informe de referencia entero, la tabla queda vigilada por el texto
-    que el sistema genera de verdad, y crece con él.
+    No sustituye a `CORPUS_CONGELADO` —solo alcanza a los caracteres que el
+    informe usa, medidos 6 de 26— sino que lo complementa por el otro extremo:
+    crece con el informe y detecta caracteres nuevos que nadie previó.
     """
     informe = pathlib.Path(__file__).resolve().parents[2] / "docs" / "SEIS_informe_ejemplo_caso19.md"
-    if not informe.exists():
-        pytest.skip("no está el informe de referencia del §19")
+    assert informe.exists(), (
+        f"no está el informe de referencia del §19 en {informe}. Es insumo de "
+        "test, no documentación: si se mueve, actualice esta ruta. Omitir en "
+        "vez de fallar convertiría su desaparición en un silencio.")
 
     perdidos = []
     for linea in informe.read_text(encoding="utf-8").splitlines():
         limpio = pdf_service._limpiar(linea, False)
-        if "?" in limpio and "?" not in linea:
+        # Contar, no `in`: una línea que ya trae un `?` propio eximía de
+        # comprobación a todo lo demás que hubiera en ella.
+        if limpio.count("?") > linea.count("?"):
             perdidos.append((linea, limpio))
 
     assert not perdidos, (

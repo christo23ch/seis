@@ -24,6 +24,31 @@ el email y la contraseña que tú definas en `.env` (`ADMIN_EMAIL` / `ADMIN_PASS
 
 ---
 
+## 1 bis · ¿Actualizas una instalación que ya tenías?
+
+> ⚠️ **Lee esto antes de `docker compose up`, o no arrancará nada.**
+>
+> Desde la Fase 11 el arranque **aborta** en `staging` y `production` si no te has
+> pronunciado sobre los proxies. Un `.env` anterior a esa fase no declara
+> `SEIS_ENV` —que por defecto vale `production`— ni `PROXIES_DE_CONFIANZA`, así que
+> **caen backend, worker y beat**, no solo el primero.
+>
+> No es un fallo: la guardia existe para que nadie despliegue tras un proxy sin
+> declararlo, porque en ese caso el límite por origen se convierte en un cupo
+> global para todo el sitio **sin dar ningún síntoma**. Añade una línea a tu `.env`:
+>
+> ```
+> PROXIES_DE_CONFIANZA=ninguno        # no hay proxy delante
+> PROXIES_DE_CONFIANZA=10.0.0.5/32    # o la IP/CIDR de tu proxy…
+> CABECERA_IP_CLIENTE=x-forwarded-for # …y de qué cabecera fiarte
+> ```
+>
+> Y ten en cuenta que **hay un servicio nuevo, `beat`**: es el planificador, y sin
+> él el digest de notificaciones y el sondeo de Telegram no se ejecutan jamás.
+> **No lo escales nunca**: dos instancias programan cada tarea dos veces.
+
+---
+
 ## 2 · Opción A — Prueba local completa (3 comandos)
 
 ```bash
@@ -33,11 +58,11 @@ cp .env.example .env
 # Vienen vacíos a propósito y el arranque falla si no los defines.
 #   JWT_SECRET=$(openssl rand -base64 48)
 #   ADMIN_PASSWORD=$(openssl rand -base64 18)
-docker compose up -d --build  # PostgreSQL+PostGIS, Redis, backend, worker y frontend
+docker compose up -d --build  # PostgreSQL+PostGIS, Redis, backend, worker, beat y frontend
 ```
 
 > Si prefieres probar en local sin generar secretos, pon `SEIS_ENV=development`
-> en `.env`: la validación estricta solo se aplica en `production`. **Nunca**
+> en `.env`: la validación estricta se aplica en `staging` **y** en `production`. **Nunca**
 > expongas a Internet un despliegue arrancado así.
 
 Espera ~2-4 minutos la primera vez (compila el frontend). Después:

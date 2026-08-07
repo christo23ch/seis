@@ -435,12 +435,19 @@ def test_la_politica_se_activa_desde_el_entorno_y_llega_al_limitador(api, monkey
                             data={"username": "a@example.com", "password": "mala"},
                             headers={"X-Forwarded-For": "203.0.113.99"})
 
-        assert otro.status_code != 429, (
+        # `!= 429` no basta: un 500 o un 422 también lo cumplirían y darían
+        # verde con el limitador roto. Credenciales malas ⇒ 401 exacto.
+        assert otro.status_code == 401, (
             "un cliente tras el proxy agotó el cupo de otro: la política está "
             "activa pero la IP resuelta no llega a la clave del limitador")
     finally:
-        get_settings.cache_clear()
+        # ORDEN DELIBERADO. `limpiar_todo()` acaba llamando a `get_settings()`
+        # para construir el cliente de Redis, así que hacerlo DESPUÉS del
+        # `cache_clear()` repuebla la caché con las variables de este test
+        # todavía puestas —`monkeypatch` no deshace hasta el teardown— y el
+        # resto de la sesión hereda una política de proxy que nadie declaró.
         rate_limit.limpiar_todo()
+        get_settings.cache_clear()
 
 
 def test_tras_un_proxy_declarado_dos_clientes_no_comparten_cupo(api, monkeypatch):

@@ -37,7 +37,7 @@
 
 ### ✅ Construido y verificado
 - **Motor experto completo M01–M14** en `backend/app/engine/modules/` (un fichero por módulo, 1:1 con la especificación), **puro y sin I/O**, sobre una pizarra de hechos (`contracts.py`, `pipeline.py` como DAG).
-- **365 tests** en `backend/tests/` — 20 ficheros (medido al cerrar la Fase 11-A: 363 pasan, 0 fallan, 2 se omiten por configuración ausente). Incluye el **caso dorado §19** como test de regresión fundacional y la batería T1-T6 que ejerce Alembic de verdad.
+- **393 tests** en `backend/tests/` — 19 ficheros (medido al cerrar la Fase 11-A: 391 pasan, 0 fallan, 2 se omiten por configuración ausente). Incluye el **caso dorado §19** como test de regresión fundacional y la batería T1-T6 que ejerce Alembic de verdad.
   > Cifra medida con `python -m pytest tests -q` al cerrar la Fase 11-A. **Recontar antes de citarla**: durante la Fase 11 circularon siete cifras distintas y varias acabaron escritas en documentación de cierre como si fueran vigentes.
 - **API REST completa** con JWT y roles (`backend/app/api/`: `auth.py`, `routes.py`, `conocimiento.py`, `deps.py`), Swagger en `/docs`.
 - **Gobernanza del conocimiento versionada (T2/T3)**: reglas en YAML versionadas con vigencia temporal (`app/engine/rules/`), parámetros legales/fiscales versionados por ámbito (`app/engine/params/`), editables sin desplegar código.

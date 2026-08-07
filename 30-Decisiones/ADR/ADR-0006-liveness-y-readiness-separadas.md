@@ -75,11 +75,12 @@ Porque su lector es **una persona diagnosticando**, no un balanceador tomando de
 - **Requisito operativo, para el runbook de 11-B: la plataforma de hosting debe apuntar su health check a `/api/v1/health`, NUNCA a `/health/listo`.** Configurarlo mal reintroduce íntegro el fallo que este ADR evita, y **no da síntoma alguno hasta que la base se degrada** — que es precisamente cuando peor sale.
 - El cuerpo mudo obliga a mirar el log del servidor para saber el motivo. Quien no tenga acceso al log sabrá **qué** componente está caído, pero no **por qué**.
 - Tres endpoints en vez de uno: tres superficies que mantener, documentar y tener en cuenta en cada auditoría.
-- **Pendiente:** el **Bloque H** debe ampliar `/health/detalle` con un apartado de red (`par_tcp`, `ip_resuelta`, política de proxies). Es la única forma práctica de verificar **en producción** que la resolución de IP real no está mal configurada — sin ese apartado, un `--forwarded-allow-ips` mal puesto solo se descubre cuando alguien ya ha eludido el anti-fuerza-bruta.
+- ~~**Pendiente:** el Bloque H debe ampliar `/health/detalle` con un apartado de red~~ → ✅ **entregado** por el Bloque H (`backend/app/api/salud.py`, `_diagnostico_de_red`): publica `par_tcp`, `ip_resuelta` y la política vigente. Comparar los dos primeros en una petición real es lo que delata una política mal declarada, cuyo fallo no da ningún otro síntoma. La decisión de cómo se resuelve esa IP está en [[ADR-0005-confianza-en-cabeceras-de-ip-solo-tras-par-declarado]], que además **descartó** `--forwarded-allow-ips` en favor de `--no-proxy-headers`.
 
 ## Relacionado
 
 - Fase: [[Fase-11-infraestructura]] — Bloque A
 - Plan de ejecución del bloque: `docs/FASE_11_PLAN.md` §3
-- [[ADR-0002-clave-compuesta-limitador-login]] — el apartado de red pendiente es lo que permitirá comprobar en producción lo que ese ADR dejó condicionado a esta fase
+- [[ADR-0005-confianza-en-cabeceras-de-ip-solo-tras-par-declarado]] — cerró el apartado de red que este ADR dejaba pendiente
+- [[ADR-0002-clave-compuesta-limitador-login]] — el apartado de red es lo que permite comprobar en producción lo que ese ADR dejó condicionado a esta fase
 - [[Fase-10-alta-self-service]] — de donde viene la puerta de despliegue por la IP de origen

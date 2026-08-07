@@ -85,7 +85,7 @@ Es la **única cifra citable** en documentación y auditorías. Las anteriores (
 
 **Tras el Bloque C′, cifra final tras las tres revisiones (medida):** **220 recogidos · 217 pasan · 2 fallan · 1 omitido.** Acumulado frente a la línea base: **+58 verdes y 0 regresiones**. Los 2 rojos siguen siendo los de PDF y el omitido sigue siendo T5. Las medidas intermedias del bloque (212 y 233) quedan derogadas por esta.
 
-**Cifra de cierre de la Fase 11-A (medida):** **365 recogidos · 363 pasan · 0 fallan · 2 omitidos.**
+**Cifra de cierre de la Fase 11-A (medida):** **393 recogidos · 391 pasan · 0 fallan · 2 omitidos.**
 
 > **Cero fallos, por primera vez desde que existe registro.** Los 2 rojos de PDF que se arrastraban desde antes de la Fase 12 se cerraron **por causa raíz** —una viñeta concatenada fuera del saneador— y no instalando la fuente en el runner. Las mediciones intermedias de la fase (172, 181, 212, 220, 233, 260, 303) quedan **todas derogadas** por esta.
 

@@ -22,13 +22,17 @@ name: CI
 on:
   push:
     paths-ignore:
-      - '**.md'
+      # `**.md` NO se ignora: `docs/SEIS_informe_ejemplo_caso19.md` es insumo de
+      # `test_ningun_caracter_del_informe_DORADO_...`, y regenerar el informe es
+      # justo el cambio que ese test dice vigilar. Solo se ignora el Vault.
       - '02-Diario/**'
       - '30-Decisiones/**'
       - '40-Fases/**'
   pull_request:
     paths-ignore:
-      - '**.md'
+      # `**.md` NO se ignora: `docs/SEIS_informe_ejemplo_caso19.md` es insumo de
+      # `test_ningun_caracter_del_informe_DORADO_...`, y regenerar el informe es
+      # justo el cambio que ese test dice vigilar. Solo se ignora el Vault.
       - '02-Diario/**'
       - '30-Decisiones/**'
       - '40-Fases/**'

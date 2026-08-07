@@ -199,6 +199,24 @@ def resolver_ip(par: str, crudos: list[str], politica: PoliticaProxy) -> str:
         if len(valores) != 1:
             return par
         candidato = valores[0]
+        # ⚠️ ASIMETRÍA DELIBERADA, y es la parte frágil del módulo.
+        #
+        # Con `x-forwarded-for` el valor leído está protegido DOS veces: por
+        # posición fija y por la validación de la cola. Aquí no hay nada de eso:
+        # se acepta el valor íntegro con la única condición de que el par TCP sea
+        # de confianza. Es decir, **el proxy es el único control que queda**.
+        #
+        # Consecuencia si el proxy no borra la cabecera en las peticiones que
+        # entran de internet —y nginx, por defecto, NO la borra—: el cliente
+        # elige su propia identidad en cada petición y elude por completo el
+        # anti-fuerza-bruta del login y el cupo de alta pública. Es exactamente
+        # el defecto que este módulo existe para cerrar, reintroducido por una
+        # omisión de configuración que no da ningún síntoma.
+        #
+        # Por eso `cf-connecting-ip` y `true-client-ip` son cómodas (evitan
+        # `SALTOS_DE_PROXY`) pero NO más seguras: trasladan la garantía entera
+        # del código al proxy inverso. Quien las use debe borrar o reescribir la
+        # cabecera en el borde. Requisito duro del despliegue (Fase 11-B).
 
     candidato = _normalizar(candidato)
     try:
