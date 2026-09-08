@@ -232,7 +232,7 @@ def test_detalle_con_usuario_no_superadmin_responde_403(api, headers_analista, m
 
 
 def test_detalle_con_superadmin_devuelve_entorno_revision_y_versiones(api, headers, monkeypatch):
-    from app.core.config import ENTORNOS_SOPORTADOS, Settings, entorno_normalizado
+    from app.core.config import ENTORNOS_SOPORTADOS
 
     _simular_sondas(monkeypatch, bd_ok=True, redis_ok=True, ms=4.2)
 
@@ -242,18 +242,54 @@ def test_detalle_con_superadmin_devuelve_entorno_revision_y_versiones(api, heade
     cuerpo = r.json()
     assert cuerpo["estado"] == "ok"
     assert cuerpo["componentes"] == {"bd": "ok", "redis": "ok"}
+    # Qué entorno concreto se reporta se comprueba fijándolo, en el test de más
+    # abajo; aquí solo se exige que sea uno de los soportados.
     assert cuerpo["entorno"] in ENTORNOS_SOPORTADOS
-    # Literal, no `entorno_normalizado(get_settings()...)`: recalcular en el test
-    # la misma expresión que usa el endpoint es una tautología que no puede
-    # fallar salvo que el endpoint deje de llamar a esa función. La suite corre
-    # con SEIS_ENV sin definir, así que el entorno efectivo es el valor por
-    # defecto del modelo.
-    assert cuerpo["entorno"] == entorno_normalizado(Settings().seis_env)
-    assert cuerpo["entorno"] == "development"
     assert isinstance(cuerpo["revision_alembic"], str) and cuerpo["revision_alembic"]
     assert isinstance(cuerpo["version_reglas"], str) and cuerpo["version_reglas"]
     assert isinstance(cuerpo["version_parametros"], str) and cuerpo["version_parametros"]
     assert cuerpo["latencias_ms"] == {"bd": 4.2, "redis": 4.2}
+
+
+@pytest.mark.parametrize("configurado, esperado", [
+    ("development", "development"),
+    ("Development", "development"),
+    ("  DEVELOPMENT  ", "development"),
+    ("test", "test"),
+    ("TEST", "test"),
+])
+def test_detalle_reporta_el_entorno_efectivo_normalizado(
+        api, headers, monkeypatch, configurado, esperado):
+    """El diagnóstico reporta el entorno EFECTIVO, ya normalizado.
+
+    Antes esto afirmaba el literal «development», dando por hecho que la suite
+    corre con SEIS_ENV sin definir. Eso es falso en la CI, que corre —y debe
+    correr— con SEIS_ENV=test: el test fallaba por dar por supuesto el entorno,
+    no por un defecto del código. Clavar «test» en su lugar solo habría movido
+    el mismo error de sitio, y habría vuelto a romperse en la máquina de
+    cualquiera que exportase otro valor.
+
+    Fijar el valor aquí evita las dos trampas a la vez: no recalcula en el test
+    la misma expresión que usa el endpoint —la tautología que el comentario
+    original quería esquivar— y no depende del entorno ambiente. De paso
+    ejercita la normalización (mayúsculas y espacios) que introduce esta misma
+    fase, que era justo lo que el literal ocultaba.
+
+    Solo se usan entornos no estrictos: fijar «production» o «staging» activaría
+    la guardia de secretos fuertes del arranque, que es objeto de su propia
+    batería en test_seguridad_arranque.py.
+    """
+    from app.core.config import get_settings
+
+    _simular_sondas(monkeypatch, bd_ok=True, redis_ok=True, ms=4.2)
+    monkeypatch.setenv("SEIS_ENV", configurado)
+    get_settings.cache_clear()
+    try:
+        r = api.get(URL_DETALLE, headers=headers)
+        assert r.status_code == 200, r.text
+        assert r.json()["entorno"] == esperado
+    finally:
+        get_settings.cache_clear()
 
 
 def test_detalle_publica_la_politica_de_red_vigente(api, headers, monkeypatch):
