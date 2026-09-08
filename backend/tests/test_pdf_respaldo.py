@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import os
 import pathlib
+import re
 
 import pytest
 
@@ -299,3 +300,59 @@ def test_con_dejavu_no_se_transliteran_los_caracteres(monkeypatch):
 # actual sobrevive a latin-1 por casualidad, así que el test no podía fallar—. El
 # test real del pie es `test_el_pie_no_latin1_no_rompe_el_informe`, que sustituye
 # `PIE` por un texto que sí rompería sin saneador.
+
+
+# ─────────── El guion bajo interior no es énfasis de Markdown ───────────
+
+@pytest.mark.parametrize("identificador", [
+    "C_F",          # costes fijos totales (especificación §5.3)
+    "c_v",          # costes proporcionales al precio (§5.3)
+    "P_límite",     # el bloqueo duro que el software nunca deja superar (CLAUDE.md §4)
+    "VS_p",         # valor de salida prudente (§5.3)
+    "judicial_boe", # valor de enumeración de una fuente de subasta
+])
+def test_el_guion_bajo_interior_de_un_identificador_sobrevive(identificador):
+    """`_limpiar` hacía `.replace("_", " ")` para deshacer el énfasis de Markdown
+    y de paso partía los nombres canónicos del producto: `C_F` salía como «C F».
+
+    No es cosmético. `P_límite` es término contractual —el precio que el sistema
+    nunca deja superar— y el informe es el entregable que ve el cliente.
+    """
+    assert pdf_service._limpiar(identificador, True) == identificador
+    # También en la rama sin DejaVu, que es la que más transforma el texto.
+    assert pdf_service._limpiar(identificador, False) == identificador
+
+
+@pytest.mark.parametrize("original,esperado", [
+    ("_énfasis_", "énfasis"),
+    ("__negrita__", "negrita"),
+    ("texto con _énfasis_ dentro", "texto con énfasis dentro"),
+    # El caso mixto es el que separa un arreglo bueno de uno que solo mueve el
+    # problema: en la misma línea conviven énfasis y un identificador.
+    ("C_F sube si _crece_ la reforma", "C_F sube si crece la reforma"),
+])
+def test_el_enfasis_de_markdown_si_se_retira(original, esperado):
+    assert pdf_service._limpiar(original, True) == esperado
+
+
+def test_ningun_identificador_del_informe_dorado_se_parte():
+    """Corpus derivado del informe real, no escrito a mano.
+
+    Igual que el de los caracteres transliterados: crece con el informe y caza
+    identificadores nuevos que nadie previó. Medido al corregir el defecto: 16
+    apariciones en 12 líneas del §19, entre ellas `C_F`, `c_v` y valores de
+    enumeración como `judicial_boe`, que partidos dejan de ser el valor.
+    """
+    informe = pathlib.Path(__file__).resolve().parents[2] / "docs" / "SEIS_informe_ejemplo_caso19.md"
+    assert informe.exists(), (
+        f"no está el informe de referencia del §19 en {informe}. Es insumo de "
+        "test, no documentación: si se mueve, actualice esta ruta.")
+
+    patron = re.compile(r"[^\W_]+_[^\W_]+")
+    partidos = []
+    for numero, linea in enumerate(informe.read_text(encoding="utf-8").splitlines(), 1):
+        for identificador in patron.findall(linea):
+            if identificador not in pdf_service._limpiar(identificador, True):
+                partidos.append(f"línea {numero}: {identificador}")
+
+    assert not partidos, "identificadores partidos por el saneador: " + ", ".join(partidos)
