@@ -1,0 +1,60 @@
+# Despliegue a producción (Fase 11): SIEMPRE manual.
+#
+# La aprobación humana no la impone este fichero, sino el «Environment»
+# `produccion` de GitHub (Settings → Environments → Required reviewers). Sin esos
+# revisores configurados, el workflow se ejecutaría sin puerta de aprobación.
+#
+# Requisitos:
+#   secret  RENDER_DEPLOY_HOOK_PRODUCCION  → Deploy Hook del servicio en Render
+#   var     PRODUCCION_URL                 → https://<dominio real>
+name: Deploy producción
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmacion:
+        description: 'Escribe "desplegar" para confirmar'
+        required: true
+        type: string
+
+jobs:
+  desplegar:
+    runs-on: ubuntu-latest
+    environment:
+      name: produccion
+      url: ${{ vars.PRODUCCION_URL }}
+    steps:
+      - name: Verificar la confirmación
+        run: |
+          if [ "${{ inputs.confirmacion }}" != "desplegar" ]; then
+            echo "::error::Confirmación incorrecta. Escribe exactamente «desplegar»."
+            exit 1
+          fi
+
+      - name: Comprobar configuración
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_PRODUCCION }}
+          BASE: ${{ vars.PRODUCCION_URL }}
+        run: |
+          [ -n "$HOOK" ] || { echo "::error::Falta RENDER_DEPLOY_HOOK_PRODUCCION."; exit 1; }
+          [ -n "$BASE" ] || { echo "::error::Falta PRODUCCION_URL."; exit 1; }
+
+      - name: Lanzar el despliegue en Render
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_PRODUCCION }}
+        run: curl --fail --silent --show-error -X POST "$HOOK"
+
+      - name: Esperar a que producción responda sana
+        env:
+          BASE: ${{ vars.PRODUCCION_URL }}
+        run: |
+          for i in $(seq 1 30); do
+            if curl --fail --silent "$BASE/api/v1/health" > /dev/null; then
+              echo "Producción responde sana tras $((i*10))s."
+              exit 0
+            fi
+            echo "Intento $i/30; reintento en 10s."
+            sleep 10
+          done
+          echo "::error::Producción no respondió sana en 5 minutos. Revisar rollback en docs/RUNBOOK.md §2."
+          exit 1

@@ -1,0 +1,175 @@
+# SEIS — Blueprint de infraestructura (Fase 11)
+#
+# Sintaxis: https://render.com/docs/blueprint-spec
+#   sync: false      → Render pregunta el valor en el dashboard (secretos)
+#   generateValue    → Render genera un valor aleatorio de 256 bits
+#   fromDatabase     → toma la cadena de conexión de la base gestionada
+#   fromService      → copia el valor de OTRO servicio (clave para JWT_SECRET)
+#
+# AVISO: este fichero no se ha aplicado nunca contra Render. Antes de usarlo,
+# validarlo con «Blueprint → New Blueprint Instance», que hace dry-run. Render
+# renombró Redis a «Key Value»: si `type: redis` es rechazado, sustituir por
+# `type: keyvalue` (el resto del blueprint no cambia).
+
+databases:
+  - name: seis-postgres
+    databaseName: seis
+    user: seis
+    plan: basic-256mb
+    region: frankfurt          # UE, por RGPD
+    postgresMajorVersion: "16"
+    # PostGIS NO es necesario hoy: el esquema guarda lat/lng como Numeric(9,6).
+    # Si algún día se migra a geometry(Point,4326), habrá que habilitar la extensión.
+
+services:
+  # ── Cola / broker de Celery ────────────────────────────────────────────────
+  - type: redis
+    name: seis-redis
+    plan: starter
+    region: frankfurt
+    ipAllowList: []            # solo accesible desde la red interna de Render
+
+  # ── Backend FastAPI ────────────────────────────────────────────────────────
+  - type: web
+    name: seis-backend
+    runtime: python
+    region: frankfurt
+    plan: starter
+    rootDir: backend
+    buildCommand: "pip install -r requirements.txt"
+    # preDeployCommand exige plan de pago. Si se usa el plan gratuito, mover
+    # `alembic upgrade head` al principio del startCommand (con el riesgo de que
+    # se ejecute una vez por réplica).
+    preDeployCommand: "alembic upgrade head && python -m scripts.init_db"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 2"
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: SEIS_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: seis-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: seis-redis
+          property: connectionString
+      # Generado por Render: nadie llega a verlo, y la guardia de arranque
+      # (config.py::_validar_seguridad_produccion) rechaza los valores de fábrica.
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: SEIS_CORS_ORIGINS
+        sync: false            # dominio real del frontend
+      - key: FRONTEND_URL
+        sync: false            # base de los enlaces de verificación/baja
+      # Fase 12 — sin valor, el canal queda inactivo y nada rompe
+      - key: EMAIL_PROVIDER
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: POSTMARK_TOKEN
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_BOT_NOMBRE
+        sync: false
+
+  # ── Frontend Next.js ───────────────────────────────────────────────────────
+  - type: web
+    name: seis-frontend
+    runtime: node
+    region: frankfurt
+    plan: starter
+    rootDir: frontend
+    buildCommand: "npm ci && npm run build"
+    startCommand: "npm run start"
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # Se lee en tiempo de BUILD (NEXT_PUBLIC_*): cambiarla exige redeploy.
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
+
+  # ── Worker de Celery (sin --beat: el beat va aparte, ver más abajo) ────────
+  - type: worker
+    name: seis-worker
+    runtime: python
+    region: frankfurt
+    plan: starter
+    rootDir: backend
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "celery -A app.tasks.celery_app.celery worker --loglevel=INFO --concurrency=2"
+    envVars:
+      - key: SEIS_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: seis-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: seis-redis
+          property: connectionString
+      # CRÍTICO: el worker firma los mismos enlaces de baja que el backend.
+      # Debe COPIAR el secreto del backend, no generar el suyo — con
+      # generateValue cada servicio tendría uno distinto y los enlaces de baja
+      # emitidos por el worker serían rechazados por el backend.
+      - key: JWT_SECRET
+        fromService:
+          type: web
+          name: seis-backend
+          envVarKey: JWT_SECRET
+      - key: FRONTEND_URL
+        sync: false
+      - key: EMAIL_PROVIDER
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: POSTMARK_TOKEN
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_BOT_NOMBRE
+        sync: false
+
+  # ── Beat (planificador) ───────────────────────────────────────────────────
+  # Separado del worker siguiendo la nota del propio docker-compose.yml: con el
+  # beat embebido, escalar el worker a N réplicas duplicaría N veces el digest
+  # horario y el polling de Telegram. Este servicio NO debe escalarse: 1 réplica.
+  - type: worker
+    name: seis-beat
+    runtime: python
+    region: frankfurt
+    plan: starter
+    rootDir: backend
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "celery -A app.tasks.celery_app.celery beat --loglevel=INFO"
+    envVars:
+      - key: SEIS_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: seis-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: seis-redis
+          property: connectionString
+      - key: JWT_SECRET
+        fromService:
+          type: web
+          name: seis-backend
+          envVarKey: JWT_SECRET
+      - key: FRONTEND_URL
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_BOT_NOMBRE
+        sync: false

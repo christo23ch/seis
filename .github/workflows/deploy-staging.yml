@@ -1,0 +1,54 @@
+# Despliegue automático a staging (Fase 11).
+#
+# Se dispara SOLO si la CI («CI») terminó en verde sobre main: nunca se despliega
+# código sin tests. Mientras el workflow de CI no exista, este no llega a
+# ejecutarse — el modo de fallo es «no despliega», que es el seguro.
+#
+# Requisitos en el repositorio (Settings → Secrets and variables → Actions):
+#   secret  RENDER_DEPLOY_HOOK_STAGING  → Deploy Hook del servicio en Render
+#   var     STAGING_URL                 → https://<servicio>.onrender.com
+name: Deploy staging
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    branches: [main]
+    types: [completed]
+
+jobs:
+  desplegar:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comprobar que el deploy hook está configurado
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_STAGING }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::error::Falta el secret RENDER_DEPLOY_HOOK_STAGING."
+            exit 1
+          fi
+
+      - name: Lanzar el despliegue en Render
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_STAGING }}
+        run: curl --fail --silent --show-error -X POST "$HOOK"
+
+      - name: Esperar a que staging responda sano
+        env:
+          BASE: ${{ vars.STAGING_URL }}
+        run: |
+          if [ -z "$BASE" ]; then
+            echo "::error::Falta la variable STAGING_URL."
+            exit 1
+          fi
+          for i in $(seq 1 30); do
+            if curl --fail --silent "$BASE/api/v1/health" > /dev/null; then
+              echo "Staging responde sano tras $((i*10))s."
+              exit 0
+            fi
+            echo "Intento $i/30; reintento en 10s."
+            sleep 10
+          done
+          echo "::error::Staging no respondió sano en 5 minutos."
+          exit 1
