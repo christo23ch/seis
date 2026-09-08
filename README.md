@@ -37,6 +37,34 @@ seis/
 
 ## Puesta en marcha
 
+> ### ⚠️ Si vienes de una instalación anterior a la Fase 11-A, lee esto primero
+>
+> **1 · Un `.env` antiguo impide arrancar la pila entera.** No solo el backend:
+> también `worker` y `beat`, porque `celery_app` valida al importarse. La causa es
+> que `SEIS_ENV` sin declarar vale `production` por el defecto del compose, que es
+> un entorno estricto, y ahí la guardia de arranque aborta si falta
+> `PROXIES_DE_CONFIANZA`. El mensaje de error es accionable, pero si no lo esperas
+> parece que la pila está rota. **Arreglo: una línea nueva en tu `.env`.**
+>
+> ```bash
+> PROXIES_DE_CONFIANZA=ninguno       # centinela: no hay proxy delante
+> # o, si lo hay:  PROXIES_DE_CONFIANZA=10.0.0.5/32  (junto con CABECERA_IP_CLIENTE)
+> ```
+>
+> Ojo: **dejarlo vacío no vale** y aborta igual. Vacío significa «no lo he
+> pensado»; `ninguno` significa «lo he pensado y no hay proxy». La guardia
+> distingue las dos cosas a propósito, porque darlo por bueno en silencio deja el
+> límite por origen convertido en un cupo global para todo el sitio.
+>
+> **2 · Los puertos ya no se publican a toda la red.** `backend` y `frontend`
+> escuchan en `127.0.0.1` por defecto (ADR-0008): exponerlos a otras máquinas pasa
+> a ser un acto explícito. Si accedías desde el móvil o desde otro equipo de la red
+> local y de pronto no responde, no está caído — es esto:
+>
+> ```bash
+> BIND_BACKEND=0.0.0.0 BIND_FRONTEND=0.0.0.0 docker compose up -d
+> ```
+
 ```bash
 cp .env.example .env            # OBLIGATORIO: rellenar JWT_SECRET y ADMIN_PASSWORD
                                 # (vienen vacíos; con SEIS_ENV=production el arranque
@@ -57,10 +85,9 @@ python -m scripts.init_db && uvicorn app.main:app --reload
 ## Tests
 
 ```bash
-cd backend && python -m pytest -q        # 393 recogidos: 391 pasan, 0 fallan, 2 se omiten
-                                        # (las 2 omisiones son condicionales: T5 exige
-                                        #  SEIS_TEST_POSTGRES_URL y la rama con DejaVu se
-                                        #  omite si la fuente no está instalada)
+cd backend && python -m pytest -q        # 413 recogidos: 412 pasan, 0 fallan, 1 se omite
+                                        # (la omisión es condicional: T5 exige un PostgreSQL
+                                        #  real vía SEIS_TEST_POSTGRES_URL)
 ```
 
 `tests/test_golden_caso19.py` reproduce **íntegro el ejemplo numérico del §19** de la especificación (ICI, ICU, matriz de riesgos, RA 40, δ_v 6 %, C_F, escalera 51,1k/60,1k/69,1k/~80k, ROI 25 %, MS 25 %, RVC 1,08, semáforo AMARILLO con condiciones) y es la prueba de regresión fundacional: cualquier cambio de reglas o parámetros que altere la decisión rompe el test de forma visible.
