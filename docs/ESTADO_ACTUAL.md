@@ -10,11 +10,21 @@
 
 ## Frentes abiertos
 
-**Actualizado:** 2026-09-08 · **`main`:** `f7de1b5` · **Suite:** 402 passed, 1 skipped
-**Última fase cerrada:** 11-A (infraestructura, parte agnóstica del proveedor)
+**Actualizado:** 2026-09-08 · **`main`:** `cc5b782` · **Suite:** 412 passed, 1 skipped
+**Última fase cerrada:** 11-A · **Siguiente:** deuda de cobertura (a y b) y luego Fase 17-A
 
 | Rama | PR | Estado | Qué contiene | Siguiente acción |
 |---|---|---|---|---|
+| `docs/adr-diseno-y-revision-visual` | — | 🟡 en revisión | ADR-0010 (UI propia), flujo de revisión visual, puerta de la deuda | Fusionar |
+
+Sin más frentes abiertos: los PR #4 a #10 están fusionados o cerrados.
+
+**Ramas pendientes de borrar** (el proxy de la sesión no permite borrar refs; hay que hacerlo
+desde la interfaz de GitHub o desde una máquina local): `claude/wizardly-wright-nkscpg`,
+`infra/fase-11-rescate`, `fase-11-infraestructura`, `fix/seguridad-urgente`, `docs/estado-actual`,
+`docs/plan-fases`, `fix/pdf-guion-bajo`, `docs/avisos-readme`.
+
+---|---|---|---|---|
 | `docs/estado-actual` | [#5](https://github.com/christo23ch/seis/pull/5) | 🟡 en revisión | Este documento | Fusionar |
 | `docs/plan-fases` | [#8](https://github.com/christo23ch/seis/pull/8) | 🟡 en revisión | Plan de fases hasta el lanzamiento | Fusionar |
 | `fix/pdf-guion-bajo` | [#9](https://github.com/christo23ch/seis/pull/9) | 🟡 en revisión | `C_F` salía como «C F» en el informe | Fusionar |

@@ -8,7 +8,7 @@ Números ya asignados. QuickAdd los lee y propone el siguiente; actualizar a man
 
 | Serie | Último asignado |
 |---|---|
-| ADR | 0009 |
+| ADR | 0010 |
 | RFC | 0000 |
 | BUG | 0000 |
 | INC / PM | 0000 |

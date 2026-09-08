@@ -124,6 +124,12 @@ permitió entender 7.000 líneas ajenas en minutos en vez de leerlas enteras.
 Cuatro asuntos que no son una fase pero van por delante de todas. Tres los documentó la propia
 Fase 11-A al cerrarse; el cuarto es un defecto en el entregable que ve el cliente.
 
+> **Puerta explícita:** (a) y (b) se cierran **antes de la Fase 11-B**, es decir, antes de que
+> nada toque producción. No después. El motivo es que ambos protegen justo el camino que 11-B
+> estrena: (a) cubre el arranque de una instalación nueva —donde ya no hay `create_all` de red—
+> y (b) ejecuta por primera vez los tres caminos que solo existen en PostgreSQL, que es el motor
+> que 11-B pone en producción. Cerrarlos después sería estrenarlos con datos reales.
+
 ### a) Test de `init_db.main()` — 🟢 prioridad alta, coste bajo
 
 **El hueco más peligroso de los cuatro.** Los tests prueban las tres piezas de la siembra por
@@ -333,7 +339,8 @@ en `docs/HERRAMIENTAS.md` (Paso 4), no aquí.
 
 | # | Fase | Clase | Depende de |
 |---|---|---|---|
-| 1 | 11-B · Despliegue | 🟡 | Dominio, hosting |
+| **0** | **Deuda de cobertura (§2-bis a y b)** | 🟢 | — · **PUERTA: nada que toque producción se despliega antes** |
+| 1 | 11-B · Despliegue | 🟡 | Dominio, hosting · **la puerta 0** |
 | 2 | 17-A · Captación | 🟡 + 🔴 | HTML real del BOE |
 | 3 | 14 · RGPD | 🟢 | Abogado (textos) |
 | 4 | 13 · Stripe | 🟡 | **Figura fiscal** (empieza hoy) |
