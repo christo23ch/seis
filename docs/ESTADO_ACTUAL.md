@@ -65,7 +65,7 @@ Criterio de veredicto:
 
 ```
 backend:  161 passed, 1 skipped   (24s)
-frontend: npm run build → ✓ compilado, 21 rutas, sin errores de tipos
+frontend: npm run build → ✓ compilado, 20 rutas, sin errores de tipos
 ```
 
 Desglose de los 162 tests recogidos:
