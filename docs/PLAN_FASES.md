@@ -75,10 +75,36 @@ Tres capas, de menos a más fiable:
 
 1. **En el prompt de cada fase** (`docs/PROMPTS_FASES.md`): el último requisito de todos los
    prompts es actualizar esa tabla antes de abrir el PR. Depende de que el modelo obedezca.
-2. **En la CI, como test.** Un test compara la lista de ramas remotas y PRs abiertos con la
-   tabla del documento y **falla si divergen**. Esto es lo que lo hace fiable: no depende de
-   memoria humana ni de la buena voluntad del modelo, sino de la misma puerta que ya bloquea
-   los merges. Es barato: una llamada a la API de GitHub y una comparación de conjuntos.
+2. **En la CI, como test.** Es lo que lo hace fiable: no depende de memoria humana ni de la
+   buena voluntad del modelo, sino de la misma puerta que ya bloquea los merges. Pero un test
+   así **solo sirve si nadie lo acaba desactivando**, de modo que está diseñado para fallar
+   poco y bien.
+
+   **Qué comprueba exactamente:** que **todo PR abierto aparezca en la tabla**. Nada más.
+   Se ejecuta en `pull_request`, pide a la API los PRs abiertos y falla si encuentra alguno
+   que la tabla no menciona.
+
+   **La comprobación es deliberadamente unidireccional.** El fallo que perseguimos es
+   *trabajo que existe y nadie sabe que existe* — un PR #4 abierto un mes. El caso contrario,
+   que la tabla mencione un PR ya fusionado, es contabilidad atrasada: molesta, pero no pierde
+   nada, y se corrige sola en la siguiente actualización. Hacerla bidireccional convertiría
+   cada fusión en un `main` rojo hasta que alguien borrase una fila, que es precisamente la
+   clase de ruido que termina con el test desactivado.
+
+   **Qué NO comprueba, y por qué:**
+
+   | No comprueba | Motivo |
+   |---|---|
+   | Nombres de ramas | Se crean y borran constantemente. Una rama sin PR no es un frente perdido: es ruido |
+   | Las columnas «Estado» y «Siguiente acción» | Texto libre. Compararlo haría fallar el test por una palabra distinta |
+   | El orden de las filas | Irrelevante |
+   | El SHA y el recuento de tests de la cabecera | Quedan obsoletos en el commit siguiente. Son informativos, no verificables |
+   | PRs de bots (Dependabot) | Cada actualización automática rompería la CI |
+   | PRs ya cerrados o fusionados que sigan en la tabla | Contabilidad atrasada, no pérdida de trabajo (ver arriba) |
+
+   **Coste:** una llamada a la API con el `GITHUB_TOKEN` que Actions ya inyecta; sin secretos
+   nuevos. **Efecto secundario buscado:** un PR nuevo falla hasta que se añade a sí mismo a la
+   tabla. Eso no es un falso positivo — es la disciplina que se quiere imponer.
 3. **En el vault.** `999-Meta/Estado-de-Implantacion.md` ya existe y cumple un papel parecido
    para el propio vault; se enlaza desde `01-Home/Home.md` para que sea lo primero que se ve al
    abrirlo.
@@ -90,6 +116,58 @@ El vault trae `900-Plantillas/Plantilla-ADR.md` y la Fase 11-A ya escribió **si
 discutible de una fase termine en un ADR numerado antes de cerrar su PR**, y que el PR lo
 enlace. Los siete de la Fase 11-A son la prueba de que el hábito funciona — fueron lo que me
 permitió entender 7.000 líneas ajenas en minutos en vez de leerlas enteras.
+
+---
+
+## 2-bis · Deuda de cobertura: lo primero, antes de cualquier fase
+
+Cuatro asuntos que no son una fase pero van por delante de todas. Tres los documentó la propia
+Fase 11-A al cerrarse; el cuarto es un defecto en el entregable que ve el cliente.
+
+### a) Test de `init_db.main()` — 🟢 prioridad alta, coste bajo
+
+**El hueco más peligroso de los cuatro.** Los tests prueban las tres piezas de la siembra por
+separado (conocimiento, administrador, sesión), pero **nunca la orquestación**. La mutación que
+sobrevive es envolver la siembra en un `if creado:`: en `development` y `test` no cambia nada y
+la suite queda verde; en `staging` y `production`, donde la Fase 11-A retiró el `create_all` de
+red (ADR-0004), **la instalación arranca sin reglas, sin parámetros y sin administrador**.
+
+Y no se detecta hasta el despliegue, que es justo cuando más caro es. Es el defecto de la Fase
+9.5 entrando por otra puerta.
+
+- **Qué hacer:** un test que ejecute `init_db.main()` de extremo a extremo contra una base
+  vacía y afirme que después existen reglas, parámetros y administrador. Y otro que cubra la
+  duplicación de esa orquestación en `sembrar.py`.
+- **Salida verificable:** con la mutación `if creado:` aplicada a mano, el test falla.
+
+### b) PostgreSQL en la CI — 🟢 coste bajo
+
+Hoy la CI solo corre SQLite, así que **tres caminos exclusivos de PostgreSQL no se ejecutan en
+ninguna parte**: `SET LOCAL statement_timeout` en la sonda de salud,
+`with_for_update(skip_locked=True)` en la purga y el motivo de `_rollback_silencioso`. Además
+T5 queda omitido de forma permanente.
+
+- **Qué hacer:** añadir `services: postgres:16` al job de backend y definir
+  `SEIS_TEST_POSTGRES_URL`.
+- **Salida verificable:** la CI deja de reportar la omisión de T5, y los tres caminos aparecen
+  ejecutados.
+
+### c) La purga en modo `borrar` no se activa todavía — 🟡 regla, no tarea
+
+`PURGA_CUENTAS_MODO` nace en `informar` y **así se queda**. Todos los tests de borrado pasan el
+modo explícito y la sesión de la fixture, de modo que la combinación real —tarea + `SessionLocal`
++ ajustes de producción— **se estrenaría a las 04:30 borrando cuentas reales**.
+
+**Condición de activación, no negociable:**
+
+1. Un test que ejercite la ruta completa de la tarea, sin doblar la sesión.
+2. Un ensayo en staging con datos de prueba, verificando qué se borró y qué sobrevivió.
+3. Solo entonces, y con el modo `informar` habiendo reportado antes lo que habría borrado.
+
+### d) `pdf_service._limpiar` partía los identificadores — ✅ hecho
+
+`C_F` salía como «C F» en el informe. Corregido en el PR #9, con tests derivados del informe
+dorado. Se deja anotado aquí porque el hallazgo salió de esta revisión.
 
 ---
 
