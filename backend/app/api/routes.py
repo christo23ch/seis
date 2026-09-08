@@ -61,15 +61,31 @@ def crear_analisis_async(inp: AnalisisInput,
 
 
 @router.get("/tareas/{tarea_id}")
-def estado_tarea(tarea_id: str,
-                 _u: models.Usuario = Depends(get_current_user)) -> dict:
+def estado_tarea(tarea_id: str, db: Session = Depends(get_db),
+                 user: models.Usuario = Depends(get_current_user)) -> dict:
+    """Estado de una tarea de análisis, aislado por organización.
+
+    El estado en crudo no distingue una tarea ajena de una inexistente (Celery
+    responde PENDING a cualquier UUID), así que no filtra nada. Lo que sí filtra
+    es el resultado: contiene el id del análisis y su semáforo. Por eso solo se
+    entrega si ese análisis pertenece a la organización de quien pregunta, y en
+    caso contrario se responde 404 — nunca 403, que confirmaría su existencia.
+    """
     from app.tasks.celery_app import celery
     r = celery.AsyncResult(tarea_id)
     out = {"tarea_id": tarea_id, "estado": r.status}
     if r.successful():
+        resultado = r.result if isinstance(r.result, dict) else {}
+        propio = analisis_service.obtener_analisis(
+            db, str(resultado.get("id", "")), organizacion_id=user.organizacion_id)
+        if propio is None:
+            raise HTTPException(404, "Tarea no encontrada")
         out["resultado"] = r.result
     elif r.failed():
-        out["error"] = str(r.result)
+        # El texto de la excepción puede describir datos de otra organización y
+        # aquí no hay análisis contra el que comprobar la propiedad: se informa
+        # del fallo sin detallarlo.
+        out["error"] = "La tarea terminó con error"
     return out
 
 

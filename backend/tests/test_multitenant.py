@@ -141,3 +141,105 @@ def test_propietario_activa_desactiva_miembro_propio(api, escenario):
     login = api.post("/api/v1/auth/login",
                      data={"username": "togglable@example.com", "password": "temp12345"})
     assert login.status_code == 401
+
+
+# ─────────────── Aislamiento del estado de tareas (GET /tareas/{id}) ───────────────
+
+def _fingir_tarea_exitosa(monkeypatch, analisis_id: str, semaforo: str = "amarillo"):
+    """Sustituye AsyncResult por una tarea SUCCESS que apunta a `analisis_id`.
+
+    En modo eager el resultado no queda en ningún backend, así que consultarlo por
+    HTTP devolvería PENDING y no ejercitaría la comprobación de propiedad. Fingir
+    la tarea es lo que permite probar la fuga real: quien conoce un `tarea_id`
+    ajeno obtenía el id del análisis y su semáforo.
+    """
+    class TareaFingida:
+        status = "SUCCESS"
+        result = {"id": analisis_id, "semaforo": semaforo}
+
+        def successful(self) -> bool:
+            return True
+
+        def failed(self) -> bool:
+            return False
+
+    from app.tasks import celery_app
+    monkeypatch.setattr(celery_app.celery, "AsyncResult", lambda _id: TareaFingida())
+
+
+def test_estado_de_tarea_ajena_es_404(api, escenario, monkeypatch):
+    """B conoce el id de una tarea de A: no puede leer su resultado."""
+    id_a = _crear_analisis(api, escenario["anaA_h"])
+    _fingir_tarea_exitosa(monkeypatch, id_a)
+
+    r = api.get("/api/v1/tareas/cualquier-uuid", headers=escenario["anaB_h"])
+    assert r.status_code == 404, r.text
+    # Y no se filtra ni el id del análisis ni el semáforo en el cuerpo del error.
+    assert id_a not in r.text
+    assert "amarillo" not in r.text
+
+
+def test_estado_de_tarea_propia_se_entrega(api, escenario, monkeypatch):
+    """Regresión: el dueño sigue recibiendo su resultado (no se rompe el sondeo)."""
+    id_a = _crear_analisis(api, escenario["anaA_h"])
+    _fingir_tarea_exitosa(monkeypatch, id_a)
+
+    r = api.get("/api/v1/tareas/cualquier-uuid", headers=escenario["anaA_h"])
+    assert r.status_code == 200, r.text
+    assert r.json()["resultado"]["id"] == id_a
+
+
+def test_tarea_fallida_no_propaga_el_texto_de_la_excepcion(api, escenario, monkeypatch):
+    class TareaFallida:
+        status = "FAILURE"
+        result = RuntimeError("fuga: subasta de la organización A en la calle Secreta 1")
+
+        def successful(self) -> bool:
+            return False
+
+        def failed(self) -> bool:
+            return True
+
+    from app.tasks import celery_app
+    monkeypatch.setattr(celery_app.celery, "AsyncResult", lambda _id: TareaFallida())
+
+    r = api.get("/api/v1/tareas/cualquier-uuid", headers=escenario["anaB_h"])
+    assert r.status_code == 200
+    assert "Secreta" not in r.text and "fuga" not in r.text
+
+
+# ─────────────── El filtro por tenant es fail-closed ───────────────
+
+def test_sin_organizacion_no_se_ve_ningun_analisis(api, escenario):
+    """Un usuario con `organizacion_id` NULL no puede ver los análisis de nadie.
+
+    La columna es nullable, así que este estado es representable. Antes el filtro
+    era *fail-open*: sin tenant devolvía TODOS los análisis de TODAS las
+    organizaciones. Debe devolver cero.
+    """
+    id_a = _crear_analisis(api, escenario["anaA_h"])
+
+    from app.core.db import SessionLocal
+    from app.services import usuario_service
+    db = SessionLocal()
+    try:
+        usuario_service.crear_usuario(db, "huerfano@example.com", "huerfano123",
+                                      "Huérfano", rol="analista", organizacion_id=None)
+    finally:
+        db.close()
+
+    h = token_headers(api, "huerfano@example.com", "huerfano123")
+    assert api.get("/api/v1/analisis", headers=h).json() == []
+    assert api.get(f"/api/v1/analisis/{id_a}", headers=h).status_code == 404
+
+
+def test_servicio_sin_tenant_no_devuelve_nada():
+    """Mismo invariante, comprobado directamente sobre la capa de servicio."""
+    from app.core.db import SessionLocal
+    from app.services import analisis_service
+    db = SessionLocal()
+    try:
+        assert analisis_service.listar_analisis(db, organizacion_id=None) == []
+        assert analisis_service.obtener_analisis(db, "cualquiera", organizacion_id=None) is None
+    finally:
+        db.close()
