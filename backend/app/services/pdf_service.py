@@ -14,6 +14,18 @@ from fpdf.enums import XPos, YPos
 _DEJAVU = Path("/usr/share/fonts/truetype/dejavu")
 _EMOJI = re.compile(r"[\U0001F300-\U0001FAFF\u2600-\u27BF\uFE0F]")
 
+# Énfasis de Markdown (`_texto_`), pero NO el guion bajo interior de un
+# identificador. Un `.replace("_", " ")` a secas degradaba los nombres canónicos
+# del producto: `P_límite` salía como «P límite», `C_F` como «C F» y `c_v` como
+# «c v», en 15 líneas del informe dorado §19. `P_límite` es término contractual
+# —el bloqueo duro que el software nunca deja superar (CLAUDE.md §4)—, así que
+# verlo partido en el entregable que recibe el cliente no es cosmético.
+# Solo se retira el guion bajo que NO está entre dos caracteres de palabra.
+# `[^\W_]` es «carácter de palabra que no sea el propio guion bajo»: sin esa
+# exclusión, `__negrita__` dejaba restos, porque `_` cuenta como \w y el segundo
+# guion de cada par se creía interior.
+_ENFASIS_GUION_BAJO = re.compile(r"(?<![^\W_])_|_(?![^\W_])")
+
 
 # Viñeta del listado. Constante y no literal suelto: era un literal concatenado
 # FUERA del saneador, y por ahí entró el carácter que rompía el informe entero.
@@ -53,7 +65,8 @@ def _limpiar(texto: str, unicode_ok: bool) -> str:
     después, como último recurso, con el reemplazo de `encode`.
     """
     texto = _EMOJI.sub("", texto)
-    texto = texto.replace("**", "").replace("`", "").replace("_", " ")
+    texto = texto.replace("**", "").replace("`", "")
+    texto = _ENFASIS_GUION_BAJO.sub("", texto)
     if not unicode_ok:
         for original, equivalente in _EQUIVALENCIAS.items():
             texto = texto.replace(original, equivalente)
