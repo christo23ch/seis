@@ -12,9 +12,11 @@ tipo: meta
 
 ### 1. `[[Wikilinks]]` — la relación por defecto
 
-Uso: cualquier mención a otra nota del Vault. `[[ADR-0007-uso-unico-tokens-por-clave-primaria]]`.
+Uso: cualquier mención a otra nota del Vault. `[[ADR-0007-planificador-celery-separado-del-worker]]`.
 
-**Con alias siempre que el nombre de fichero no fluya en la frase**: `[[ADR-0007-uso-unico-tokens-por-clave-primaria|el ADR del uso único de tokens]]`. Un texto lleno de `[[nombres-de-fichero-en-kebab-case]]` sin alias es ilegible en 6 meses.
+**Con alias siempre que el nombre de fichero no fluya en la frase**: `[[ADR-0007-planificador-celery-separado-del-worker|el ADR del planificador separado del worker]]`. Un texto lleno de `[[nombres-de-fichero-en-kebab-case]]` sin alias es ilegible en 6 meses.
+
+> Los ejemplos de esta nota van **entrecomillados como código a propósito**: aquí se enseña la sintaxis, y un enlace renderizado esconde precisamente lo que se quiere mostrar. El enlace vivo a ese ADR está en [[Fase-11-infraestructura]], que es donde toca.
 
 ### 2. Backlinks — no se escriben, se leen
 

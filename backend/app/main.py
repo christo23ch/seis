@@ -9,6 +9,7 @@ from app.api.notificaciones import router as notificaciones_router
 from app.api.notificaciones import router_alertas as alertas_router
 from app.api.organizacion import router as organizacion_router
 from app.api.routes import router
+from app.api.salud import router as salud_router
 from app.core.config import get_settings
 
 settings = get_settings()
@@ -30,3 +31,4 @@ app.include_router(organizacion_router, prefix=settings.api_v1_prefix)
 app.include_router(captacion_router, prefix=settings.api_v1_prefix)
 app.include_router(notificaciones_router, prefix=settings.api_v1_prefix)
 app.include_router(alertas_router, prefix=settings.api_v1_prefix)
+app.include_router(salud_router, prefix=settings.api_v1_prefix)

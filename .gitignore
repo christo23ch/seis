@@ -18,8 +18,33 @@ out/
 npm-debug.log*
 
 # Entorno
+#
+# Se ignora TODA la familia `.env.*` y se readmiten solo las plantillas. Antes
+# figuraban únicamente `.env` y `.env.local`, de modo que `.env.produccion`,
+# `.env.production` y `.env.staging` NO estaban protegidos: bastaba un
+# `git add .` rutinario —sin `-f`— para publicar JWT_SECRET, ADMIN_PASSWORD,
+# POSTGRES_PASSWORD y las credenciales de correo. El hueco se volvió urgente en
+# la Fase 11, que introduce `.env.produccion.example` y con él invita al
+# operador a crear precisamente `.env.produccion`.
 .env
-.env.local
+.env.*
+!.env.example
+!.env.produccion.example
+
+# Material criptográfico y credenciales sueltas. Ninguno debería existir en el
+# repositorio, y por eso mismo conviene que un descuido no se pueda cometer.
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+.netrc
+_netrc
+.envrc
+credentials
+secrets/
 
 # Editores / SO
 .DS_Store

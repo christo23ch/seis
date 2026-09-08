@@ -1,5 +1,6 @@
 """Celery — cola para análisis en lote y re-análisis por eventos (F2)."""
 from celery import Celery
+from celery.schedules import crontab
 
 from app.core.config import get_settings
 
@@ -13,11 +14,19 @@ if settings.celery_task_always_eager:
     celery.conf.task_eager_propagates = True
 
 # Fase 12 — beat: polling de Telegram (si hay token) y digest horario
+# Fase 11 (Bloque I) — mantenimiento diario de las tablas que solo crecen
 celery.conf.beat_schedule = {
     "telegram-polling": {"task": "seis.telegram_polling", "schedule": 30.0},
     "digest-horario": {"task": "seis.digest", "schedule": 3600.0},
+    # `crontab` y NO un intervalo de 86400 s: `beat` no persiste su
+    # `celerybeat-schedule` —vive en la capa efímera del contenedor—, de modo que
+    # con un intervalo cada recreación reiniciaría la cuenta de 24 horas y en un
+    # despliegue con recreaciones frecuentes la purga podría no ejecutarse nunca.
+    # Un horario anclado al reloj no tiene ese problema.
+    "purga-diaria": {"task": "seis.purgar", "schedule": crontab(hour=4, minute=30)},
 }
 celery.autodiscover_tasks(["app.tasks"], related_name="notificaciones_tasks")
+celery.autodiscover_tasks(["app.tasks"], related_name="mantenimiento_tasks")
 
 
 @celery.task(name="seis.analizar")

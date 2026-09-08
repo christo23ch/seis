@@ -13,7 +13,7 @@ Todo en minúsculas con guiones, salvo el prefijo de tipo cuando lleva número (
 | Tipo | Patrón | Ejemplo real | Carpeta |
 |---|---|---|---|
 | Diario | `AAAA-MM-DD.md` (generado por el plugin Daily Notes, no manual) | `2026-07-30.md` | `02-Diario` |
-| ADR | `ADR-NNNN-slug.md` | `ADR-0007-uso-unico-tokens-por-clave-primaria.md` | `30-Decisiones/ADR` |
+| ADR | `ADR-NNNN-slug.md` | `ADR-0007-planificador-celery-separado-del-worker.md` | `30-Decisiones/ADR` |
 | RFC | `RFC-NNNN-slug.md` | `RFC-0003-invalidacion-de-sesiones-tras-reseteo.md` | `30-Decisiones/RFC` |
 | Fase | `Fase-NN[.N]-slug.md` | `Fase-10-alta-self-service.md` | `40-Fases` |
 | Release | `AAAA-MM-DD-fase-NN-vX.md` | `2026-07-29-fase-10-v1.md` | `50-Releases` |
@@ -32,7 +32,7 @@ Todo en minúsculas con guiones, salvo el prefijo de tipo cuando lleva número (
 
 ## Reglas transversales
 
-1. **Numeración de ADR, RFC, Bug e Incidente es secuencial y global, nunca por carpeta ni por fase.** `ADR-0007` es el séptimo ADR de la historia del proyecto, no el séptimo de la Fase 10. Consulta `999-Meta/contador-secuencias.md` antes de asignar el siguiente número — lo gestiona QuickAdd (Fase 8), no a mano.
-2. **El slug nunca repite el tipo.** `ADR-0007-decision-uso-unico-tokens.md` está mal: la palabra "decisión" ya la aporta "ADR".
+1. **Numeración de ADR, RFC, Bug e Incidente es secuencial y global, nunca por carpeta ni por fase.** `ADR-0007` es el séptimo ADR de la historia del proyecto, no el séptimo de la Fase 11. Consulta `999-Meta/contador-secuencias.md` antes de asignar el siguiente número — lo gestiona QuickAdd (Fase 8), no a mano. **Secuencial no implica escrito en orden:** la Fase 11 reservó números por bloque del plan y los bloques se ejecutaron en otro orden, así que `0004` y `0005` siguen vacíos con `0006` y `0007` ya escritos.
+2. **El slug nunca repite el tipo.** `ADR-0007-decision-planificador-separado.md` está mal: la palabra "decisión" ya la aporta "ADR".
 3. **Las fechas de eventos usan la fecha del evento, no la de creación de la nota.** Una reunión del 28 de julio documentada el 30 se llama `2026-07-28-...md`.
 4. **Ningún título de nota repite el nombre de fichero en el `# H1`.** El nombre de fichero es la clave técnica; el `H1` es el título legible y puede cambiar sin romper enlaces (Obsidian actualiza los `[[wikilinks]]` automáticamente al renombrar el fichero, no al cambiar el `H1`).

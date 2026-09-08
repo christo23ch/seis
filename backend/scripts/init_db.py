@@ -1,45 +1,67 @@
-"""Inicializa el esquema y siembra el conocimiento (reglas T2, parámetros T3, perfiles)."""
-from app.core.db import Base, SessionLocal, engine
-from app import models
-from app.engine.params.store import cargar_defaults
-from app.engine.pipeline import cargar_catalogo
-from app.core.config import get_settings
+"""Arranque de la base: esquema en desarrollo, siembra siempre.
+
+**`create_all` NO se ejecuta fuera de desarrollo, y esa es la razón de ser de
+este módulo tal como está escrito.**
+
+`CLAUDE.md` §6.9 prohíbe derivar la DDL de los modelos dentro de
+`alembic/versions/`, porque una revisión así no describe un cambio de esquema:
+reproduce el estado que los modelos tengan **el día que se ejecute**. Hasta la
+Fase 11, ese mismo antipatrón vivía aquí, en la ruta de arranque, y
+`docker-compose.yml` lo encadenaba **después** de `alembic upgrade head`.
+
+La consecuencia era exactamente la que la prohibición busca evitar, solo que
+peor situada: si un modelo declara una tabla o una columna que ninguna migración
+crea, `create_all` **la crea en silencio en producción**. El esquema real deja
+de ser el que describe la cadena de migraciones, dos instalaciones con la misma
+revisión acaban distintas, y la deriva que el test T4 existe para detectar queda
+enmascarada justo donde más caro sale.
+
+En `development` y `test` sí se ejecuta, porque ahí no hay migraciones que
+respetar y crear el esquema al vuelo es lo cómodo y lo inocuo.
+"""
+from __future__ import annotations
+
+from app.core.config import entorno_normalizado, get_settings
+
+# Entornos donde el esquema se crea desde los modelos. El resto lo gobierna
+# Alembic, sin excepción.
+ENTORNOS_CON_CREATE_ALL = ("development", "test")
+
+
+def crear_esquema_si_procede() -> bool:
+    """Crea el esquema desde los modelos solo en desarrollo. Devuelve si lo hizo."""
+    from app.core.db import Base, engine
+
+    entorno = entorno_normalizado(get_settings().seis_env)
+    if entorno not in ENTORNOS_CON_CREATE_ALL:
+        print(f"SEIS · entorno «{entorno}»: el esquema lo gobierna Alembic, "
+              "no se ejecuta create_all.")
+        return False
+    Base.metadata.create_all(engine)
+    return True
 
 
 def main() -> None:
-    Base.metadata.create_all(engine)
+    from app.core.db import SessionLocal
+    from scripts.sembrar import sembrar_admin, sembrar_conocimiento
+
+    creado = crear_esquema_si_procede()
     db = SessionLocal()
     try:
-        params = cargar_defaults()
-        if not db.query(models.PerfilInversion).first():
-            for codigo, cfg in params.seccion("perfiles").items():
-                db.add(models.PerfilInversion(codigo=codigo, nombre=cfg.get("nombre", codigo),
-                                              parametros=cfg))
-        if not db.query(models.Regla).first():
-            catalogo, version = cargar_catalogo()
-            for r in catalogo:
-                db.add(models.Regla(codigo=r["codigo"], version=str(r.get("version", version)),
-                                    categoria=r.get("categoria", "regla"),
-                                    prioridad=int(r.get("prioridad", 100)), definicion=r))
-        if not db.query(models.Parametro).first():
-            db.add(models.Parametro(clave="__defaults__", ambito="nacional",
-                                    valor=params.raw(),
-                                    fuente_legal="Semilla v" + params.version))
-        for codigo in ["judicial_boe", "aeat", "tgss", "concursal", "banco", "notarial", "privada"]:
-            if not db.query(models.FuenteSubasta).filter_by(codigo=codigo).first():
-                db.add(models.FuenteSubasta(codigo=codigo, perfil={}))
-        db.commit()
-        if not db.query(models.Usuario).first():
-            from app.services.usuario_service import crear_organizacion, crear_usuario
-            s = get_settings()
-            org = (db.query(models.Organizacion).first()
-                   or crear_organizacion(db, "Organización por defecto"))
-            crear_usuario(db, s.admin_email, s.admin_password, "Administrador", "admin",
-                          organizacion_id=org.id, rol_org="propietario", es_superadmin=True)
-            print(f"Usuario administrador creado: {s.admin_email} — CAMBIE LA CONTRASEÑA.")
-        print("SEIS · esquema creado y conocimiento sembrado (reglas, parámetros, perfiles, fuentes).")
+        # La siembra sí corre en todos los entornos: es idempotente —cada bloque
+        # comprueba antes si ya hay datos— y sin ella una instalación nueva
+        # arranca sin reglas, sin parámetros y sin administrador, es decir,
+        # inservible. Quitarla del arranque reintroduciría por otra puerta el
+        # defecto que originó la Fase 9.5: que `docker compose up` no baste para
+        # tener un sistema en pie.
+        sembrar_conocimiento(db)
+        if sembrar_admin(db):
+            print(f"Usuario administrador creado: {get_settings().admin_email} "
+                  "— CAMBIE LA CONTRASEÑA.")
     finally:
         db.close()
+    print(f"SEIS · listo (esquema creado aquí: {'sí' if creado else 'no'}; "
+          "conocimiento sembrado).")
 
 
 if __name__ == "__main__":

@@ -14,6 +14,152 @@ convertirse en un SaaS. Lo anterior está en el historial de git.
 
 ---
 
+## [Fase 11-A] — Infraestructura de producción, parte agnóstica del proveedor — 2026-08-05
+
+La Fase 11 se parte en dos por decisión del responsable: **11-A** es de repositorio
+y no depende del proveedor; **11-B** (IaC, jobs de despliegue, RUNBOOK) queda
+bloqueada hasta elegir hosting, dominio y proveedor de correo.
+
+> **La Fase 11 NO se cierra con esta entrada.** Sus criterios de salida son
+> operativos —HTTPS sirviendo, staging desplegado, backup restaurado con tiempo
+> medido, alarma recibida, email de verificación llegado a una bandeja real— y
+> ninguno es alcanzable sin la 11-B y sin ejecución humana.
+
+### Añadido
+
+- **Salud por componente** (Bloque A): `GET /health` intacto como liveness,
+  `/health/listo` como readiness pública que responde 503, y `/health/detalle`
+  autenticado con revisión de Alembic, versiones T2/T3, latencias y diagnóstico
+  de red. Tres audiencias con necesidades opuestas, no una.
+- **`staging` como cuarto entorno, y estricto** (Bloque D): entra en
+  `ENTORNOS_SOPORTADOS` **y** en `ENTORNOS_ESTRICTOS`.
+- **Higiene de despliegue portable** (Bloque C′): `backend/.dockerignore`,
+  ancla YAML de entorno compartida, servicio `beat` propio, `healthcheck` del
+  backend, puertos con loopback por defecto y `.env.produccion.example`.
+- **Mantenimiento periódico** (Bloque I): tarea `seis.purgar` con horario
+  `crontab`, purga de `token_consumido` y purga de cuentas nunca verificadas
+  **con el borrado desactivado de fábrica**.
+- **IP real tras proxy** (Bloque H): `app/core/red.py`, tres variables de
+  política, guardia de arranque y `--no-proxy-headers` explícito.
+- **CI con la suite completa** (Bloque F′): `.github/workflows/ci.yml` con el
+  backend entero y `npm run build`.
+
+### Corregido
+
+- **`create_all` fuera de la ruta de producción** (Bloque E). El antipatrón que
+  `CLAUDE.md` §6.9 prohíbe en `alembic/versions/` vivía en el arranque, y el
+  compose lo encadenaba **después** de `alembic upgrade head`: un modelo con una
+  tabla que ninguna migración creara se creaba en silencio en producción.
+- **Puerta de despliegue de la Fase 10**: el límite por origen dejaba de ser un
+  cupo global para todo el sitio.
+- **P1 de la Fase 12**: las siete variables de SES/SMTP no llegaban al
+  contenedor y el correo fallaba en silencio. La causa raíz eran dos bloques
+  `environment` duplicados que derivaron, no un olvido.
+- **El limitador anti-abuso no reintentaba Redis** tras el primer fallo, ni
+  soltaba un cliente muerto, ni conservaba los bloqueos vigentes al recuperarse.
+- **`.gitignore` no protegía `.env.produccion`**, que es el nombre que la
+  plantilla nueva invita a crear.
+- **`smtp.starttls()` sin contexto TLS** usaba `CERT_NONE`. Rama inalcanzable
+  bajo Docker hasta que este mismo trabajo la activó al propagar las credenciales.
+- **`VERSION_REGLAS` y `VERSION_PARAMETROS` no llegaban a ningún contenedor**,
+  de modo que ajustarlas en `.env` no tenía efecto (principio P1).
+- **El informe PDF reventaba sin la fuente DejaVu** *(corregido con autorización
+  expresa; queda fuera del alcance original de la fase)*. Una viñeta `•` se
+  concatenaba **fuera** del saneador, y Helvetica —el respaldo— solo admite
+  latin-1, así que `fpdf2` lanzaba `FPDFUnicodeEncodingException` y **el informe
+  entero se perdía** en cualquier máquina sin la fuente: todo Windows de
+  desarrollo y cualquier imagen que no sea `backend/Dockerfile`. El backlog
+  llevaba dos fases diagnosticándolo mal («tabla de transliteración incompleta»).
+  Se corrigió la causa raíz y se añadió una tabla de equivalencias tipográficas
+  para que el respaldo produzca texto legible en vez de «?».
+  **Con esto la suite queda en 0 fallos por primera vez desde que hay registro.**
+
+### Desviaciones del plan, registradas
+
+- La siembra **sigue corriendo en todos los entornos**, en contra de lo que el
+  plan proponía: es idempotente, y sacarla del arranque haría que
+  `docker compose up` no baste para tener un sistema en pie — el defecto que
+  originó la Fase 9.5.
+- Se tocó **la publicación de puertos**, que el plan difería a la Fase 16: la
+  premisa del diferimiento caducó cuando este trabajo convirtió el compose en
+  base de un despliegue portable.
+- **`--no-proxy-headers`** en lugar del `--proxy-headers` con `--forwarded-allow-ips`
+  que pedían el plan y el backlog de la Fase 10. Razonado en `ADR-0005`.
+- **La corrección de `pdf_service.py`**, fuera del alcance original y autorizada
+  expresamente por el responsable.
+
+### Deuda que queda abierta
+
+- **Sentry queda fuera de la fase** por decisión del responsable. Incumple
+  deliberadamente el requisito 2 del prompt del Plan Maestro y **no tiene fase
+  propietaria**. Mientras siga así, **un error 500 en producción no avisa a nadie**.
+- **La purga de cuentas nace desactivada**: la deuda no está cerrada en
+  producción hasta que alguien mire un informe real y active el modo `borrar`.
+- **Seis requisitos que bloquean el despliegue**, inventariados en `docs/PENDIENTES.md`
+  con propietario Fase 11-B: `/docs` y `/openapi.json` abiertos · `/health/listo` sin
+  límite de tasa y revelando el estado por componente · dependencias sin fijar ni
+  auditar bajo una CI que ahora es puerta de despliegue · la purga en modo informe no
+  deja rastro cuando no hay candidatas.
+- Toda la **Fase 11-B**.
+
+### ⚠️ Cambio incompatible al actualizar una instalación existente
+
+**Un `.env` anterior a esta fase impide arrancar toda la pila.** Medido sobre una
+instalación real: `SEIS_ENV` sin declarar vale `production` por el defecto del compose,
+que es entorno estricto, y ahí la guardia del Bloque H **aborta** si
+`PROXIES_DE_CONFIANZA` no está. No solo el backend: `worker` y `beat` también, porque
+`celery_app` valida al importarse.
+
+El mensaje es accionable y la guardia está haciendo su trabajo —forzar una decisión que,
+tomada mal en silencio, deja el límite por origen como cupo global para todo el sitio—,
+pero exige **una línea nueva** en cada `.env` existente:
+
+```
+PROXIES_DE_CONFIANZA=ninguno        # si no hay proxy delante
+PROXIES_DE_CONFIANZA=10.0.0.5/32    # o la IP/CIDR de su proxy, con CABECERA_IP_CLIENTE
+```
+
+### Evidencia
+
+Cifras **medidas** al cerrar, no citadas:
+
+```
+suite      393 recogidos · 391 pasan · 0 fallan · 2 omitidos
+build      npm run build → exit 0
+compose    docker compose config → exit 0, 6 servicios
+```
+
+Las 2 omisiones son condicionales y no son fallos: T5 exige `SEIS_TEST_POSTGRES_URL`, y
+el test de la rama con la fuente DejaVu se omite si no está instalada — **en CI esa
+omisión es un fallo deliberado**, para que un `apt-get` roto no deje de probar esa rama
+en silencio.
+
+**Verificación de arranque en frío: EJECUTADA y satisfactoria**, sobre volumen
+destruido (`docker compose down -v && up -d --build`):
+
+```
+servicios          6/6 arriba; backend healthy
+/health            200  {"status":"ok"}
+/health/listo      200  {"estado":"ok","componentes":{"bd":"ok","redis":"ok"}}
+/health/detalle    401 sin token
+alembic_version    0006 · 26 tablas
+create_all         NO ejecutado: «entorno production: el esquema lo gobierna Alembic»
+siembra            1 usuario · 7 fuentes · 6 perfiles · 17 reglas
+idempotencia       tras reiniciar el backend: cifras idénticas, 26 tablas
+login del admin    200 con la contraseña sembrada, sin intervención manual
+frontend           200
+imagen             824 K, sin `.env`, sin `*.db`, sin `.venv`
+```
+
+Los 824 K contrastan con los **147 MB** de contexto de build que se medían antes del
+`.dockerignore`, y son la prueba directa de la tesis del Bloque C′.
+
+### Sin cambios de esquema
+
+Ninguna migración Alembic. La siguiente libre sigue siendo la **`0007`** (Fase 13).
+
+---
+
 ## [Infraestructura de conocimiento] — Obsidian como Vault del proyecto — 2026-07-30
 
 Implantación de Obsidian sobre el propio repositorio como memoria permanente del proyecto. **No es una fase del Plan Maestro**; es infraestructura transversal de documentación.

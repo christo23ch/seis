@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 
 from app import models
 from app.api.deps import get_current_user, require_superadmin
-from app.core import rate_limit
+from app.core import rate_limit, red
 from app.core.db import get_db
 from app.core.security import (PROPOSITO_RESETEAR, PROPOSITO_VERIFICAR,
                                crear_token, decodificar_token_proposito,
@@ -114,25 +114,18 @@ class RespuestaSimple(BaseModel):
 
 
 def _ip(request: Request) -> str:
-    """IP del cliente, para limitar por origen los endpoints que envían correo.
+    """Origen del cliente para limitar por IP. Ver `app/core/red.py`.
 
-    Se usa `request.client.host` y **no** `X-Forwarded-For`: esa cabecera la
-    puede escribir cualquiera, de modo que fiarse de ella sin una lista de
-    proxies de confianza permitiría tanto evadir el límite rotando el valor como
-    envenenar el contador de un tercero.
+    La resolución vive en `red.py` porque dejó de ser un detalle de
+    autenticación: la política de confianza en proxies es configuración de red
+    con más consumidores previstos (auditoría, logs, diagnóstico).
 
-    **Limitación medida (Fase 10, pendiente de la Fase 11).** Bajo `docker
-    compose`, el reenvío del puerto publicado no conserva la IP de origen: se
-    comprobó que todas las peticiones externas llegan con la de la pasarela
-    (`172.18.0.1`), de modo que los límites por IP de `/registro` y
-    `/reenviar-verificacion` se comportan como un único cupo global en vez de uno
-    por cliente. No es un agujero de seguridad —el límite sigue frenando el
-    abuso—, pero sí un tope de capacidad: 5 altas cada 15 minutos en todo el
-    sitio. La solución pertenece a la infraestructura, no a este módulo: proxy
-    inverso delante, uvicorn con `--proxy-headers` y `--forwarded-allow-ips`
-    acotado a ese proxy, y solo entonces `X-Forwarded-For` pasa a ser fiable.
+    Sin proxies declarados —el defecto— devuelve el par TCP, exactamente como
+    antes de la Fase 11. El resultado se agrega por `clave_de_origen`, que
+    normaliza IPv6 a su /64: un cliente doméstico dispone de ese bloque entero y
+    rotar de dirección en cada petición equivaldría a no tener límite.
     """
-    return request.client.host if request.client else "desconocida"
+    return red.clave_de_origen(red.ip_cliente(request))
 
 
 def _clave_login(email: str, ip: str) -> str:

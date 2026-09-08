@@ -1,0 +1,92 @@
+# Contexto de build del backend.
+#
+# `backend/Dockerfile` hace `COPY . .`, de modo que TODO lo que no se excluya
+# aquí acaba dentro de una capa de la imagen. Sin este fichero se medían 147 MB
+# de contexto, de los cuales 145 MB eran `.venv/`: un virtualenv de la máquina
+# de desarrollo —con rutas absolutas y binarios del sistema operativo del
+# desarrollador— viajando a una imagen Linux donde no sirve para nada.
+#
+# El motivo importante, sin embargo, no es el tamaño: es que `COPY . .` se
+# llevaría también un `.env` si existiera. Ese fichero contiene JWT_SECRET,
+# ADMIN_PASSWORD y POSTGRES_PASSWORD, y una vez dentro de una capa queda en el
+# registry para quien pueda descargar la imagen. Borrarlo en una capa posterior
+# NO lo elimina: las capas son inmutables y acumulativas.
+#
+# ⚠️ OJO CON LA SINTAXIS, que NO es la de `.gitignore`. Docker casa los patrones
+# contra la ruta completa relativa al contexto, así que un patrón sin `**` queda
+# anclado a la raíz: `__pycache__/` excluye `backend/__pycache__` pero NO
+# `backend/app/__pycache__`. Medido antes de corregirlo: 14 directorios
+# `__pycache__` y 78 ficheros `.pyc` fuera de `.venv` entraban igualmente en la
+# imagen. De ahí que todo lo que deba aplicar a cualquier profundidad lleve
+# `**/` delante.
+
+# ── Secretos (la razón de ser de este fichero) ──────────────────────────────
+# Sin excepciones: la imagen no necesita NINGÚN `.env*`. El Dockerfile solo
+# referencia `requirements.txt` y el `COPY . .`, así que excluirlos todos no
+# rompe el build. Readmitir `.env.example` solo serviría para que un fichero de
+# ese nombre con valores reales —un patrón habitual— entrara sin que nada lo
+# detecte.
+**/.env*
+
+# Material criptográfico y credenciales sueltas.
+**/*.pem
+**/*.key
+**/*.crt
+**/*.p12
+**/*.pfx
+**/id_rsa*
+**/id_ed25519*
+**/.ssh/
+**/.netrc
+**/_netrc
+**/.envrc
+**/.aws/
+**/.pypirc
+**/.npmrc
+**/credentials
+**/secrets/
+
+# ── Entorno virtual y artefactos de Python ─────────────────────────────────
+**/.venv/
+**/venv/
+**/__pycache__/
+**/*.py[cod]
+**/*.egg-info/
+**/.mypy_cache/
+**/.ruff_cache/
+
+# ── Artefactos de pruebas y cobertura ──────────────────────────────────────
+**/.pytest_cache/
+**/htmlcov/
+**/.coverage
+**/.coverage.*
+
+# ── Bases de datos locales ─────────────────────────────────────────────────
+# `seis_dev.db` es el SQLite de desarrollo y de la suite. Meterlo en la imagen
+# publicaría los datos de prueba y, peor, haría que el contenedor arrancase con
+# una base preexistente si alguien apuntara DATABASE_URL a una ruta relativa.
+**/*.db
+**/*.sqlite
+**/*.sqlite3
+
+# ── Ruido del sistema, del editor y logs ───────────────────────────────────
+# (`.git/` y `.gitignore` no se listan: el contexto de build es `./backend`, que
+# no contiene ninguno de los dos. Listarlos despistaría sobre el alcance real.)
+**/*.log
+**/.DS_Store
+**/Thumbs.db
+**/*.swp
+**/.idea/
+**/.vscode/
+
+# NOTA sobre `tests/`: no se excluyen, y conviene ser exacto sobre lo que eso
+# permite y lo que no. La imagen instala SOLO `requirements.txt`
+# (`Dockerfile:6-7`) y `pytest` vive en `requirements-dev.txt`, así que la suite
+# NO puede ejecutarse dentro del contenedor tal cual: haría falta un
+# `pip install -r requirements-dev.txt` previo, es decir, mutar el artefacto,
+# que es lo contrario de probarlo. Se conservan porque pesan poco y ayudan a
+# diagnosticar, no porque den una capacidad que no dan.
+#
+# Excluirlos sería una decisión legítima y reversible. Por eso NINGÚN test la
+# fija como invariante: obligar a borrar un test para tomar una decisión de
+# empaquetado es convertir una preferencia en una regla.

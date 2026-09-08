@@ -24,6 +24,31 @@ el email y la contraseña que tú definas en `.env` (`ADMIN_EMAIL` / `ADMIN_PASS
 
 ---
 
+## 1 bis · ¿Actualizas una instalación que ya tenías?
+
+> ⚠️ **Lee esto antes de `docker compose up`, o no arrancará nada.**
+>
+> Desde la Fase 11 el arranque **aborta** en `staging` y `production` si no te has
+> pronunciado sobre los proxies. Un `.env` anterior a esa fase no declara
+> `SEIS_ENV` —que por defecto vale `production`— ni `PROXIES_DE_CONFIANZA`, así que
+> **caen backend, worker y beat**, no solo el primero.
+>
+> No es un fallo: la guardia existe para que nadie despliegue tras un proxy sin
+> declararlo, porque en ese caso el límite por origen se convierte en un cupo
+> global para todo el sitio **sin dar ningún síntoma**. Añade una línea a tu `.env`:
+>
+> ```
+> PROXIES_DE_CONFIANZA=ninguno        # no hay proxy delante
+> PROXIES_DE_CONFIANZA=10.0.0.5/32    # o la IP/CIDR de tu proxy…
+> CABECERA_IP_CLIENTE=x-forwarded-for # …y de qué cabecera fiarte
+> ```
+>
+> Y ten en cuenta que **hay un servicio nuevo, `beat`**: es el planificador, y sin
+> él el digest de notificaciones y el sondeo de Telegram no se ejecutan jamás.
+> **No lo escales nunca**: dos instancias programan cada tarea dos veces.
+
+---
+
 ## 2 · Opción A — Prueba local completa (3 comandos)
 
 ```bash
@@ -33,11 +58,11 @@ cp .env.example .env
 # Vienen vacíos a propósito y el arranque falla si no los defines.
 #   JWT_SECRET=$(openssl rand -base64 48)
 #   ADMIN_PASSWORD=$(openssl rand -base64 18)
-docker compose up -d --build  # PostgreSQL+PostGIS, Redis, backend, worker y frontend
+docker compose up -d --build  # PostgreSQL+PostGIS, Redis, backend, worker, beat y frontend
 ```
 
 > Si prefieres probar en local sin generar secretos, pon `SEIS_ENV=development`
-> en `.env`: la validación estricta solo se aplica en `production`. **Nunca**
+> en `.env`: la validación estricta se aplica en `staging` **y** en `production`. **Nunca**
 > expongas a Internet un despliegue arrancado así.
 
 Espera ~2-4 minutos la primera vez (compila el frontend). Después:
@@ -84,7 +109,13 @@ scp seis_completo.zip root@TU_IP:/opt/ && ssh root@TU_IP
 cd /opt && apt-get install -y unzip && unzip seis_completo.zip && cd seis
 
 # 3) Configuración de producción
-cp .env.example .env
+# Se parte de .env.produccion.example y NO de .env.example: aquel es la plantilla
+# de DESARROLLO y trae `PROXIES_DE_CONFIANZA=ninguno`, que en un VPS con proxy
+# delante deja el límite por origen como cupo global y permite bloquear la cuenta
+# de un tercero de forma indefinida. La plantilla de producción entrega esa
+# variable VACÍA a propósito, para que el arranque aborte hasta que alguien se
+# pronuncie.
+cp .env.produccion.example .env
 # Los tres secretos vienen VACÍOS y son obligatorios: `docker compose up` aborta
 # si falta cualquiera, y el backend no arranca si son débiles o de plantilla.
 # Genéralos (no los copies de este manual: lo que se publica aquí es público):
@@ -95,13 +126,31 @@ ADMIN_PASSWORD=$(openssl rand -base64 18)
 FIN
 nano .env    # borra las líneas vacías duplicadas y ajusta:
 #   SEIS_CORS_ORIGINS=http://TU_IP:3000        (o https://tu-dominio)
-#   SEIS_ENV=production                        (valores admitidos: development | test | production)
+#   SEIS_ENV=production        (admitidos: development | test | staging | production)
+#   PROXIES_DE_CONFIANZA=…     (IP o CIDR de tu proxy, o `ninguno` si no hay)
+#   BIND_BACKEND / BIND_FRONTEND  ← ver el aviso de abajo ANTES de tocarlos
 
 # 4) Arranque (el frontend debe conocer la URL pública del backend)
 NEXT_PUBLIC_API_URL=http://TU_IP:8000 docker compose up -d --build
 ```
 
-Abre en el navegador `http://TU_IP:3000`. Puertos a permitir en el firewall: **3000** y **8000** (o pon delante Caddy/Nginx con HTTPS y expón solo 80/443 — recomendado en producción real).
+> ⚠️ **Por defecto no habrá nada alcanzable desde `TU_IP`, y eso es intencionado.**
+> Desde la Fase 11 los puertos se publican en `127.0.0.1`, así que la pila levanta
+> sana, los health checks pasan y desde fuera no responde nadie: **parece una
+> avería y no lo es**. Las dos salidas, por orden de preferencia:
+>
+> 1. **Recomendada:** pon delante Caddy o Nginx con HTTPS, deja `BIND_*` en
+>    loopback y expón solo 80/443. En ese caso **declara el proxy** en
+>    `PROXIES_DE_CONFIANZA` y pon `CABECERA_IP_CLIENTE=x-forwarded-for`; sin eso
+>    el límite por origen vuelve a ser un cupo global para todo el sitio.
+> 2. **Solo para pruebas:** `BIND_BACKEND=0.0.0.0` y `BIND_FRONTEND=0.0.0.0`, y
+>    abre 3000 y 8000 en el firewall. Ten presente que entonces `/docs` y
+>    `/openapi.json` enumeran la API entera sin autenticar, y que cualquiera puede
+>    hablar con uvicorn **saltándose el proxy**. No dejes esto en un sistema con
+>    datos reales.
+>
+> **Si tocas `BIND_*`, revisa `PROXIES_DE_CONFIANZA` en la misma sesión.** Son la
+> misma decisión vista desde dos lados.
 
 > PostgreSQL y Redis se publican solo en `127.0.0.1`, así que no son alcanzables
 > desde fuera del host aunque el cortafuegos no los cubra. Sigues pudiendo usar
@@ -117,7 +166,21 @@ Abre en el navegador `http://TU_IP:3000`. Puertos a permitir en el firewall: **3
 3. Variables de entorno del servicio:
    `DATABASE_URL=postgresql+psycopg2://…` (la URL anterior, cambiando `postgres://` por `postgresql+psycopg2://`)
    `JWT_SECRET=…` · `ADMIN_PASSWORD=…` · `SEIS_CORS_ORIGINS=https://TU-APP.vercel.app`
-4. *Start command*: `sh -c "python -m scripts.init_db && uvicorn app.main:app --host 0.0.0.0 --port $PORT"`
+   **`SEIS_ENV=production`** y **`PROXIES_DE_CONFIANZA=…`** (la IP del balanceador del
+   proveedor, o `ninguno`) más `CABECERA_IP_CLIENTE=x-forwarded-for` si declara proxy.
+4. *Start command*:
+   `sh -c "alembic upgrade head && python -m scripts.init_db && uvicorn app.main:app --host 0.0.0.0 --port $PORT --no-proxy-headers"`
+
+> ⚠️ **Los cuatro elementos en negrita no son opcionales, y omitir uno solo relaja
+> tres controles a la vez.** `SEIS_ENV` vale `development` por defecto, y en ese
+> entorno: (a) `scripts/init_db` ejecuta `create_all` contra la base gestionada,
+> creando en silencio lo que ninguna migración declaró y dejando `alembic_version`
+> vacía —deriva de esquema permanente e invisible—; (b) no se validan los secretos;
+> (c) no se exige declarar la política de proxies. Y sin `--no-proxy-headers`,
+> uvicorn reescribe el par TCP por su cuenta si el proveedor define
+> `FORWARDED_ALLOW_IPS=*`, con lo que la resolución de IP pasa a opinar sobre un
+> dato del atacante. `alembic upgrade head` va delante porque es quien debe
+> gobernar el esquema.
 5. Comprueba `https://TU-BACKEND.onrender.com/docs`.
 
 **Frontend en Vercel:**

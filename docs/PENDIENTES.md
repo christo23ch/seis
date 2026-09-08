@@ -92,8 +92,21 @@ Seis hallazgos se arreglaron dentro de la propia fase, no se difirieron:
 
 ### Deuda que deja la Fase 10
 
-1. **⛔ PUERTA DE DESPLIEGUE — la IP de origen no sobrevive a `docker compose`**
-   *(propietario: Fase 11)*. Medido: todas las peticiones externas llegan con la
+1. ~~**⛔ PUERTA DE DESPLIEGUE — la IP de origen no sobrevive a `docker compose`**~~
+   → ✅ **CERRADA por la Fase 11, Bloque H.** `app/core/red.py` resuelve la IP real
+   solo tras un par TCP declarado de confianza, tomando el N-ésimo por la derecha
+   con N fijo y exigiendo que la cola sean proxies conocidos. Guardia de arranque
+   que **aborta en entornos estrictos** si nadie se pronuncia, con `ninguno` como
+   salida legítima; `--no-proxy-headers` explícito para que uvicorn no reescriba
+   el par TCP por su cuenta.
+   > **La puerta sigue cerrada hasta que el despliegue la abra bien.** El código
+   > deja de ser el impedimento, pero declarar de confianza la pasarela de Docker
+   > con el puerto publicado en `0.0.0.0` es **peor que no tener el bloque**:
+   > cualquiera llegaría con la IP de la pasarela y elegiría su propia identidad.
+   > Ver los avisos de `.env.produccion.example`.
+
+   *(Texto original, conservado por ser el registro de lo medido en la Fase 10:)*
+   Medido: todas las peticiones externas llegan con la
    IP de la pasarela (`172.18.0.1`), de modo que los límites por origen de
    `/registro` y `/reenviar-verificacion` funcionan como **un cupo global** —5
    altas cada 15 minutos en todo el sitio— en vez de uno por cliente, y la clave
@@ -105,10 +118,18 @@ Seis hallazgos se arreglaron dentro de la propia fase, no se difirieron:
    `docker-compose.yml` a Internet**: hasta que haya proxy inverso con
    `uvicorn --proxy-headers` y `--forwarded-allow-ips` acotado a ese proxy, este
    despliegue no sale a producción.
-2. **`token_consumido` crece sin purga** *(propietario: Fase 11)*. Una fila por
-   cada enlace de verificación o reseteo consumido, para siempre. Candidata a
-   tarea beat que borre las anteriores al TTL máximo (30 días cubre los tres
-   propósitos vigentes).
+2. ~~**`token_consumido` crece sin purga**~~ → ✅ **CERRADA por la Fase 11, Bloque I.**
+   Tarea beat `seis.purgar`, diaria y con horario `crontab`. Retención por
+   defecto de **45 días**, configurable, y el arranque **aborta** si se baja por
+   debajo del TTL real.
+   > La propuesta original decía «30 días cubre los tres propósitos vigentes».
+   > Es **incorrecta por partida doble**, y conviene dejarlo escrito porque el
+   > razonamiento importa más que el número: (a) el token de baja dura
+   > exactamente `24 * 30` horas, así que 30 días dejaría **margen cero**; y (b),
+   > más importante, **ese token nunca entra en la tabla**: `marcar_jti` tiene un
+   > único llamante (`app/api/auth.py`), que sirve a `/verificar` y `/resetear`,
+   > mientras que `/notificaciones/baja` decodifica y aplica sin reclamar el
+   > `jti`. El TTL máximo que sí llega es el de verificación, **24 horas**.
 3. **Fuga por temporización en el login** *(propietario: Fase 16)*. `autenticar` y
    `autenticar_con_motivo` cortocircuitan si el email no existe, sin llegar a
    ejecutar PBKDF2 (240 000 iteraciones). La diferencia es medible y permite
@@ -136,12 +157,20 @@ Seis hallazgos se arreglaron dentro de la propia fase, no se difirieron:
    camino «no existe» retorna al instante. Medir el tiempo permite distinguirlos,
    que es justo lo que D5 quiso impedir. Se cierra encolando el envío en Celery,
    que el proyecto ya usa, en vez de enviarlo dentro de la petición.
-7. **El limitador no reintenta Redis tras el primer fallo** *(propietario: Fase 11)*.
-   `_cliente_redis` se cachea como `False` en cuanto falla el primer `ping()` del
-   proceso y no se vuelve a intentar en toda su vida. `docker-compose.yml` cubre
-   el arranque con `depends_on: condition: service_healthy`, pero una caída de
-   Redis posterior degrada a memoria de forma silenciosa y **permanente** hasta
-   reiniciar — y con `--workers 2` eso duplica el límite efectivo.
+7. ~~**El limitador no reintenta Redis tras el primer fallo**~~ → ✅ **CERRADA por la
+   Fase 11, Bloque I.** Retroceso exponencial acotado (1 s → 30 s), y un fallo de
+   **operación** —no solo de conexión— suelta el cliente: sin eso, un Redis que
+   muere a mitad de vida dejaba a cada petición pagando su timeout. El retroceso
+   se reinicia tras una operación correcta y no tras el `ping`, porque un Redis
+   que responde al `PING` pero rechaza escrituras (memoria agotada, réplica en
+   solo lectura) mantenía el ciclo en un segundo indefinidamente.
+   > Cerrarla destapó un segundo defecto, **ya corregido en el mismo bloque**:
+   > los dos almacenes no se sincronizan, de modo que un parpadeo de Redis
+   > **levantaba los bloqueos vigentes**. Se anota siempre en ambos y se lee en
+   > OR, pero **solo mientras la degradación sea reciente**: con Redis sano manda
+   > Redis, porque `limpiar()` borra la clave global y de la memoria solo la del
+   > proceso que atiende, y con `--workers 2` consultar la memoria siempre haría
+   > que un acceso correcto dejara de desbloquear.
 8. **Las cuatro páginas públicas nuevas duplican estructura** *(propietario: Fase 15)*.
    `/registro`, `/verificar`, `/recuperar` y `/resetear` repiten envoltorio,
    cabecera, máquina de estados y bloque de éxito, y `/login` y `/baja` ya lo
@@ -151,9 +180,27 @@ Seis hallazgos se arreglaron dentro de la propia fase, no se difirieron:
    *(propietario: Fase 16)*. El mínimo de 8 caracteres no comprueba contra
    contraseñas frecuentes, que es lo que NIST 800-63B recomienda por encima de las
    reglas de composición. La única barrera anti-automatización es el limitador.
-10. **Las cuentas registradas y nunca verificadas no caducan**
-   *(propietario: Fase 11)*. Mismo patrón que la deuda 2: candidatas a la misma
-   tarea de purga periódica.
+10. ~~**Las cuentas registradas y nunca verificadas no caducan**~~ → ✅ **MECANISMO
+   ENTREGADO por la Fase 11, Bloque I; BORRADO DESACTIVADO por defecto.**
+   `app/services/purga_service.py`, con predicado de nueve condiciones, borrado
+   ordenado (ninguna clave foránea declara `ondelete` y `Usuario` no tiene
+   `relationship()`, así que no hay cascada de ningún tipo) y revalidación bajo
+   bloqueo para cerrar la carrera con `/verificar`.
+   > **`PURGA_CUENTAS_MODO=informar` de fábrica**: cuenta las candidatas, lo
+   > registra y **no borra nada**. Un borrado irreversible no debe ser el
+   > comportamiento por defecto de algo que aún no se ha visto correr contra
+   > datos reales. Activarlo es una variable de entorno.
+   >
+   > **Queda abierto lo operativo**: nadie ha mirado todavía un informe real, así
+   > que **la deuda no está cerrada en producción hasta que alguien active el
+   > modo `borrar` con evidencia delante**. Propietario de ese paso: quien
+   > despliegue.
+   >
+   > Hallazgo de paso, que eleva esto de higiene a defecto funcional: una cuenta
+   > zombi **secuestra la dirección de correo indefinidamente**, porque
+   > `registrar_usuario` no crea nada si el email existe y el endpoint responde
+   > 201 neutro. Hoy cualquiera puede registrar la dirección de un tercero, no
+   > verificarla nunca y **negarle el alta a su titular para siempre**.
 11. **El JWT de sesión vive en `localStorage`** *(propietario: Fase 16, preexistente)*.
    `frontend/lib/api.ts`. Cualquier XSS expondría la sesión completa, lo que
    amplificaría las deudas 3 y 4. No lo introduce esta fase; se anota porque la
@@ -242,13 +289,13 @@ Seis hallazgos se arreglaron dentro de la propia fase, no se difirieron:
 
 ---
 
-## ⏳ Fases 11-20 — no iniciadas
+## ⏳ Fases 11-20 — la 11 en curso, el resto no iniciadas
 
 Resumen (detalle y prompts de ejecución en `docs/SEIS_Plan_Maestro_Fases_920.md`):
 
 | Fase | Nombre | Notas |
 |---|---|---|
-| 11 | Infraestructura de producción | render.yaml, health por componente, Sentry, runbook. **Hereda de la Fase 10:** proxy inverso que conserve la IP de origen (hoy el límite por IP es un cupo global) y purga de `token_consumido` |
+| 11 | Infraestructura de producción | 🔄 **EN CURSO** (rama `fase-11-infraestructura`). Partida en **11-A** (agnóstica del proveedor: bloques A ✅, C′ ✅, D ✅, E, F′, H, I) y **11-B** (dependiente del proveedor: IaC, jobs de despliegue, RUNBOOK — bloqueada por H1/H2/H6). **Sentry NO forma parte de la fase**: quedó fuera por decisión del responsable (H5) y no tiene fase propietaria — ver la deuda abierta más abajo. **Hereda de la Fase 10:** proxy inverso que conserve la IP de origen (Bloque H, **pendiente**) y las tres deudas del **Bloque I ✅** (purga de `token_consumido`, reintento de Redis en el limitador y caducidad de las cuentas nunca verificadas, esta última con el borrado desactivado de fábrica) |
 | ~~12~~ | ~~Notificaciones multicanal + scoring~~ | ✅ **Completada** — ver sección propia más abajo |
 | 13 | Monetización (Stripe) | planes/límites, webhooks idempotentes |
 | 14 | Cumplimiento legal y RGPD | consentimientos, ARCO, textos legales (revisión de abogado) |
@@ -266,14 +313,52 @@ Resumen (detalle y prompts de ejecución en `docs/SEIS_Plan_Maestro_Fases_920.md
   por `organizacion_id` cuando se creen: `export.csv`, `geo`, `resultado-real`, `/calibracion`.
 
 ### 🐛 Deuda técnica detectada durante la Fase 12 (NO corregida — decisión pendiente)
-- **`pdf_service.py` rompe sin la fuente DejaVu.** `tests/test_pdf_async.py::test_informe_pdf`
+> ✅ **CERRADA en la Fase 11 con autorización expresa del responsable** (queda fuera del
+> alcance original de la fase). Se corrigió **la causa raíz**, no la CI: la viñeta pasa a
+> constante y se sanea **dentro** de `_limpiar`; se añadió una tabla de equivalencias
+> tipográficas para que el respaldo produzca texto legible en vez de «?»; y el pie de página
+> y el título pasan también por el saneador. `tests/test_pdf_respaldo.py` fuerza **las dos
+> ramas** con `monkeypatch` de `_DEJAVU`, de modo que la rama de respaldo se ejercita aunque
+> la máquina tenga la fuente. `fonts-dejavu-core` sigue en el runner de CI como **cobertura
+> adicional**, no como mecanismo que oculte el problema.
+>
+> **Resultado: la suite queda en 0 fallos por primera vez.** Los dos rojos que se
+> arrastraban desde antes de la Fase 12 han desaparecido.
+
+- ~~**`pdf_service.py` rompe sin la fuente DejaVu.**~~ *(histórico)* `tests/test_pdf_async.py::test_informe_pdf`
   y `test_multitenant.py::…[/informe.pdf]` fallan con `FPDFUnicodeEncodingException`
-  cuando `DejaVuSans.ttf` no está instalada (p. ej. Windows local). El fallback a
-  *helvetica* llama a `_limpiar(texto, unicode_ok=False)`, que no translitera todos
-  los caracteres del informe. En Docker no se manifiesta porque la imagen incluye
-  `fonts-dejavu-core`. **Preexistente a la Fase 12** (verificado sobre árbol limpio).
-  Arreglo propuesto: completar la tabla de transliteración de `_limpiar`. Toca
-  `pdf_service.py`, fuera del alcance de la 12 → requiere aprobación.
+  cuando `DejaVuSans.ttf` no está instalada (p. ej. Windows local). En Docker no se
+  manifiesta porque la imagen incluye `fonts-dejavu-core`. **Preexistente a la
+  Fase 12** (verificado sobre árbol limpio).
+
+  > ⚠️ **DIAGNÓSTICO CORREGIDO EN LA FASE 11 (Bloque C′).** Esta nota afirmaba que
+  > «el fallback a *helvetica* llama a `_limpiar(texto, unicode_ok=False)`, que no
+  > translitera todos los caracteres del informe», y proponía «completar la tabla de
+  > transliteración de `_limpiar`». **Las dos cosas son falsas.**
+  >
+  > `_limpiar` translitera correctamente: hace `texto.encode("latin-1", "replace")`
+  > (`pdf_service.py:22`), que por construcción no deja pasar ningún carácter fuera
+  > de latin-1. No hay ninguna «tabla» que completar.
+  >
+  > La excepción medida es `UnicodeEncodeError: 'latin-1' codec can't encode
+  > character '•' in position 2`. El carácter entra **por fuera del saneador**,
+  > concatenado como literal en `pdf_service.py:89`:
+  > `pdf.multi_cell(0, 5, "  •  " + _limpiar(...))`. En `"  •  "` el índice 2 es
+  > U+2022 (viñeta), que coincide exactamente con la «position 2» del error.
+  >
+  > **El arreglo es una línea**, no una tabla: elegir la viñeta según
+  > `pdf.unicode_ok` (`"  •  "` / `"  -  "`), o meter el prefijo dentro de
+  > `_limpiar`. Sigue tocando `pdf_service.py`, fuera de `app/engine/`, y **sigue
+  > requiriendo aprobación** (CLAUDE.md §7).
+  >
+  > **Aviso para el Bloque F′:** instalar `fonts-dejavu-core` en el runner pondrá la
+  > CI en verde, y por eso es la peor opción **si se hace sola**: con la fuente
+  > presente el código toma la rama `unicode_ok=True` y la rama de fallback queda
+  > rota para siempre y además sin cobertura. Y esa rama es la que corre en toda
+  > máquina de desarrollo Windows (`_DEJAVU` es una ruta POSIX absoluta,
+  > `pdf_service.py:14`) y en cualquier imagen de hosting que no sea el
+  > `backend/Dockerfile` del proyecto — es decir, el terreno abierto de la Fase 11-B.
+  > Hace falta además un test que fuerce `unicode_ok=False`.
 
 ---
 
@@ -314,7 +399,19 @@ añadió `--beat` al worker (sin él, digest y polling nunca se ejecutan).
 
 ### P1 detectados en Fase 12 (Release Committee)
 
-- **Proveedores SES y SMTP no funcionales vía `docker compose up`.** `docker-compose.yml`
+> ✅ **CERRADO por la Fase 11, Bloque C′** (rama `fase-11-infraestructura`). Las siete
+> variables llegan ya a `backend`, `worker` **y** al nuevo servicio `beat`. Verificado
+> ejecutando `docker compose config`: **7/7 presentes en los tres servicios**.
+>
+> La corrección no fue añadir siete líneas. La causa raíz era tener **dos bloques
+> `environment` duplicados que derivaron el uno del otro**; añadirlas a mano habría
+> dejado el mismo mecanismo intacto para la próxima variable. El entorno común vive
+> ahora en un **ancla YAML** (`x-entorno-aplicacion`) que los tres servicios comparten,
+> de modo que la deriva es estructuralmente imposible. Lo vigila
+> `backend/tests/test_despliegue.py`, que lee el compose con las anclas ya resueltas y
+> falla si algún servicio de aplicación se queda sin alguna de las siete.
+
+- ~~**Proveedores SES y SMTP no funcionales vía `docker compose up`.**~~ `docker-compose.yml`
   propaga `POSTMARK_TOKEN` pero **no propaga** `SES_REGION`, `SES_ACCESS_KEY`, 
   `SES_SECRET_KEY`, `SMTP_HOST`, `SMTP_PUERTO`, `SMTP_USUARIO`, `SMTP_PASSWORD`. 
   Con `EMAIL_PROVIDER=ses` o `smtp` dentro del contenedor, las credenciales llegan 
@@ -341,6 +438,237 @@ añadió `--beat` al worker (sin él, digest y polling nunca se ejecutan).
 
 ---
 
+## Requisitos que BLOQUEAN el despliegue, de la auditoría final de la Fase 11-A
+
+Ninguno bloquea la fusión del código —la rama no despliega nada por sí sola—, pero
+**todos deben resolverse antes de que exista un despliegue en internet**.
+*(propietario de los seis: **Fase 11-B**)*
+
+1. **`/docs`, `/redoc` y `/openapi.json` siguen abiertos.** `main.py` construye
+   `FastAPI()` sin `docs_url=None` condicionado al entorno, y en un PaaS el puerto es
+   público por definición. Enumeran toda la superficie de la API sin autenticar,
+   incluidos los endpoints de superadministrador. El proxy inverso debe bloquearlos,
+   o deben apagarse en `ENTORNOS_ESTRICTOS`.
+2. **`/health/listo` es E/S sin autenticar y sin límite de tasa**, y no acota el
+   establecimiento de la conexión TCP a la base (`db.py` no pasa `connect_timeout`).
+   Peor: tanto esa sonda como `/health` son `def` síncronos y comparten el threadpool,
+   así que un flujo anónimo contra la readiness durante una degradación **puede dejar
+   sin responder también al liveness** — justo lo que el ADR-0006 existe para impedir.
+3. **`/health/listo` revela el estado POR COMPONENTE sin autenticar.** Es un oráculo
+   público de «cuándo está Redis caído», que es precisamente la ventana en que el
+   limitador degrada a memoria de proceso y sus claves pueden desalojarse por FIFO.
+   El desglose pertenece a `/health/detalle`, que ya está autenticado.
+4. **Las dependencias no están fijadas ni auditadas.** Quince `>=` sin cota superior,
+   sin lockfile ni hashes, y el pipeline no incluye `pip-audit` ni escaneo de secretos.
+   La Fase 11 convierte la CI en puerta de despliegue, así que hereda el hueco: dos
+   ejecuciones del mismo commit pueden probar árboles distintos.
+5. **La purga en modo informe no deja rastro cuando no hay candidatas.** El
+   procedimiento documentado dice «deje correr unos días el informe y mire el
+   recuento», pero en un día normal la tarea no escribe ni una línea, de modo que el
+   operador no puede distinguir «cero candidatas» de «`beat` está muerto» o «la tarea
+   no está registrada». Y de esa ambigüedad depende activar un borrado irreversible.
+   **Es el único fallo mudo que esta fase deja en un mecanismo que ella misma
+   construyó.** Arreglo: registrar siempre una línea, incluidos los ceros.
+6. **Aviso operativo, ya escrito pero que conviene repetir aquí:** declarar
+   `PROXIES_DE_CONFIANZA=ninguno` cuando SÍ hay un proxy delante reabre íntegro el
+   defecto de la Fase 10 — cupo global de alta pública y bloqueo indefinido de cuentas
+   ajenas. La guardia obliga a pronunciarse, no puede comprobar que se acierte.
+
+7. **Con cabecera de valor único, el proxy es el ÚNICO control.** `cf-connecting-ip`,
+   `true-client-ip` y `x-real-ip` se aceptan íntegras en cuanto el par TCP es de
+   confianza: no hay posición fija ni validación de cola que las respalde. nginx no
+   borra por omisión las cabeceras del cliente, así que **si el borde no las borra o
+   reescribe, un atacante elige su identidad en cada petición** y elude entero el
+   anti-fuerza-bruta del login y el cupo de alta pública, sin síntoma alguno. Escrito
+   ya en `red.py`, en `ADR-0005` y en `.env.produccion.example`; falta el runbook.
+8. **Cuatro de los quince rangos IPv4 de Cloudflare abortan el arranque.**
+   `104.16.0.0/13`, `104.24.0.0/14`, `162.158.0.0/15` y `172.64.0.0/13` son más
+   amplios que `PREFIJO_MINIMO_IPV4 = 16`. Hay que trocearlos a mano en bloques `/16`
+   —ocho entradas solo para el primero— y el procedimiento de refresco no existe.
+9. **`DATABASE_URL` cae a SQLite en un entorno estricto sin una sola queja.** Ninguna
+   guardia mira esa variable. En un despliegue sin Docker (VPS+systemd, o un PaaS que
+   no la inyecte, ambos escenarios vivos de la 11-B) la aplicación arranca en
+   `production` sobre `sqlite:///./seis_dev.db`: las migraciones pasan, la siembra
+   pasa, `/health/listo` da 200 — y los datos viven en un fichero efímero que se
+   pierde en cada redespliegue, con `--workers 2` encima. Es la misma clase de fallo
+   mudo que el Bloque H persigue, en la variable más importante del sistema. **No se
+   corrigió aquí por no abrir un frente nuevo en el cierre**; cuesta tres líneas en
+   `_validar_seguridad_entorno`.
+10. **`SEIS_CORS_ORIGINS` tampoco tiene guardia.** `allow_credentials=True` con
+    `allow_origins=["*"]` es un atajo de operador plausible y se acepta sin ruido. El
+    aviso existe solo como comentario en `.env.produccion.example`. Mismo criterio que
+    se aplicó a los proxies: si la consecuencia es invisible, la guardia va en código.
+11. **Abortar por una variable de proxy detiene también `worker` y `beat`**, a los que
+    esas tres variables les son completamente inertes: ninguno sirve HTTP ni lee una
+    cabecera. Se detienen porque `celery_app.py` llama a `get_settings()` al importarse.
+    Consecuencia: una errata en una variable que solo consume la API detiene el digest,
+    el sondeo de Telegram y la purga diaria. `docker-compose.yml` ya reconoce este
+    acoplamiento para `ADMIN_PASSWORD` con propietario Fase 16; esta es la segunda
+    instancia del mismo defecto.
+
+## Deuda de producto detectada en la auditoría final (no de la Fase 11)
+
+*(propietario: **sin asignar** — ninguna es regresión de esta fase)*
+
+- **El informe PDF admite inyección estructural desde texto libre del usuario.**
+  `_limpiar` es correcto **a nivel de carácter** —verificado sobre 69.632 puntos de
+  código: cero escapan a latin-1— pero las decisiones estructurales (`# ` encabezado,
+  `| ` fila de tabla, `- ` viñeta) se toman sobre la línea **cruda**, antes de sanear.
+  `municipio` y `provincia` no declaran `max_length` ni patrón y M14 los interpola
+  directamente, así que un municipio con saltos de línea puede forjar un encabezado de
+  sección y una fila de tabla en el entregable auditable del producto. No cruza
+  organizaciones. Arreglo: que M14 escape los campos libres al construir el Markdown.
+- **Campos de texto libre sin cota.** Medido: 200 KB en un campo ⇒ 1,59 s de CPU por
+  cada `GET /informe.pdf`, en endpoint síncrono sobre el threadpool compartido.
+  Almacenado una vez, amplificado en cada descarga.
+- **Controles C0/C1 sobreviven a `_limpiar`** (54 puntos de código son latin-1 válidos).
+  No revientan ni permiten inyectar sintaxis PDF; producen glifos basura en WinAnsi.
+- **Acciones de GitHub ancladas a etiqueta mutable** (`checkout@v4`, `setup-python@v5`,
+  `setup-node@v4`). Es la otra mitad del punto 4 de la lista anterior.
+- **`init_db.main()` y `sembrar.main()` duplican la orquestación de siembra** (abrir
+  sesión, sembrar conocimiento, sembrar admin, cerrar). Es el modo de fallo que el
+  ancla YAML de `docker-compose.yml` documenta como razón de existir, y `init_db.main()`
+  no lo ejecuta ningún test, así que la copia duplicada tampoco.
+
+## Huecos de cobertura detectados en la revisión final de la Fase 11-A
+
+Ninguno bloquea la fusión —los dos que sí lo hacían se cerraron en la rama—, pero
+todos son puntos donde una mutación plausible sobrevive a la suite.
+
+1. **`init_db.main()` no lo ejecuta ningún test** *(propietario: **Fase 11-B**, y no
+   debería cruzar su puerta sin cerrarse)*. Los tests prueban las tres piezas por
+   separado, nunca la orquestación. Mutación que sobrevive: envolver la siembra en
+   `if creado:`. En `development` y `test` no cambia nada y la suite queda verde; en
+   `staging` y `production`, donde `create_all` ya no corre, **la instalación arranca
+   sin reglas, sin parámetros y sin administrador** — el defecto de la Fase 9.5 por
+   otra puerta.
+2. **La CI no levanta PostgreSQL, así que T5 está omitido también allí, de forma
+   permanente** *(propietario: **Fase 11-B**)*. Consecuencia concreta: esta fase añadió
+   **tres caminos exclusivos de PostgreSQL que no ejecuta ningún test en ninguna
+   plataforma** — `SET LOCAL statement_timeout` en la sonda de salud,
+   `with_for_update(skip_locked=True)` en la purga, y el motivo de
+   `_rollback_silencioso`. Añadir `services: postgres:16` al workflow es barato y
+   elimina una de las dos omisiones para siempre.
+3. **La purga en modo `borrar` nunca ha corrido por la ruta de la tarea**
+   *(propietario: quien active el modo)*. Todos los tests de borrado pasan `modo=`
+   explícito y la sesión de la fixture. El día que alguien ponga
+   `PURGA_CUENTAS_MODO=borrar`, la combinación tarea + `SessionLocal` + ajustes reales
+   **se estrena a las 04:30 en producción**.
+4. **`/health/listo` sin límite de tasa** *(ya inventariado más arriba entre los
+   requisitos que bloquean el despliegue; se repite aquí porque tampoco tiene test)*.
+
+## Deuda menor detectada al corregir el PDF (Fase 11)
+
+- **`_limpiar` convierte `_` en espacio en AMBAS ramas** *(propietario: SIN ASIGNAR)*.
+  `pdf_service._limpiar` hace `.replace("_", " ")` para deshacer el énfasis de
+  Markdown, y de paso degrada los nombres canónicos del producto: `P_límite` sale
+  como «P límite», `C_F` como «C F», `c_v` como «c v». Son **15 líneas del informe
+  dorado §19**. `P_límite` es término contractual —el bloqueo duro que el software
+  nunca deja superar (CLAUDE.md §4)—, así que verlo partido en el informe no es
+  cosmético. Preexistente y ajeno a la corrección de la viñeta; se anota aquí en vez
+  de ampliar el alcance. Arreglo: deshacer el énfasis solo cuando el guion bajo
+  esté rodeado de espacios, o usar una expresión regular en vez de `replace`.
+- **Sanear el título es innecesario** *(propietario: SIN ASIGNAR, trivial)*. Los
+  metadatos del PDF viajan como cadena UTF-16BE, no por `normalize_text`, así que
+  `set_title` admite cualquier carácter. Pasarlo por `_limpiar` no rompe nada pero
+  degrada el título sin motivo el día que lleve un `€`.
+
+## Deuda abierta por la Fase 11 — alcance de la fase
+
+1. **⛔ Sentry: requisito del contrato NO entregado** *(propietario: **SIN ASIGNAR**)*.
+   El requisito 2 del prompt del Plan Maestro para la Fase 11 pide instrumentar
+   Sentry en backend y frontend, activado solo si existe `SENTRY_DSN`. **Queda
+   fuera de la fase por decisión del responsable (H5).** No es un olvido ni un
+   pendiente menor: es un **incumplimiento deliberado y declarado** del contrato
+   de la fase. La huella completa es una variable `SENTRY_DSN` declarada y vacía
+   en `.env.example` y en `.env.produccion.example`, sin dependencia instalada y
+   sin una sola línea de código que la lea.
+   **Consecuencia asumida, escrita para que nadie la descubra tarde: mientras
+   siga así, un error 500 en producción no avisa a nadie.** La única traza es el
+   log del proceso, que hay que ir a mirar. **No se le inventa fase propietaria.**
+2. **Toda la Fase 11-B** *(propietario: Fase 11-B, bloqueada por H1, H2 y H6)*.
+   IaC del proveedor, jobs de despliegue con aprobación manual, `docs/RUNBOOK.md`,
+   runbooks temáticos del Vault y el ADR de elección de hosting. **Sin proveedor,
+   dominio ni proveedor de correo decididos, no se puede escribir un runbook que
+   no sea ficción.** Los criterios de salida de la fase son operativos y ninguno
+   es alcanzable sin esto: **la Fase 11 no se cierra al fusionar la 11-A.**
+
+## Deuda abierta por la Fase 11, Bloque C′ (higiene de despliegue)
+
+Registrada tras las revisiones independientes de seguridad y de pruebas. Lo que se
+corrigió dentro del propio bloque no figura aquí; esto es lo que **queda abierto**.
+
+1. **`worker` y `beat` cargan `ADMIN_PASSWORD` sin usarlo** *(propietario: Fase 16)*.
+   Esa variable la consume una sola ruta de código —`scripts/init_db.py`, la siembra
+   del admin bootstrap— y **solo la ejecuta el backend**. El worker y el beat la
+   llevan únicamente porque `app/tasks/celery_app.py` invoca `get_settings()` al
+   importarse y la guardia exige ambos secretos: **sin ella no arrancan** en un
+   entorno estricto. Medido y verificado. No es una credencial menor: es la del
+   usuario `es_superadmin`, que gobierna el conocimiento T2/T3 global. Cerrarlo
+   exige desacoplar la guardia (exigir `admin_password` solo al proceso que vaya a
+   sembrar), no basta con quitar la variable del ancla.
+2. **SMTP solo soporta STARTTLS; el puerto 465 falla en silencio** *(propietario: Fase 16
+   o la fase que fije proveedor de correo)*. `app/notificadores/email.py` implementa
+   únicamente `smtplib.SMTP` + `starttls()`. Si el proveedor exige 465 (TLS
+   implícito) y el operador pone `SMTP_PUERTO=465`, se abre en claro contra un
+   puerto que espera un ClientHello, salta la excepción y `email.py` **se la traga**
+   devolviendo `False`: la API sigue respondiendo 201/200 y el correo no sale. Es
+   exactamente el fallo mudo que el Bloque C′ vino a cerrar, entrando por la puerta
+   del puerto. Arreglo: ramificar por puerto (`SMTP_SSL` en 465) y validar
+   `smtp_puerto in (25, 465, 587, 2525)` en `config.py`.
+   > La validación del certificado **sí se corrigió** en este bloque:
+   > `starttls()` sin contexto usaba `CERT_NONE` y `check_hostname=False`, de modo
+   > que cualquier certificado autofirmado completaba el handshake y un atacante en
+   > la red capturaba las credenciales SMTP y los enlaces de verificación y reseteo.
+   > Ese camino era inalcanzable bajo Docker hasta que este bloque propagó las
+   > credenciales, así que se cerró en el mismo movimiento que lo activó.
+3. **La imagen corre como `root` y sin endurecimiento** *(propietario: Fase 16)*.
+   `backend/Dockerfile` no declara `USER`, y `docker-compose.yml` no declara `user:`,
+   `read_only`, `cap_drop`, `security_opt: no-new-privileges` ni límites de recursos.
+   El plan de la Fase 11 lo contemplaba con la condición explícita de que, si no daba
+   tiempo, **se dejara fuera y se anotara**. Queda anotado.
+4. **`beat` no debe escalarse nunca, y nada en el código lo impide** *(propietario:
+   runbook de la Fase 11-B)*. `docker compose up --scale beat=2` devuelve entera la
+   duplicación del digest que la separación vino a cerrar. Hay un test que impide
+   declarar `deploy.replicas > 1` en el fichero, pero no puede impedir una bandera
+   en la línea de órdenes.
+5. **Un `unhealthy` del backend se diagnostica en el sitio equivocado** *(propietario:
+   runbook de la Fase 11-B)*. Compose v2 no reinicia por `unhealthy`; lo que ocurre es
+   que `frontend`, que espera `condition: service_healthy`, aborta con «dependency
+   failed to start» **señalando al frontend** cuando el problema está en la migración
+   del backend.
+6. **`beat` no persiste su `celerybeat-schedule`** *(propietario: runbook de la Fase 11-B)*.
+   El `PersistentScheduler` por defecto lo escribe en el CWD del contenedor
+   (`/srv/seis`), que es capa efímera: cada `up --build` o recreación lo pierde y
+   una entrada nueva arranca con `last_run_at = now`, de modo que el digest
+   horario vuelve a esperar una hora completa. Con `restart: unless-stopped` el
+   riesgo baja mucho, pero en una sesión de despliegue con varias recreaciones
+   seguidas el digest puede no llegar a dispararse. Arreglo: `--schedule=` a un
+   volumen nombrado.
+7. **La suite entera corre SIN integridad referencial** *(propietario: SIN ASIGNAR;
+   preexistente, medido en la Fase 11, Bloque I)*. En SQLite las claves foráneas
+   están **desactivadas por defecto** y `app/core/db.py` no ejecuta
+   `PRAGMA foreign_keys=ON` en ninguna parte. Medido: `PRAGMA foreign_keys` → `0`.
+   Consecuencia: **cualquier borrado desordenado pasa en verde en la suite y deja
+   filas huérfanas, mientras en PostgreSQL abortaría la transacción.** Es la
+   misma clase de falso verde que esta fase ya ha corregido tres veces. Hoy solo
+   lo cubre `test_la_purga_no_deja_filas_huerfanas_con_claves_foraneas_activas`,
+   que lo activa para su propio caso y lo restaura al salir.
+   Ojo al activarlo globalmente: el PRAGMA es **por conexión** y la conexión
+   vuelve al pool, de modo que activarlo en un test se filtra a los siguientes y
+   convierte sus fallos en dependientes del orden (medido). La vía correcta es un
+   listener `connect` sobre el motor, no una llamada suelta.
+8. **La suite no es idempotente ante un `seis_dev.db` superviviente** *(propietario:
+   SIN ASIGNAR; preexistente, detectado de paso en la Fase 11)*. La fixture `api`
+   borra el fichero en su teardown, pero en Windows ese borrado puede fallar con
+   `PermissionError: [WinError 32]` si alguna conexión sigue abierta. Cuando eso
+   ocurre, el fichero sobrevive con el admin ya sembrado y **los módulos siguientes
+   fallan con `UNIQUE constraint failed: usuario.email`**, un mensaje que no apunta
+   en absoluto a la causa. Reproducido: 8 fallos y 6 errores que desaparecen sin
+   tocar una línea de código, solo borrando el fichero. Arreglo natural: base en
+   memoria (`sqlite:///:memory:`) o fichero temporal por sesión, en vez de un
+   `seis_dev.db` fijo en el directorio de trabajo.
+
 ## Deuda de la Fase 9.5 sin bloque propietario
 
 Registrada en el Bloque J. El plan canónico de la Fase 9.5 **no asigna propietario** a ninguna de
@@ -363,16 +691,21 @@ esquema.
 3. **La prueba de mutación de T4 se ejecuta a mano.** El Bloque G la ejecutó (5/5 dimensiones) y el
    Bloque I demostró que el pipeline pasa a `exit 1` ante deriva real, pero ninguna de las dos está
    automatizada como test permanente. RC-3 exige «T4 en CI» —cubierto— pero no la mutación.
-4. **La CI cubre solo `tests/test_migraciones.py`, no la suite completa.** Decisión deliberada del
-   Bloque I: la suite arrastra dos fallos preexistentes de PDF que dejarían el pipeline
-   permanentemente en rojo, y una barrera siempre roja no vigila nada. Ampliarla exige instalar
-   `fonts-dejavu-core` en el runner —el `Dockerfile` ya lo hace—, lo que probablemente resolvería
-   también esos dos rojos.
+4. ~~**La CI cubre solo `tests/test_migraciones.py`, no la suite completa.**~~ → ✅ **CERRADA
+   por la Fase 11, Bloque F′.** Nuevo `.github/workflows/ci.yml` con la suite completa y
+   `npm run build`, instalando `fonts-dejavu-core` en el runner igual que el `Dockerfile`.
+   `migraciones.yml` se conserva intacto: es la barrera específica de la Fase 9.5.
+   > La fuente en el runner es **cobertura adicional**, no el mecanismo que tapa el
+   > problema: la causa raíz de los dos rojos de PDF se corrigió en `pdf_service.py`
+   > con autorización expresa, y `tests/test_pdf_respaldo.py` fuerza las dos ramas
+   > con `monkeypatch` en lugar de depender de si la máquina tiene la fuente.
 
 **Observaciones de otras fases detectadas de paso** (no de la 9.5, no se tocan aquí):
-`docker-compose.yml` conserva `version: "3.9"`, obsoleto en Compose v5 · `backend` (8000) y
-`frontend` (3000) se publican en todas las interfaces mientras `db` y `redis` van a `127.0.0.1` con
-comentario explícito — **a confirmar en la auditoría de seguridad de la Fase 16** ·
+~~`docker-compose.yml` conserva `version: "3.9"`~~ → **resuelto en la Fase 11 (Bloque C′)**: retirada ·
+~~`backend` (8000) y `frontend` (3000) se publican en todas las interfaces~~ → **resuelto en la
+Fase 11 (Bloque C′)**: ambos pasan a `${BIND_*:-127.0.0.1}`, loopback por defecto, simétrico con
+`db` y `redis`. Se adelantó a la Fase 16 porque la premisa del diferimiento —«el compose es solo
+local»— caducó al convertirse este fichero en la base de un despliegue portable ·
 `Settings.env_file=".env"` es una ruta relativa: ejecutar `pytest` desde la raíz del repositorio
 haría que la suite leyera el `.env` real · el docstring de `app/models.py` (líneas 3-5) sigue
 anunciando la migración a `geometry(Point,4326)` «con el módulo de mapa (Fase 5)», que no ha
