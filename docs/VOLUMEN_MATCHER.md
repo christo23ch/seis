@@ -91,9 +91,33 @@ que importa no es el de la base de datos, es el de la paciencia de quien recibe.
 sentido cuando una notificación equivalía a un acto humano deliberado. Con
 captación automática deja de tenerlo.
 
-El agrupado ya existe y es exactamente el remedio: `modo=digest_diario` deja las
-notificaciones pendientes y la tarea `beat` envía **un** correo con todo. No hay
-que construir nada; hay que decidir cuál es el valor por defecto.
+### Esto no es un problema de escala. Es el modo de fábrica
+
+Conviene dejarlo escrito con todas las letras, porque la cifra invita a leerlo mal:
+**los 50 correos por cabeza ocurren con diez usuarios, no con cinco mil.** No hace
+falta crecer para que pase. Pasa la primera noche que el conector traiga un lote
+normal, con la base de usuarios que haya.
+
+De ahí que el remedio no sea un límite de envíos ni ninguna otra forma de recortar
+el síntoma. Poner un tope de «como mucho N avisos por usuario y lote» dejaría a ese
+usuario sin ver las subastas que sí encajaban con su alerta, que es justamente lo
+que ha pedido. **La pregunta correcta es cuál debe ser el modo por defecto**, y esa
+es una decisión de producto, no una optimización.
+
+El agrupado ya existe y no hay que construir nada: `modo=digest_diario` deja las
+notificaciones pendientes y la tarea `beat` envía **un** correo con todo. Lo que
+falta es decidir. Las opciones, para que la 17-B las tenga delante:
+
+- **`digest_diario` como valor por defecto para todo el mundo**, y el instantáneo
+  como algo que el usuario activa a sabiendas.
+- **El modo por defecto depende del origen**: instantáneo sigue significando
+  instantáneo para lo que capta un humano de su organización —un acto puntual y
+  deliberado—, y la ingesta de plataforma agrupa siempre.
+- **El usuario elige en el alta**, con el agrupado preseleccionado.
+
+No se elige aquí. Se elige en la 17-B, con la decisión escrita como tal y no
+heredada de un valor por defecto que se puso cuando notificar equivalía a un acto
+humano deliberado (`app/models.py:262`).
 
 ---
 
@@ -113,6 +137,25 @@ tarea de ingesta. Con las cifras de arriba:
   notificaciones ya están creadas en `pendiente`, así que no se pierden, pero
   tampoco salen.
 
+### Lo peligroso no es la lentitud: es dónde se irá a buscar el fallo
+
+El envío vive dentro de la tarea de ingesta, así que **cuando reviente el correo,
+lo que fallará ante quien mire es la captación.** La tarea nocturna aparecerá en
+rojo, o colgada, o a medias; el registro dirá que la ingesta no terminó. Y no será
+verdad: las subastas estarán guardadas y confirmadas —el `commit` ocurre antes del
+despacho, a propósito—, mientras la causa real estará en un proveedor de correo que
+tardó, cortó la conexión o devolvió un 429.
+
+Ese es el modo de fallo caro: no el minuto perdido, sino **la hora que alguien
+dedicará a depurar el parser del BOE por un problema que está en Postmark**. Un
+fallo que apunta al sitio equivocado cuesta más que uno que se cae de frente.
+
+Por eso el punto 2 de §5 no es afinado ni optimización: **el envío tiene que estar
+fuera del camino de la ingesta antes de conectar un proveedor real.** Mientras no
+haya proveedor no puede pasar nada —el notificador registra en log y devuelve
+`False`—, así que la frontera es exactamente esa: configurar `EMAIL_PROVIDER` en
+producción sin haber movido antes el envío es lo que no debe hacerse.
+
 ---
 
 ## 5. Qué hay que hacer, y cuándo
@@ -125,10 +168,10 @@ optimizar contra cifras inventadas.
 que cerrar dos cosas. Quedan aquí escritas para que sean condición de esa fase y
 no un descubrimiento posterior:
 
-| # | Qué | Por qué no puede esperar más allá de la 17-B |
-|---|---|---|
-| 1 | **Que el origen plataforma no despache en modo instantáneo** — por defecto en digest, o forzado para este origen | 50 correos por noche y usuario. Es el único punto que hace daño de verdad, y lo hace el primer día |
-| 2 | **Sacar el envío de la tarea de ingesta a una tarea propia** | 8–25 min en serie sin reintentos; un proveedor lento alarga o tumba la ingesta, que es lo único que no debe fallar |
+| # | Qué | Naturaleza | Por qué no puede esperar más allá de la 17-B |
+|---|---|---|---|
+| 1 | **Decidir cuál debe ser el modo de notificación por defecto** (§3), con las tres opciones de arriba sobre la mesa | **Decisión de producto pendiente**, no optimización | 50 correos por cabeza y noche **con diez usuarios**. No hace falta crecer para que ocurra: ocurre la primera noche |
+| 2 | **Sacar el envío del camino de la ingesta**, a su propia tarea | Diseño, no rendimiento | Cuando reviente el correo, lo que parecerá roto es la captación, y se depurará en el sitio equivocado (§4). Frontera dura: **antes de configurar un proveedor real** |
 
 **Lo que NO hay que hacer ahora**, dicho explícitamente para que nadie lo haga por
 si acaso: sacar la consulta de alertas del bucle, resolver el emparejamiento en
@@ -141,7 +184,8 @@ toma con usuarios delante, no antes.
 
 - más de **5.000 alertas activas** en la plataforma → sacar la consulta del bucle;
 - una ingesta que pase de **5 minutos** → el despacho ya se comió la tarea;
-- la primera baja de un usuario citando exceso de correos → el punto 1 llegó tarde.
+- la primera baja de un usuario citando exceso de correos → el punto 1 no se
+  decidió, y la decisión la ha tomado el usuario yéndose.
 
 ---
 
