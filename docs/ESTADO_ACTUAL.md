@@ -16,7 +16,7 @@
 | Rama | PR | Estado | Qué contiene | Siguiente acción |
 |---|---|---|---|---|
 | `docs/adr-diseno-y-revision-visual` | [#11](https://github.com/christo23ch/seis/pull/11) | 🟡 en revisión | ADR-0010 (UI propia), flujo de capturas repetible, puerta de la deuda | Fusionar |
-| `fase-17a-captacion` | *(pendiente de abrir)* | 🟢 lista | Fase 17-A: andamiaje de captación (contratos, parser BOE, ingesta, dedupe 0007, vigilancia, ADR-0011) | Abrir PR |
+| `fase-17a-captacion` | [#12](https://github.com/christo23ch/seis/pull/12) | 🟡 en revisión | Fase 17-A: andamiaje de captación (contratos, parser BOE, ingesta, dedupe 0007, vigilancia, ADR-0011) | Fusionar |
 
 **Fusionados desde la última actualización:** #5 (este documento), #8 (plan de fases),
 #9 (guion bajo en el PDF), #10 (avisos del README). Las ocho ramas muertas quedaron
