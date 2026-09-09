@@ -16,7 +16,7 @@
 | Rama | PR | Estado | Qué contiene | Siguiente acción |
 |---|---|---|---|---|
 | `docs/adr-diseno-y-revision-visual` | [#11](https://github.com/christo23ch/seis/pull/11) | 🟡 en revisión | ADR-0010 (UI propia), flujo de capturas repetible, puerta de la deuda | Fusionar |
-| `puerta/postgres-en-ci` | *(pendiente de abrir)* | 🟢 lista | Fila (b): job `postgres` en la CI + los tres caminos exclusivos, con mutación | Abrir PR |
+| `puerta/postgres-en-ci` | [#14](https://github.com/christo23ch/seis/pull/14) | 🟡 en revisión | Fila (b): job `postgres` en la CI + los tres caminos exclusivos, con mutación | Fusionar |
 
 **Fusionados:** [#12](https://github.com/christo23ch/seis/pull/12) Fase 17-A ·
 [#13](https://github.com/christo23ch/seis/pull/13) fila (a) de la puerta.
