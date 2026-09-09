@@ -58,15 +58,19 @@ ramas y qué PRs están vivos*, que es justo lo que se perdió.
 **`docs/ESTADO_ACTUAL.md` es el índice, y ninguna fase cierra su PR sin actualizarlo.**
 Se le añade una sección de cabecera, obligatoria y corta:
 
+> Lo de abajo es **la forma de la tabla, no su contenido**: los valores son de relleno a
+> propósito. La versión anterior de este ejemplo traía un «PR #12» inventado que con el tiempo
+> pasó a existir de verdad (Fase 17-A), y un ejemplo que se puede leer como estado real es peor
+> que no tener ejemplo. **El estado vivo está en `docs/ESTADO_ACTUAL.md`, y solo ahí.**
+
 ```markdown
 ## Frentes abiertos  (actualizado: AAAA-MM-DD · commit de main: XXXXXXX)
 
 | Rama | PR | Estado | Qué contiene | Siguiente acción |
 |---|---|---|---|---|
-| fase-13-stripe | #12 | 🟡 en curso | Suscripción + webhooks | Falta enforcement |
-| (ninguna otra) | | | | |
+| <rama> | #<n> | 🟡 en revisión | <una línea> | <qué falta> |
 
-**Suite:** 402 passed, 1 skipped · **Última fase cerrada:** 11-A
+**Suite:** <n> passed, <n> skipped · **Última fase cerrada:** <fase>
 ```
 
 ### Cómo se mantiene sin depender de que te acuerdes
@@ -224,6 +228,12 @@ alertas de la Fase 12 vigilan el vacío y no hay nada que monetizar en la 13.
   que aborta listando los duplicados en vez de borrar filas por su cuenta—,
   transaccionalidad por lote, y vigilancia de fuentes (aviso al superadmin si una fuente lleva
   24 h a cero) reutilizando `Notificacion`, que ya existe.
+- **Decisión de producto con dueño (🟢, sin dependencias externas): cuál es el modo de
+  notificación por defecto.** No es una optimización y no puede heredarse: con ingesta diaria,
+  el `instantaneo` de fábrica manda **50 correos por cabeza y noche con diez usuarios**
+  (`docs/VOLUMEN_MATCHER.md` §3, medido). La ficha de la 17-B es su propietaria y **no cierra su
+  PR sin haberla resuelto**, con las tres opciones de esa nota decididas explícitamente, no por
+  omisión. Es la primera tarea de la 17-B porque no depende del HTML.
 - **Tú (🔴 o desde el móvil):** pegar el HTML real de `subastas.boe.es` (listado + una ficha).
   **Comprobado: el sandbox no puede descargarlo** — el proxy de egreso deniega ese dominio, así
   que el ajuste de selectores no se puede hacer sin que tú aportes el HTML.
@@ -240,14 +250,32 @@ alertas de la Fase 12 vigilan el vacío y no hay nada que monetizar en la 13.
 **Por qué aquí.** Es 🟢 casi entera, y **bloquea el lanzamiento**: hoy no hay consentimientos,
 ni exportación, ni borrado de cuenta. Además el registro self-service ya está vivo.
 
+> **DECISIÓN PREVIA, tomada antes de escribir una línea (2026-09-09).** La Fase 14
+> **extiende `purga_service`; no escribe un borrador paralelo.** Un segundo camino de borrado
+> reproduciría las filas huérfanas que resolvió el [[ADR-0009]], y en SQLite volvería **en
+> verde**, con datos personales sobreviviendo a un borrado que el sistema da por completo.
+>
+> Si al implementarlo resulta que extender `purga_service` no encaja, **se para y se consulta
+> antes de bifurcar**: se prefiere replantear a tener dos borradores. Esto no es una
+> preferencia de estilo, es la condición bajo la que se aprobó la fase.
+
 - **Modelo:** consentimientos granulares con versión y fecha en el registro; `GET
   /cuenta/exportar`; `DELETE /cuenta` con gracia de 14 días y anonimización de auditoría.
-  Aprovecha que la Fase 11-A ya construyó `purga_service.py`, que resolvió el problema difícil:
+  **Un solo camino de borrado**, el de `purga_service.py`, que ya resolvió el problema difícil:
   **no hay `ondelete` en ninguna de las seis claves foráneas**, así que un borrado desordenado
   aborta la transacción en PostgreSQL y —peor— deja huérfanos en SQLite.
 - **Tú:** abogado para los textos (el modelo redacta borradores marcando los huecos).
 - **Salida verificable:** un usuario exporta sus datos y borra su cuenta sin intervención; los
-  consentimientos quedan con versión y fecha; la auditoría del borrado queda anonimizada.
+  consentimientos quedan con versión y fecha; la auditoría del borrado queda anonimizada. Y,
+  como condiciones explícitas de la aprobación:
+  1. **Cero filas huérfanas tras `DELETE /cuenta`, demostrado también contra PostgreSQL** en el
+     job `postgres` de la CI. SQLite miente justo aquí: con las claves foráneas apagadas, un
+     borrado incompleto pasa en verde.
+  2. **Demostración por mutación:** romper el borrado en cascada o la anonimización de auditoría
+     debe verse en rojo.
+  3. **La exportación no cruza organizaciones**, con test negativo explícito.
+  4. **Consentimientos con versión y fecha, guardados ya por el registro**, con el hueco de los
+     textos legales preparado para cuando lleguen.
 - **Riesgo específico:** el borrado toca datos irrecuperables. Los tests deben cubrir el ciclo
   completo con cancelación dentro de la gracia.
 - **Modelo recomendado:** **Opus 5.** El borrado en cascada manual es delicado, pero es
