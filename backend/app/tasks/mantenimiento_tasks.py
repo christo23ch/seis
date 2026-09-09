@@ -130,3 +130,30 @@ def vigilancia_fuentes() -> dict:
         return {"error": type(e).__name__}
     finally:
         db.close()
+
+
+@celery.task(name="seis.borrados_rgpd")
+def borrados_rgpd() -> dict:
+    """Ejecuta los borrados cuya gracia de 14 días ya venció (Fase 14).
+
+    Va en tarea propia y no dentro de `seis.purgar` aunque comparta camino de
+    borrado, porque son dos cosas distintas con dos razones distintas para
+    fallar: la purga limpia cuentas que nadie reclamó, esto ejecuta una petición
+    expresa de una persona. Mezclarlas haría que un fallo en una retrasara la
+    otra, y retrasar un derecho ejercido no es lo mismo que retrasar higiene.
+
+    Corre DESPUÉS de la purga (05:00 frente a 04:30) por si acaso comparten
+    candidatas: una cuenta sin verificar que además pidió el borrado la limpia
+    la purga y aquí ya no aparece.
+    """
+    from app.core.db import SessionLocal
+    from app.services import cuenta_service
+
+    db = SessionLocal()
+    try:
+        return cuenta_service.ejecutar_borrados_vencidos(db)
+    except Exception:                                    # noqa: BLE001
+        log.exception("Fallo ejecutando los borrados RGPD vencidos")
+        return {"error": True}
+    finally:
+        db.close()
