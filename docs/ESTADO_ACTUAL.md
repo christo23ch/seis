@@ -10,17 +10,19 @@
 
 ## Frentes abiertos
 
-**Actualizado:** 2026-09-09 · **`main`:** `cc5b782` · **Suite:** 444 passed, 1 skipped
-**Última fase cerrada:** 11-A (infraestructura, parte agnóstica del proveedor)
+**Actualizado:** 2026-09-09 · **`main`:** `2ddce39` · **Suite:** 449 passed, 1 skipped
+**Última fase cerrada:** 17-A (andamiaje de captación)
 
 | Rama | PR | Estado | Qué contiene | Siguiente acción |
 |---|---|---|---|---|
 | `docs/adr-diseno-y-revision-visual` | [#11](https://github.com/christo23ch/seis/pull/11) | 🟡 en revisión | ADR-0010 (UI propia), flujo de capturas repetible, puerta de la deuda | Fusionar |
-| `fase-17a-captacion` | [#12](https://github.com/christo23ch/seis/pull/12) | 🟡 en revisión | Fase 17-A: andamiaje de captación (contratos, parser BOE, ingesta, dedupe 0007, vigilancia, ADR-0011) | Fusionar |
+| `puerta/test-siembra` | *(pendiente de abrir)* | 🟢 lista | Fila 0 de la puerta: test de `init_db.main()` y `sembrar.main()` | Abrir PR |
 
-**Fusionados desde la última actualización:** #5 (este documento), #8 (plan de fases),
-#9 (guion bajo en el PDF), #10 (avisos del README). Las ocho ramas muertas quedaron
-borradas desde la web el 2026-09-08; no queda ninguna rama zombi en el remoto.
+**Fusionado:** [#12](https://github.com/christo23ch/seis/pull/12) — Fase 17-A.
+
+**La puerta antes de tocar producción** (`PLAN_FASES.md` §2-bis): fila (a) test de
+`init_db.main()` ✅ hecha; fila (b) PostgreSQL en la CI ⏳ pendiente. Hasta que las dos
+estén cerradas no se cruza a la 11-B.
 
 ---
 

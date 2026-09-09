@@ -124,7 +124,7 @@ permitió entender 7.000 líneas ajenas en minutos en vez de leerlas enteras.
 Cuatro asuntos que no son una fase pero van por delante de todas. Tres los documentó la propia
 Fase 11-A al cerrarse; el cuarto es un defecto en el entregable que ve el cliente.
 
-### a) Test de `init_db.main()` — 🟢 prioridad alta, coste bajo
+### a) Test de `init_db.main()` — ✅ **hecho** (`tests/test_siembra.py`)
 
 **El hueco más peligroso de los cuatro.** Los tests prueban las tres piezas de la siembra por
 separado (conocimiento, administrador, sesión), pero **nunca la orquestación**. La mutación que
@@ -138,7 +138,12 @@ Y no se detecta hasta el despliegue, que es justo cuando más caro es. Es el def
 - **Qué hacer:** un test que ejecute `init_db.main()` de extremo a extremo contra una base
   vacía y afirme que después existen reglas, parámetros y administrador. Y otro que cubra la
   duplicación de esa orquestación en `sembrar.py`.
-- **Salida verificable:** con la mutación `if creado:` aplicada a mano, el test falla.
+- **Salida verificable:** con la mutación `if creado:` aplicada a mano, el test falla. ✅
+  Demostrado: `test_init_db_siembra_aunque_el_esquema_no_lo_cree_el` falla con «sin reglas T2 el
+  motor no evalúa nada», y quitar `sembrar_conocimiento` de `sembrar.main()` tumba el suyo. Lo
+  que no se veía al plantearlo: **un test en el entorno de desarrollo no habría servido**, porque
+  ahí `creado` es True y la mutación no cambia nada. El test tiene que correr en un entorno donde
+  `create_all` NO corra, que es el único parecido a un despliegue.
 
 ### b) PostgreSQL en la CI — 🟢 coste bajo
 
