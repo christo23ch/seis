@@ -549,13 +549,25 @@ todos son puntos donde una mutación plausible sobrevive a la suite.
    Demostrado por mutación: con `if creado:` aplicado a mano, falla con «sin reglas T2
    el motor no evalúa nada»; y quitando `sembrar_conocimiento` de `sembrar.main()`,
    falla el suyo. Con el código sano, 449 passed.
-2. **La CI no levanta PostgreSQL, así que T5 está omitido también allí, de forma
-   permanente** *(propietario: **Fase 11-B**)*. Consecuencia concreta: esta fase añadió
-   **tres caminos exclusivos de PostgreSQL que no ejecuta ningún test en ninguna
-   plataforma** — `SET LOCAL statement_timeout` en la sonda de salud,
-   `with_for_update(skip_locked=True)` en la purga, y el motivo de
-   `_rollback_silencioso`. Añadir `services: postgres:16` al workflow es barato y
-   elimina una de las dos omisiones para siempre.
+2. ~~**La CI no levanta PostgreSQL, así que T5 está omitido también allí**~~ → ✅
+   **CERRADO** (fila (b) de la puerta). Job `postgres` en `ci.yml` con
+   `services: postgres:16`, en paralelo con la suite para no alargar la CI, y
+   `tests/test_postgres.py` para los tres caminos que **no se habían ejecutado nunca**:
+   `SET LOCAL statement_timeout` en la sonda de salud,
+   `with_for_update(skip_locked=True)` en la purga y `_rollback_silencioso`.
+
+   Los tres están demostrados por mutación (ver el PR de la fila (b)). El job falla si
+   algún test marcado `postgres` se omite: un verde que no ejecutó nada es peor que un
+   rojo, y era justo el estado anterior. Con PostgreSQL disponible la suite queda en
+   **455 passed, 0 skipped** — ninguna omisión.
+
+   **Hallazgo al escribir el test del timeout:** en PostgreSQL un `SET` a secas dentro
+   de una transacción **también** se deshace con el `ROLLBACK`; la diferencia con
+   `SET LOCAL` solo se ve al CONFIRMAR (medido: `SET LOCAL` → `0`, `SET` → `50ms`). Como
+   la sonda nunca confirma —`get_db` cierra sin commit—, un test que reprodujera el
+   camino real **no distinguiría las dos grafías**. El test confirma a propósito y lo
+   dice en su docstring; fija la propiedad para el día en que un llamante escriba algo
+   en la misma transacción.
 3. **La purga en modo `borrar` nunca ha corrido por la ruta de la tarea**
    *(propietario: quien active el modo)*. Todos los tests de borrado pasan `modo=`
    explícito y la sesión de la fixture. El día que alguien ponga

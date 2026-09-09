@@ -124,6 +124,11 @@ permitió entender 7.000 líneas ajenas en minutos en vez de leerlas enteras.
 Cuatro asuntos que no son una fase pero van por delante de todas. Tres los documentó la propia
 Fase 11-A al cerrarse; el cuarto es un defecto en el entregable que ve el cliente.
 
+> **Estado de la puerta: ABIERTA** (2026-09-09). Las dos filas que la cerraban —(a) test de
+> `init_db.main()` y (b) PostgreSQL en la CI— están hechas y demostradas por mutación. (c) no es
+> una tarea sino una regla de activación, y (d) ya se cerró. Con PostgreSQL disponible la suite
+> queda en **455 passed, 0 skipped**: ninguna omisión escondiendo nada.
+
 ### a) Test de `init_db.main()` — ✅ **hecho** (`tests/test_siembra.py`)
 
 **El hueco más peligroso de los cuatro.** Los tests prueban las tres piezas de la siembra por
@@ -145,7 +150,7 @@ Y no se detecta hasta el despliegue, que es justo cuando más caro es. Es el def
   ahí `creado` es True y la mutación no cambia nada. El test tiene que correr en un entorno donde
   `create_all` NO corra, que es el único parecido a un despliegue.
 
-### b) PostgreSQL en la CI — 🟢 coste bajo
+### b) PostgreSQL en la CI — ✅ **hecho** (job `postgres` + `tests/test_postgres.py`)
 
 Hoy la CI solo corre SQLite, así que **tres caminos exclusivos de PostgreSQL no se ejecutan en
 ninguna parte**: `SET LOCAL statement_timeout` en la sonda de salud,
@@ -155,7 +160,10 @@ T5 queda omitido de forma permanente.
 - **Qué hacer:** añadir `services: postgres:16` al job de backend y definir
   `SEIS_TEST_POSTGRES_URL`.
 - **Salida verificable:** la CI deja de reportar la omisión de T5, y los tres caminos aparecen
-  ejecutados.
+  ejecutados. ✅ Con PostgreSQL disponible: **455 passed, 0 skipped**. Y no basta con que
+  aparezcan ejecutados: los tres están demostrados por mutación, porque un test que pasa con el
+  camino puesto y sin él no prueba nada. El job además **falla si algún test se omite**, que era
+  la forma exacta en que este hueco podía volver sin que nadie se enterara.
 
 ### c) La purga en modo `borrar` no se activa todavía — 🟡 regla, no tarea
 
