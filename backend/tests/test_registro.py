@@ -51,11 +51,18 @@ def _token(fragmento: str) -> str:
     return _enlace(fragmento).split("token=", 1)[1]
 
 
+# Fase 14: el alta pública exige consentimiento a los textos obligatorios. Se
+# declara aquí una sola vez para que los tests de esta batería hablen de lo suyo
+# —tokens, bloqueos, neutralidad de las respuestas— y no de RGPD.
+CONSENTIMIENTOS_OK = {"acepta_terminos": True, "acepta_privacidad": True}
+
+
 def _registrar(api, email: str, password: str = "unaClaveLarga1",
                nombre: str | None = None):
     _vaciar_buffer()
     return api.post(f"{API}/registro",
-                    json={"email": email, "password": password, "nombre": nombre})
+                    json={"email": email, "password": password, "nombre": nombre,
+                          **CONSENTIMIENTOS_OK})
 
 
 def _alta_verificada(api, email: str, password: str = "unaClaveLarga1"):
@@ -158,7 +165,8 @@ def test_el_registro_repetido_no_toca_la_cuenta_existente(api):
 @pytest.mark.parametrize("password", ["", "corta", "1234567"])
 def test_el_registro_exige_ocho_caracteres_de_contrasena(api, password):
     r = api.post(f"{API}/registro", json={"email": "corta@ejemplo.com",
-                                          "password": password})
+                                          "password": password,
+                                          **CONSENTIMIENTOS_OK})
 
     assert r.status_code == 422, r.text
 
@@ -170,7 +178,8 @@ def test_el_registro_no_permite_elegir_rol_ni_superadmin(api):
 
     r = api.post(f"{API}/registro", json={
         "email": "escalada@ejemplo.com", "password": "unaClaveLarga1",
-        "rol": "admin", "rol_org": "propietario", "es_superadmin": True})
+        "rol": "admin", "rol_org": "propietario", "es_superadmin": True,
+        **CONSENTIMIENTOS_OK})
 
     assert r.status_code == 201, r.text
     db = SessionLocal()
@@ -496,7 +505,8 @@ def test_recuperar_tambien_esta_limitado(api):
 def test_registro_tambien_esta_limitado(api):
     codigos = [api.post(f"{API}/registro",
                         json={"email": f"masivo{i}@ejemplo.com",
-                              "password": "unaClaveLarga1"}).status_code
+                              "password": "unaClaveLarga1",
+                              **CONSENTIMIENTOS_OK}).status_code
                for i in range(6)]
 
     assert codigos[:5] == [201] * 5
