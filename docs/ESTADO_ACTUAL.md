@@ -16,7 +16,7 @@
 | Rama | PR | Estado | Qué contiene | Siguiente acción |
 |---|---|---|---|---|
 | `docs/adr-diseno-y-revision-visual` | [#11](https://github.com/christo23ch/seis/pull/11) | 🟡 en revisión | ADR-0010 (UI propia), flujo de capturas repetible, puerta de la deuda | Fusionar |
-| `puerta/test-siembra` | *(pendiente de abrir)* | 🟢 lista | Fila 0 de la puerta: test de `init_db.main()` y `sembrar.main()` | Abrir PR |
+| `puerta/test-siembra` | [#13](https://github.com/christo23ch/seis/pull/13) | 🟡 en revisión | Fila 0 de la puerta: test de `init_db.main()` y `sembrar.main()` | Fusionar |
 
 **Fusionado:** [#12](https://github.com/christo23ch/seis/pull/12) — Fase 17-A.
 
