@@ -105,3 +105,28 @@ def purgar_tokens_consumidos() -> int:
         log.info("Purga de token_consumido: %d filas anteriores a %s",
                  borrados, corte.isoformat())
     return borrados
+
+
+@celery.task(name="seis.vigilancia_fuentes")
+def vigilancia_fuentes() -> dict:
+    """Avisa al superadministrador si una fuente activa lleva demasiado en silencio.
+
+    Es la única señal automática de que un conector se rompió. Sin ella, el modo
+    de fallo es el peor posible: el sistema sigue funcionando, las alertas siguen
+    activas y sencillamente no llega nada — indistinguible, desde fuera, de que
+    no haya subastas nuevas.
+
+    No repite el aviso mientras siga pendiente uno anterior de la misma fuente:
+    una fuente rota durante una semana debe producir un aviso, no siete.
+    """
+    from app.core.db import SessionLocal
+    from app.services import vigilancia_service
+
+    db = SessionLocal()
+    try:
+        return vigilancia_service.revisar_fuentes(db)
+    except Exception as e:                       # noqa: BLE001 — nunca tumbar el planificador
+        log.warning("vigilancia_fuentes: %s: %s", type(e).__name__, e)
+        return {"error": type(e).__name__}
+    finally:
+        db.close()

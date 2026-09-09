@@ -262,3 +262,5 @@ ingesta:
     etiqueta_cierre: Fecha de conclusión
     etiqueta_tipo_bien: Tipo de bien
     cadencia_max_por_segundo: 1        # cortesía con el portal; no superar
+  vigilancia:
+    horas_sin_items_alerta: 24
