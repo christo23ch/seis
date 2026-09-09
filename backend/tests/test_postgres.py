@@ -23,6 +23,8 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 from sqlalchemy import create_engine, text
+
+from app import models
 from sqlalchemy.orm import sessionmaker
 
 POSTGRES_ENV_VAR = "SEIS_TEST_POSTGRES_URL"       # dedicada: nunca DATABASE_URL
@@ -285,6 +287,82 @@ def test_el_rollback_deja_la_sesion_utilizable_para_cualquier_consulta(
 
         assert db.execute(text("SELECT 1")).scalar_one() == 1, (
             "tras un fallo, la sesión sigue abortada: el rollback no ocurrió")
+    finally:
+        db.rollback()
+        db.close()
+
+
+# ═══════════════ 4 · Borrado RGPD sin filas huérfanas (Fase 14) ═══════════════
+
+def test_el_borrado_rgpd_no_deja_filas_huerfanas_en_postgres(sesiones) -> None:
+    """La misma comprobación que en SQLite, en el motor donde SÍ demuestra algo.
+
+    En SQLite las claves foráneas están apagadas por defecto y la suite no las
+    enciende: si `borrado_service` se dejara una tabla hija, el `DELETE FROM
+    usuario` pasaría igual y quedarían filas con datos personales colgando de un
+    usuario inexistente, en verde. Aquí no: PostgreSQL rechaza el borrado y la
+    transacción entera se aborta.
+
+    Es decir, en SQLite este escenario comprueba que el borrado es COMPLETO;
+    aquí comprueba además que es POSIBLE. Son dos cosas distintas y hacen falta
+    las dos, que es el motivo de que el escenario viva en `escenario_rgpd.py` y
+    no duplicado en dos módulos.
+    """
+    import uuid
+    from datetime import datetime, timedelta, timezone
+
+    from app.core.db import Base
+    from app.services import cuenta_service
+    from tests.escenario_rgpd import (cobertura_de_tablas_hijas,
+                                      comprobar_sin_huerfanas, sembrar_titular)
+
+    sin_cubrir = cobertura_de_tablas_hijas(Base.metadata)
+    assert not sin_cubrir, (
+        f"El escenario no siembra estas tablas hijas de `usuario`: {sorted(sin_cubrir)}")
+
+    db = sesiones()
+    try:
+        email = f"rgpd-pg-{uuid.uuid4().hex[:8]}@ejemplo.test"
+        usuario_id, org_id = sembrar_titular(db, email=email)
+
+        usuario = db.get(models.Usuario, usuario_id)
+        cuenta_service.solicitar_borrado(db, usuario)
+
+        despues = datetime.now(timezone.utc) + timedelta(
+            days=cuenta_service.DIAS_DE_GRACIA + 1)
+        assert cuenta_service.ejecutar_borrado(db, usuario_id, ahora=despues) is True
+
+        db.expire_all()
+        comprobar_sin_huerfanas(db, Base.metadata, usuario_id, org_id, email)
+    finally:
+        db.rollback()
+        db.close()
+
+
+def test_en_postgres_un_borrado_incompleto_ABORTA_en_vez_de_pasar_en_verde(
+        sesiones) -> None:
+    """Por qué este módulo existe, demostrado sobre el propio motor.
+
+    Se borra al usuario **sin** borrar antes sus hijas, que es exactamente lo
+    que pasaría si alguien añadiera una tabla y olvidara ponerla en
+    `TABLAS_HIJAS_DE_USUARIO`. PostgreSQL lo rechaza. En SQLite, con las claves
+    foráneas apagadas, esto mismo pasaría en verde dejando datos personales
+    colgando — y por eso el test de SQLite no basta.
+    """
+    import uuid
+
+    from sqlalchemy.exc import IntegrityError
+    from tests.escenario_rgpd import sembrar_titular
+
+    db = sesiones()
+    try:
+        email = f"incompleto-{uuid.uuid4().hex[:8]}@ejemplo.test"
+        usuario_id, _org = sembrar_titular(db, email=email)
+
+        with pytest.raises(IntegrityError):
+            db.query(models.Usuario).filter(
+                models.Usuario.id == usuario_id).delete(synchronize_session=False)
+            db.flush()
     finally:
         db.rollback()
         db.close()
