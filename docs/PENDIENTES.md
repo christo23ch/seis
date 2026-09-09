@@ -301,7 +301,7 @@ Resumen (detalle y prompts de ejecución en `docs/SEIS_Plan_Maestro_Fases_920.md
 | 14 | Cumplimiento legal y RGPD | consentimientos, ARCO, textos legales (revisión de abogado) |
 | 15 | Landing pública, onboarding y ayuda | — |
 | 16 | Endurecimiento de seguridad | OWASP, rate-limit global, cabeceras |
-| 17 | Escalado de la captación (BOE real) | ajuste del conector contra el portal real |
+| 17 | Captación (BOE) | Partida en **17-A** (andamiaje: contratos, parser defensivo, ingesta unificada, unicidad `0007`, vigilancia de fuentes, alcance del matcher por origen — ADR-0011) ✅ y **17-B** (ajuste de los selectores contra el HTML real del portal, que el sandbox no puede descargar). La 17-B hereda dos condiciones de volumen medidas en `docs/VOLUMEN_MATCHER.md` §5 |
 | 18 | Canal WhatsApp (condicional) | solo si Fase 12 demuestra demanda |
 | 19 | Analítica y panel de negocio | Plausible/PostHog, embudo, MRR |
 | 20 | Beta cerrada y lanzamiento | QA guionizado, carga, go-live |

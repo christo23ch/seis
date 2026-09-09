@@ -10,19 +10,17 @@
 
 ## Frentes abiertos
 
-**Actualizado:** 2026-09-08 · **`main`:** `f7de1b5` · **Suite:** 402 passed, 1 skipped
+**Actualizado:** 2026-09-09 · **`main`:** `cc5b782` · **Suite:** 444 passed, 1 skipped
 **Última fase cerrada:** 11-A (infraestructura, parte agnóstica del proveedor)
 
 | Rama | PR | Estado | Qué contiene | Siguiente acción |
 |---|---|---|---|---|
-| `docs/estado-actual` | [#5](https://github.com/christo23ch/seis/pull/5) | 🟡 en revisión | Este documento | Fusionar |
-| `docs/plan-fases` | [#8](https://github.com/christo23ch/seis/pull/8) | 🟡 en revisión | Plan de fases hasta el lanzamiento | Fusionar |
-| `fix/pdf-guion-bajo` | [#9](https://github.com/christo23ch/seis/pull/9) | 🟡 en revisión | `C_F` salía como «C F» en el informe | Fusionar |
-| `docs/avisos-readme` | [#10](https://github.com/christo23ch/seis/pull/10) | 🟡 en revisión | Avisos de arranque tras la 11-A | Fusionar |
+| `docs/adr-diseno-y-revision-visual` | [#11](https://github.com/christo23ch/seis/pull/11) | 🟡 en revisión | ADR-0010 (UI propia), flujo de capturas repetible, puerta de la deuda | Fusionar |
+| `fase-17a-captacion` | *(pendiente de abrir)* | 🟢 lista | Fase 17-A: andamiaje de captación (contratos, parser BOE, ingesta, dedupe 0007, vigilancia, ADR-0011) | Abrir PR |
 
-**Ramas muertas que conviene borrar:** `claude/wizardly-wright-nkscpg` (Fase 10 duplicada,
-descartada), `infra/fase-11-rescate` (PR #6, cerrado), `fase-11-infraestructura` (PR #4,
-fusionado), `fix/seguridad-urgente` (PR #7, fusionado).
+**Fusionados desde la última actualización:** #5 (este documento), #8 (plan de fases),
+#9 (guion bajo en el PDF), #10 (avisos del README). Las ocho ramas muertas quedaron
+borradas desde la web el 2026-09-08; no queda ninguna rama zombi en el remoto.
 
 ---
 

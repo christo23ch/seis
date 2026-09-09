@@ -193,15 +193,22 @@ acumula riesgo no medido. Y la 11-A ya dejó el repositorio listo, así que es l
   es estricto, y exige `PROXIES_DE_CONFIANZA`). Te morderá al recuperar el portátil.
 - **Modelo recomendado:** **Opus 5.** El diseño operativo ya está decidido en la 11-A y sus ADRs.
 
-### Fase 17-A · Conector de captación 🟡 (con una parte 🔴)
+### Fase 17-A · Conector de captación 🟡 (con una parte 🔴) — ✅ **hecha** (rama `fase-17a-captacion`)
+> Lo 🟢 de esta ficha está construido y probado. Queda la 17-B: los selectores reales,
+> que necesitan el HTML del portal. Dos hallazgos que la ficha no preveía: el alcance
+> del matcher tuvo que decidirse de nuevo ([[ADR-0011]]) porque `organizacion_id=None`
+> no significaba «todas» sino «nadie»; y el coste del despacho con ingesta diaria
+> impone dos condiciones a la 17-B (`docs/VOLUMEN_MATCHER.md` §5).
+
 **Objetivo.** Que entren subastas solas, que es la promesa del producto.
 **Por qué aquí, y no en la posición 17.** Es el riesgo número uno del proyecto: sin caudal, las
 alertas de la Fase 12 vigilan el vacío y no hay nada que monetizar en la 13.
 
 - **Modelo (🟢, ahora):** `app/ingesta/` con parser defensivo (nunca lanza, cuenta lo no
   parseado), parámetros T3 `ingesta.boe.*` para que selectores y cadencia se cambien sin
-  desplegar, dedupe por `UniqueConstraint(fuente_codigo, identificador_externo)` —hoy
-  `UniqueConstraint` está importado en `models.py` pero **sin aplicar a ninguna tabla**—,
+  desplegar, dedupe por `UniqueConstraint(fuente_codigo, identificador_externo)` —estaba
+  importado en `models.py` y **sin aplicar a ninguna tabla**; lo aplica la migración `0007`,
+  que aborta listando los duplicados en vez de borrar filas por su cuenta—,
   transaccionalidad por lote, y vigilancia de fuentes (aviso al superadmin si una fuente lleva
   24 h a cero) reutilizando `Notificacion`, que ya existe.
 - **Tú (🔴 o desde el móvil):** pegar el HTML real de `subastas.boe.es` (listado + una ficha).
