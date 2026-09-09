@@ -43,6 +43,10 @@ class FuenteSubasta(Base):
 
 class Subasta(Base):
     __tablename__ = "subasta"
+    # Fase 17-A: dedupe de la ingesta. Los NULL no colisionan entre sí en SQL, de
+    # modo que las altas manuales sin identificador externo siguen siendo posibles.
+    __table_args__ = (UniqueConstraint("fuente_codigo", "identificador_externo",
+                                       name="uq_subasta_fuente_identificador"),)
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     fuente_codigo: Mapped[str] = mapped_column(String(32), index=True)
     identificador_externo: Mapped[str | None] = mapped_column(String(120))
@@ -324,4 +328,3 @@ class Auditoria(Base):
 
 
 __all__ = [n for n in dir() if n[0].isupper()]
-UniqueConstraint  # noqa — referencia para futuras migraciones compuestas

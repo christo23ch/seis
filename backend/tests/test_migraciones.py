@@ -38,6 +38,7 @@ Bloque F, no en el A — no es que falte infraestructura (Docker Desktop ya
 está disponible), es una cuestión de secuenciación de fases.
 """
 import os
+import sqlite3
 import subprocess
 import sys
 import uuid
@@ -705,4 +706,68 @@ def test_t6_upgrade_head_dos_veces_es_idempotente(
     assert segundo.returncode == 0, (
         "La segunda `upgrade head` (sobre un fichero que ya está en head) "
         f"debería ser un no-op exitoso.\n{diagnostico_segundo}"
+    )
+
+
+# --------------------------------------------------------------------------
+# T7 — la 0007 aborta ante duplicados preexistentes y no borra nada
+# --------------------------------------------------------------------------
+
+def test_t7_la_0007_aborta_ante_duplicados_y_no_borra_ninguna_fila(
+    entorno_migraciones: EntornoMigraciones,
+) -> None:
+    """T7 — decidir qué fila sobra no es competencia de una migración.
+
+    La 0007 impone unicidad por `(fuente_codigo, identificador_externo)`. Una
+    base con duplicados previos no puede recibirla, y hay dos maneras de
+    resolverlo: borrar por criterio propio, o parar y decir cuáles son. Se
+    eligió la segunda. Una subasta puede tener análisis colgando —snapshots
+    inmutables por P1—, así que borrar la fila «que sobra» puede romper una
+    referencia que nadie pidió romper.
+
+    Este test fija ese comportamiento: la migración falla, el mensaje nombra
+    el grupo duplicado, y las tres filas siguen ahí.
+    """
+    previo = _ejecutar_alembic(entorno_migraciones, "upgrade", "0006")
+    assert previo.returncode == 0, _diagnostico(previo, "T7 — upgrade 0006")
+
+    assert entorno_migraciones.ruta_db is not None
+    conexion = sqlite3.connect(entorno_migraciones.ruta_db)
+    try:
+        for identificador in ("SUB-DUP", "SUB-DUP", "SUB-UNICA"):
+            conexion.execute(
+                "INSERT INTO subasta (id, fuente_codigo, identificador_externo,"
+                " valor_subasta, deposito_pct, estado, subastas_desiertas_previas,"
+                " datos_brutos, creado_en) VALUES (?,?,?,?,?,?,?,?,datetime('now'))",
+                (uuid.uuid4().hex, "judicial_boe", identificador, 100000, 0.05,
+                 "abierta", 0, "{}"),
+            )
+        conexion.commit()
+    finally:
+        conexion.close()
+
+    resultado = _ejecutar_alembic(entorno_migraciones, "upgrade", "head")
+
+    diagnostico = _diagnostico(resultado, "T7 — upgrade head con duplicados")
+    assert resultado.returncode != 0, (
+        "La 0007 debía abortar ante duplicados preexistentes, no aplicarse en "
+        f"silencio.\n{diagnostico}"
+    )
+    salida = resultado.stdout + resultado.stderr
+    assert "SUB-DUP" in salida, (
+        "El error debe NOMBRAR el grupo duplicado: sin eso, quien lo reciba no "
+        f"sabe qué mirar.\n{diagnostico}"
+    )
+    assert "SUB-UNICA" not in salida, (
+        f"Solo deben listarse los grupos con duplicados.\n{diagnostico}"
+    )
+
+    conexion = sqlite3.connect(entorno_migraciones.ruta_db)
+    try:
+        filas = conexion.execute("SELECT COUNT(*) FROM subasta").fetchone()[0]
+    finally:
+        conexion.close()
+    assert filas == 3, (
+        f"La migración abortada no puede haber borrado nada: quedan {filas} de 3 "
+        f"filas.\n{diagnostico}"
     )
