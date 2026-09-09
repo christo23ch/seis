@@ -16,7 +16,7 @@
 | Rama | PR | Estado | Qué contiene | Siguiente acción |
 |---|---|---|---|---|
 | `docs/adr-diseno-y-revision-visual` | [#11](https://github.com/christo23ch/seis/pull/11) | 🟡 en revisión | ADR-0010 (UI propia), flujo de capturas repetible | Fusionar |
-| `fase-14-rgpd` | *(pendiente de abrir)* | 🟢 lista | Fase 14: consentimientos con versión, exportación, borrado con gracia sobre un solo camino (ADR-0012) | Abrir PR |
+| `fase-14-rgpd` | [#15](https://github.com/christo23ch/seis/pull/15) | 🟡 en revisión | Fase 14: consentimientos con versión, exportación, borrado con gracia sobre un solo camino (ADR-0012) | Fusionar · **el alta exige consentimientos: el frontend hay que tocarlo** |
 
 **Fusionados:** [#12](https://github.com/christo23ch/seis/pull/12) Fase 17-A ·
 [#13](https://github.com/christo23ch/seis/pull/13) puerta (a) ·
