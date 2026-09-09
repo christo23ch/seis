@@ -245,7 +245,7 @@ alertas de la Fase 12 vigilan el vacío y no hay nada que monetizar en la 13.
 - **Modelo recomendado:** **Opus 5** para el andamiaje; **Sonnet 5** para el ajuste de selectores
   cuando tengas el HTML (tarea acotada de parsing, con fixtures como red).
 
-### Fase 14 · RGPD 🟢
+### Fase 14 · RGPD 🟢 — ✅ **hecha** (rama `fase-14-rgpd`; falta el texto del abogado)
 **Objetivo.** Poder operar legalmente con datos de personas reales en la UE.
 **Por qué aquí.** Es 🟢 casi entera, y **bloquea el lanzamiento**: hoy no hay consentimientos,
 ni exportación, ni borrado de cuenta. Además el registro self-service ya está vivo.
@@ -264,7 +264,9 @@ ni exportación, ni borrado de cuenta. Además el registro self-service ya está
   **Un solo camino de borrado**, el de `purga_service.py`, que ya resolvió el problema difícil:
   **no hay `ondelete` en ninguna de las seis claves foráneas**, así que un borrado desordenado
   aborta la transacción en PostgreSQL y —peor— deja huérfanos en SQLite.
-- **Tú:** abogado para los textos (el modelo redacta borradores marcando los huecos).
+- **Tú:** abogado para los textos. El hueco está preparado: `app/legal/textos.py` tiene la
+  estructura, las versiones y un marcador «PENDIENTE DE REDACCIÓN LEGAL» que un test vigila —
+  cuando lleguen los textos, ese test se pone rojo y obliga a subir `VERSION_VIGENTE` a mano.
 - **Salida verificable:** un usuario exporta sus datos y borra su cuenta sin intervención; los
   consentimientos quedan con versión y fecha; la auditoría del borrado queda anonimizada. Y,
   como condiciones explícitas de la aprobación:
