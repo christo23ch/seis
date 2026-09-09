@@ -107,3 +107,30 @@ def token_headers(api, email: str, password: str) -> dict:
     r = api.post("/api/v1/auth/login", data={"username": email, "password": password})
     assert r.status_code == 200, r.text
     return {"Authorization": f"Bearer {r.json()['access_token']}"}
+
+
+@pytest.fixture(scope="module")
+def dos_organizaciones(api):
+    """Org A y Org B, cada una con un analista propio (patrón de test_multitenant.py).
+
+    Compartida desde la Fase 17-A: el aislamiento del matcher (test_notificaciones)
+    y el alcance del origen plataforma (test_ingesta) prueban caras opuestas del
+    mismo escenario y deben mirar exactamente el mismo montaje.
+    """
+    from app.core.db import SessionLocal
+    from app.services import usuario_service
+
+    db = SessionLocal()
+    try:
+        org_a = usuario_service.crear_organizacion(db, "Org Aislamiento A")
+        usuario_service.crear_usuario(db, "analistaA@example.com", "claveA123", "Ana A",
+                                      rol="analista", organizacion_id=org_a.id,
+                                      rol_org="miembro", es_superadmin=False)
+        org_b = usuario_service.crear_organizacion(db, "Org Aislamiento B")
+        usuario_service.crear_usuario(db, "analistaB@example.com", "claveB123", "Ana B",
+                                      rol="analista", organizacion_id=org_b.id,
+                                      rol_org="miembro", es_superadmin=False)
+    finally:
+        db.close()
+    return {"a_h": token_headers(api, "analistaA@example.com", "claveA123"),
+            "b_h": token_headers(api, "analistaB@example.com", "claveB123")}

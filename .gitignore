@@ -10,6 +10,7 @@ htmlcov/
 venv/
 *.db
 seis_dev.db
+*.db-journal
 
 # Node / Next.js
 node_modules/
