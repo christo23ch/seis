@@ -527,21 +527,28 @@ Ninguno bloquea la fusión del código —la rama no despliega nada por sí sola
   `setup-node@v4`). Es la otra mitad del punto 4 de la lista anterior.
 - **`init_db.main()` y `sembrar.main()` duplican la orquestación de siembra** (abrir
   sesión, sembrar conocimiento, sembrar admin, cerrar). Es el modo de fallo que el
-  ancla YAML de `docker-compose.yml` documenta como razón de existir, y `init_db.main()`
-  no lo ejecuta ningún test, así que la copia duplicada tampoco.
+  ancla YAML de `docker-compose.yml` documenta como razón de existir. ✅ **Cubierto**
+  (`tests/test_siembra.py`): ambas orquestaciones tienen test de extremo a extremo, y
+  la duplicación sigue ahí — lo que ya no queda es sin ejercitar.
 
 ## Huecos de cobertura detectados en la revisión final de la Fase 11-A
 
 Ninguno bloquea la fusión —los dos que sí lo hacían se cerraron en la rama—, pero
 todos son puntos donde una mutación plausible sobrevive a la suite.
 
-1. **`init_db.main()` no lo ejecuta ningún test** *(propietario: **Fase 11-B**, y no
-   debería cruzar su puerta sin cerrarse)*. Los tests prueban las tres piezas por
-   separado, nunca la orquestación. Mutación que sobrevive: envolver la siembra en
-   `if creado:`. En `development` y `test` no cambia nada y la suite queda verde; en
-   `staging` y `production`, donde `create_all` ya no corre, **la instalación arranca
-   sin reglas, sin parámetros y sin administrador** — el defecto de la Fase 9.5 por
-   otra puerta.
+1. ~~**`init_db.main()` no lo ejecuta ningún test**~~ → ✅ **CERRADO** (fila 0 de la
+   puerta, `tests/test_siembra.py`). Los tests probaban las tres piezas por separado y
+   nunca la orquestación; la mutación que sobrevivía era envolver la siembra en
+   `if creado:` — en `development` y `test` no cambia nada y la suite queda verde; en
+   `staging` y `production`, donde `create_all` ya no corre, **la instalación arrancaba
+   sin reglas, sin parámetros y sin administrador**.
+
+   El test que lo cierra no es el del entorno cómodo: es
+   `test_init_db_siembra_aunque_el_esquema_no_lo_cree_el`, que ejercita el caso en el
+   que `create_all` NO corre, porque es el único que se parece a un despliegue.
+   Demostrado por mutación: con `if creado:` aplicado a mano, falla con «sin reglas T2
+   el motor no evalúa nada»; y quitando `sembrar_conocimiento` de `sembrar.main()`,
+   falla el suyo. Con el código sano, 449 passed.
 2. **La CI no levanta PostgreSQL, así que T5 está omitido también allí, de forma
    permanente** *(propietario: **Fase 11-B**)*. Consecuencia concreta: esta fase añadió
    **tres caminos exclusivos de PostgreSQL que no ejecuta ningún test en ninguna
