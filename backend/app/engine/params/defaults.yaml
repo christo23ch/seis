@@ -244,3 +244,21 @@ scoring_expres:                    # Fase 12 — pesos del scoring exprés de ca
     notarial: 60
     privada: 35
     default: 50
+
+# ── Ingesta (Fase 17-A) ──────────────────────────────────────────────────────
+# Los selectores viven aquí y NO en el código para que la Fase 17-B pueda
+# ajustarlos contra el portal real sin desplegar.
+# ⚠️ SIN VERIFICAR: son una estructura plausible, no la de subastas.boe.es.
+ingesta:
+  boe:
+    fuente_codigo: judicial_boe
+    marca_item: subasta-item
+    etiqueta_identificador: Identificador
+    etiqueta_valor: Valor subasta
+    etiqueta_puja_minima: Puja mínima
+    etiqueta_deposito: Importe del depósito
+    etiqueta_localidad: Localidad
+    etiqueta_provincia: Provincia
+    etiqueta_cierre: Fecha de conclusión
+    etiqueta_tipo_bien: Tipo de bien
+    cadencia_max_por_segundo: 1        # cortesía con el portal; no superar
