@@ -251,6 +251,13 @@ class Usuario(Base):
     # Fase 10: distinto de `activo`, que es el alta/baja administrativa que ejerce el
     # propietario. Separarlos evita que reactivar a un miembro lo dé por verificado.
     email_verificado: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Fase 14 (RGPD): instante en que el titular pidió borrar su cuenta. La
+    # cuenta NO se borra aquí: se borra al vencer la gracia. Nulo = sin solicitud.
+    # Es una marca y no un estado nuevo en `activo` porque durante la gracia el
+    # titular debe poder entrar para arrepentirse; una cuenta desactivada no
+    # podría cancelar su propio borrado.
+    borrado_solicitado_en: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), index=True)
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
@@ -314,6 +321,32 @@ class Notificacion(Base):
     estado: Mapped[str] = mapped_column(String(12), default="pendiente", index=True)  # pendiente | enviada | error
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     enviado_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Consentimiento(Base):
+    """Fase 14 (RGPD): constancia de un consentimiento concreto.
+
+    El RGPD no pide «aceptó», pide poder demostrar **qué texto** aceptó y
+    **cuándo**. De ahí que la versión no sea decorativa: sin ella, cambiar la
+    política de privacidad convertiría retroactivamente todos los
+    consentimientos anteriores en consentimientos a un texto que nadie leyó.
+
+    Se guardan filas nuevas, nunca se actualizan: retirar un consentimiento es
+    otra fila con `otorgado=False`, no una edición de la anterior. El historial
+    ES la prueba, y una prueba que se sobrescribe no prueba nada.
+
+    NO se registra la IP a propósito. Sería el dato de refuerzo habitual, pero
+    es un dato personal más que habría que conservar, proteger, exportar y
+    borrar; la versión del texto y la marca de tiempo bastan para demostrar el
+    consentimiento, y el principio de minimización dice que entonces sobra.
+    """
+    __tablename__ = "consentimiento"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    usuario_id: Mapped[str] = mapped_column(ForeignKey("usuario.id"), index=True)
+    tipo: Mapped[str] = mapped_column(String(32), index=True)   # ver app/legal/textos.py
+    version: Mapped[str] = mapped_column(String(16))
+    otorgado: Mapped[bool] = mapped_column(Boolean)
+    otorgado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
 class Auditoria(Base):

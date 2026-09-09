@@ -33,6 +33,7 @@ from sqlalchemy.orm import Session, aliased
 
 from app import models
 from app.core.config import get_settings
+from app.services.borrado_service import borrar_datos_de_usuario
 
 log = logging.getLogger("seis.purga")
 
@@ -145,33 +146,7 @@ def purgar_cuenta_sin_verificar(db: Session, usuario_id: str, *, ahora: datetime
         db.rollback()
         return False, False
 
-    organizacion_id = usuario.organizacion_id
-
-    db.query(models.Notificacion).filter(
-        models.Notificacion.usuario_id == usuario_id).delete(synchronize_session=False)
-    db.query(models.Alerta).filter(
-        models.Alerta.usuario_id == usuario_id).delete(synchronize_session=False)
-    db.query(models.CodigoTelegram).filter(
-        models.CodigoTelegram.usuario_id == usuario_id).delete(synchronize_session=False)
-    db.query(models.PreferenciasNotificacion).filter(
-        models.PreferenciasNotificacion.usuario_id == usuario_id).delete(
-            synchronize_session=False)
-    db.query(models.Usuario).filter(
-        models.Usuario.id == usuario_id).delete(synchronize_session=False)
-
-    # Se RECOMPRUEBA en vez de fiarse del predicado de la selección: un
-    # superadmin puede añadir un usuario a cualquier organización entre ambos
-    # momentos.
-    quedan_miembros = db.query(exists().where(
-        models.Usuario.organizacion_id == organizacion_id)).scalar()
-    hay_analisis = db.query(exists().where(
-        models.Analisis.organizacion_id == organizacion_id)).scalar()
-    organizacion_borrada = False
-    if not quedan_miembros and not hay_analisis:
-        db.query(models.Organizacion).filter(
-            models.Organizacion.id == organizacion_id).delete(
-                synchronize_session=False)
-        organizacion_borrada = True
+    organizacion_borrada = borrar_datos_de_usuario(db, usuario)
 
     # La auditoría va DENTRO de la misma transacción: si el borrado se aborta,
     # la constancia se aborta con él, y nunca queda registrada una purga que no
@@ -181,8 +156,7 @@ def purgar_cuenta_sin_verificar(db: Session, usuario_id: str, *, ahora: datetime
     db.add(models.Auditoria(
         quien="sistema:purga", entidad="usuario", entidad_id=usuario_id,
         accion="purga_sin_verificar",
-        delta={"organizacion_id": organizacion_id,
-               "organizacion_borrada": organizacion_borrada, "dias": dias}))
+        delta={"organizacion_borrada": organizacion_borrada, "dias": dias}))
     db.commit()
     return True, organizacion_borrada
 
