@@ -10,19 +10,20 @@
 
 ## Frentes abiertos
 
-**Actualizado:** 2026-09-09 · **`main`:** `2ddce39` · **Suite:** 449 passed, 1 skipped
-**Última fase cerrada:** 17-A (andamiaje de captación)
+**Actualizado:** 2026-09-09 · **`main`:** `f0c2644` · **Suite:** 449 passed (455 con PostgreSQL, 0 omitidos)
+**Última fase cerrada:** 17-A (andamiaje de captación) · **Puerta: ABIERTA**
 
 | Rama | PR | Estado | Qué contiene | Siguiente acción |
 |---|---|---|---|---|
 | `docs/adr-diseno-y-revision-visual` | [#11](https://github.com/christo23ch/seis/pull/11) | 🟡 en revisión | ADR-0010 (UI propia), flujo de capturas repetible, puerta de la deuda | Fusionar |
-| `puerta/test-siembra` | [#13](https://github.com/christo23ch/seis/pull/13) | 🟡 en revisión | Fila 0 de la puerta: test de `init_db.main()` y `sembrar.main()` | Fusionar |
+| `puerta/postgres-en-ci` | *(pendiente de abrir)* | 🟢 lista | Fila (b): job `postgres` en la CI + los tres caminos exclusivos, con mutación | Abrir PR |
 
-**Fusionado:** [#12](https://github.com/christo23ch/seis/pull/12) — Fase 17-A.
+**Fusionados:** [#12](https://github.com/christo23ch/seis/pull/12) Fase 17-A ·
+[#13](https://github.com/christo23ch/seis/pull/13) fila (a) de la puerta.
 
-**La puerta antes de tocar producción** (`PLAN_FASES.md` §2-bis): fila (a) test de
-`init_db.main()` ✅ hecha; fila (b) PostgreSQL en la CI ⏳ pendiente. Hasta que las dos
-estén cerradas no se cruza a la 11-B.
+**La puerta antes de tocar producción** (`PLAN_FASES.md` §2-bis): (a) test de
+`init_db.main()` ✅ · (b) PostgreSQL en la CI ✅ · (c) es una regla de activación, no una
+tarea · (d) cerrada. **La puerta queda abierta**: toca decidir por dónde sigue el trabajo.
 
 ---
 
