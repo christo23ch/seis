@@ -26,12 +26,103 @@ prefijo falsificado empuja hacia la izquierda, nunca hacia la posición leída.
 """
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
+from functools import lru_cache
 from ipaddress import IPv4Network, IPv6Network, ip_address, ip_network
+from itertools import count
+from threading import Lock
 
 from app.core.config import get_settings
 
+log = logging.getLogger("seis.red")
+
 IP_DESCONOCIDA = "desconocida"
+
+# ─────────────────────── Por qué esto lleva contadores ───────────────────────
+#
+# Auditoría de la Fase 16, hallazgo A-2. Este módulo existe para que los límites
+# por origen cuenten clientes y no pasarelas. Cuando no puede hacerlo —el proxy
+# dejó de enviar la cabecera, `PROXIES_DE_CONFIANZA` ya no coincide tras cambiar
+# de subred, `SALTOS_DE_PROXY` no cuadra con la topología— **devuelve el par TCP
+# y sigue como si nada**. Todo el tráfico pasa a compartir un contador, los
+# límites vuelven a ser un cupo global, y es exactamente el defecto que este
+# módulo cerró, reintroducido sin un solo síntoma.
+#
+# La corrección no es «añadir un log». Es que **sea imposible que ocurra en
+# silencio**: cada caída lleva un MOTIVO nombrado, se cuenta por motivo, y el
+# recuento se expone en `/health/detalle`, que es donde alguien ya mira.
+#
+# Lo que NO se hace, y conviene que esté escrito porque fue una decisión y no un
+# olvido: **no se rechaza la petición ni se degrada la readiness.**
+#
+# Rechazar dejaría el sitio inaccesible por una cabecera mal configurada:
+# cambiaríamos una degradación silenciosa por una caída total. Degradar la
+# readiness es peor de lo que parece, porque la mala configuración sería idéntica
+# en todas las réplicas: el orquestador las sacaría TODAS de rotación a la vez.
+#
+# Así que aquí «no fallar en silencio» se cumple hablando, no muriendo: motivo
+# nombrado, contador por motivo, aviso en el log a la primera, y la proporción
+# visible en `/health/detalle`. Queda anotado como límite conocido de la regla
+# del ADR-0014: este mecanismo AVISA, no falla.
+
+MOTIVO_POLITICA_INACTIVA = "politica_inactiva"
+MOTIVO_PAR_NO_CONFIABLE = "par_no_confiable"
+MOTIVO_SIN_CABECERA = "sin_cabecera"
+MOTIVO_CABECERA_DESMESURADA = "cabecera_desmesurada"
+MOTIVO_CADENA_CORTA = "cadena_corta"
+MOTIVO_COLA_NO_CONFIABLE = "cola_no_confiable"
+MOTIVO_VALOR_MULTIPLE = "valor_multiple"
+MOTIVO_VALOR_ILEGIBLE = "valor_ilegible"
+MOTIVO_RESUELTA = "resuelta"
+
+_contadores: dict[str, int] = {}
+_cerrojo = Lock()
+_secuencia = count(1)
+
+# Se registra la PRIMERA caída y luego una de cada N. Sin la cota, un atacante
+# que envíe cabeceras desmesuradas llena el disco de logs; sin la primera, una
+# avería real podría tardar en aparecer.
+_CADA_CUANTAS_SE_REGISTRA = 500
+
+
+def _anotar(motivo: str) -> None:
+    """Cuenta el resultado de una resolución. Nunca lanza."""
+    with _cerrojo:
+        _contadores[motivo] = _contadores.get(motivo, 0) + 1
+        veces = _contadores[motivo]
+    if motivo == MOTIVO_RESUELTA:
+        return
+    if veces == 1 or veces % _CADA_CUANTAS_SE_REGISTRA == 0:
+        log.warning(
+            "red: no se pudo resolver la IP del cliente (%s, %d veces). Los "
+            "límites por origen están contando la pasarela y no al cliente. "
+            "Revise que el proxy envíe la cabecera y que PROXIES_DE_CONFIANZA y "
+            "SALTOS_DE_PROXY coincidan con la topología.", motivo, veces)
+
+
+def recuento_resoluciones() -> dict[str, int]:
+    """Copia de los contadores, para `/health/detalle`."""
+    with _cerrojo:
+        return dict(_contadores)
+
+
+def proporcion_sin_resolver() -> float:
+    """Fracción de resoluciones que cayeron al par TCP. 0.0 si no hubo ninguna.
+
+    Es la cifra que delata la avería: con la política activa y el proxy en su
+    sitio debe ser ~0. Cerca de 1 significa que la cabecera no está llegando.
+    """
+    with _cerrojo:
+        total = sum(_contadores.values())
+        resueltas = _contadores.get(MOTIVO_RESUELTA, 0)
+    return 0.0 if total == 0 else (total - resueltas) / total
+
+
+def reiniciar_recuento() -> None:
+    """Solo para los tests: el estado es de proceso y se filtraría entre ellos."""
+    with _cerrojo:
+        _contadores.clear()
 
 # Centinela de `PROXIES_DE_CONFIANZA`: «no hay proxy delante, y lo declaro».
 SIN_PROXY = "ninguno"
@@ -121,16 +212,28 @@ def _analizar_redes(csv: str):
 
 def politica_actual() -> PoliticaProxy:
     s = get_settings()
-    cabecera = s.cabecera_ip_cliente.strip().lower()
+    return _politica_desde(s.proxies_de_confianza, s.cabecera_ip_cliente,
+                           s.saltos_de_proxy)
+
+
+@lru_cache(maxsize=8)
+def _politica_desde(csv: str, cabecera_cruda: str, saltos: int) -> PoliticaProxy:
+    """Construye la política. Cacheada: antes se reconstruía en CADA petición.
+
+    Medido (B-1 del informe): 5,1 µs con un rango declarado y **68,9 µs con los
+    22 de Cloudflare**, una vez por petición que consulte la IP. La clave es el
+    CSV y no el objeto de configuración, de modo que `get_settings.cache_clear()`
+    en un test sigue produciendo una política nueva.
+    """
+    cabecera = cabecera_cruda.strip().lower()
     # La lista blanca se aplica también AQUÍ y no solo en la guardia de arranque:
     # aquella únicamente corre en entornos estrictos, así que sin esto una
     # cabecera arbitraria configurada en desarrollo sí se leería. Defensa en
     # profundidad: si el nombre no está admitido, la política queda inactiva.
     if cabecera not in CABECERAS_ADMITIDAS:
         cabecera = ""
-    return PoliticaProxy(redes=parsear_redes(s.proxies_de_confianza),
-                         cabecera=cabecera,
-                         saltos=max(1, min(s.saltos_de_proxy, MAX_ELEMENTOS)))
+    return PoliticaProxy(redes=parsear_redes(csv), cabecera=cabecera,
+                         saltos=max(1, min(saltos, MAX_ELEMENTOS)))
 
 
 def es_par_de_confianza(par: str, politica: PoliticaProxy) -> bool:
@@ -162,26 +265,42 @@ def _normalizar(valor: str) -> str:
 def resolver_ip(par: str, crudos: list[str], politica: PoliticaProxy) -> str:
     """Devuelve la IP del cliente. Ante cualquier anomalía, el par TCP.
 
-    Función pura: recibe los valores crudos de la cabecera, no la petición, para
-    que la parte delicada sea comprobable sin montar HTTP.
+    Función pura salvo el contador: recibe los valores crudos de la cabecera, no
+    la petición, para que la parte delicada sea comprobable sin montar HTTP.
+
+    Cada salida por la vía de excepción pasa por `_anotar` con un MOTIVO. No es
+    telemetría decorativa: es lo que impide que este módulo deje de hacer su
+    trabajo sin que nadie se entere (A-2).
     """
+    resultado, motivo = _resolver(par, crudos, politica)
+    _anotar(motivo)
+    return resultado
+
+
+def _resolver(par: str, crudos: list[str],
+              politica: PoliticaProxy) -> tuple[str, str]:
+    """La decisión, separada del contador para que siga siendo pura y testable."""
     if not politica.activa:
-        return par
+        return par, MOTIVO_POLITICA_INACTIVA
     if not es_par_de_confianza(par, politica):
-        return par
+        return par, MOTIVO_PAR_NO_CONFIABLE
     # RFC 7230 §3.2.2: varias cabeceras del mismo nombre equivalen a una lista.
     bruto = ",".join(crudos)
-    if not bruto or len(bruto) > MAX_LONGITUD_CABECERA:
-        return par
+    if not bruto:
+        return par, MOTIVO_SIN_CABECERA
+    if len(bruto) > MAX_LONGITUD_CABECERA:
+        return par, MOTIVO_CABECERA_DESMESURADA
     valores = [v.strip() for v in bruto.split(",") if v.strip()]
-    if not valores or len(valores) > MAX_ELEMENTOS:
-        return par
+    if not valores:
+        return par, MOTIVO_SIN_CABECERA
+    if len(valores) > MAX_ELEMENTOS:
+        return par, MOTIVO_CABECERA_DESMESURADA
 
     if politica.cabecera in CABECERAS_DE_LISTA:
         # Si la cadena es más corta que los saltos declarados, alguien la ha
         # acortado: se descarta en vez de leer una posición que no corresponde.
         if len(valores) < politica.saltos:
-            return par
+            return par, MOTIVO_CADENA_CORTA
         # Y las posiciones que quedan A LA DERECHA de la leída deben ser todas
         # proxies de confianza. Sin esta comprobación, contar posiciones falla en
         # una topología real: con `Cloudflare → nginx → uvicorn` y saltos=2, un
@@ -192,12 +311,12 @@ def resolver_ip(par: str, crudos: list[str], politica: PoliticaProxy) -> str:
         # valores, solo se valida lo ya leído— y cierra ese caso.
         cola = valores[len(valores) - politica.saltos + 1:]
         if any(not es_par_de_confianza(_normalizar(v), politica) for v in cola):
-            return par
+            return par, MOTIVO_COLA_NO_CONFIABLE
         candidato = valores[-politica.saltos]
     else:
         # Cabecera de valor único: más de un valor significa manipulación.
         if len(valores) != 1:
-            return par
+            return par, MOTIVO_VALOR_MULTIPLE
         candidato = valores[0]
         # ⚠️ ASIMETRÍA DELIBERADA, y es la parte frágil del módulo.
         #
@@ -216,14 +335,14 @@ def resolver_ip(par: str, crudos: list[str], politica: PoliticaProxy) -> str:
         # Por eso `cf-connecting-ip` y `true-client-ip` son cómodas (evitan
         # `SALTOS_DE_PROXY`) pero NO más seguras: trasladan la garantía entera
         # del código al proxy inverso. Quien las use debe borrar o reescribir la
-        # cabecera en el borde. Requisito duro del despliegue (Fase 11-B).
+        # cabecera en el borde. Requisito duro del despliegue (Fase 11-B, R-1).
 
     candidato = _normalizar(candidato)
     try:
         ip_address(candidato)
     except ValueError:
-        return par
-    return candidato
+        return par, MOTIVO_VALOR_ILEGIBLE
+    return candidato, MOTIVO_RESUELTA
 
 
 def ip_cliente(peticion) -> str:

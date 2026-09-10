@@ -42,6 +42,7 @@ from __future__ import annotations
 
 import logging
 import time
+from threading import Lock
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
@@ -221,13 +222,78 @@ def salud_listo(db: Session = Depends(get_db)):
     200 con todo arriba; 503 si algún componente falla. El cuerpo no dice **por
     qué** falla, y no es una omisión: ver el encabezado del módulo.
     """
-    bd_ok, _bd_ms = _comprobar_bd(db)
-    redis_ok, _redis_ms = _comprobar_redis()
+    bd_ok, redis_ok = _sondas_con_cache(db)
     componentes = {"bd": _etiqueta(bd_ok), "redis": _etiqueta(redis_ok)}
     if bd_ok and redis_ok:
         return {"estado": ESTADO_OK, "componentes": componentes}
     return JSONResponse(status_code=CODIGO_NO_DISPONIBLE,
                         content={"estado": ESTADO_DEGRADADO, "componentes": componentes})
+
+
+# ───────────── Cota de trabajo de la sonda pública (Fase 16, M-2) ─────────────
+#
+# `/health/listo` es público y no autenticado, y cada llamada obligaba a un
+# `SELECT 1` contra PostgreSQL y un `PING` a Redis: el amplificador más barato
+# del sistema.
+#
+# LA CORRECCIÓN NO ES UN LÍMITE DE TASA, y la desviación respecto al informe es
+# deliberada. Un 429 —o un 503— en una sonda de readiness lo lee el orquestador
+# como «esta réplica no está lista», y como la configuración sería idéntica en
+# todas, **sacaría de rotación a réplicas sanas**. El remedio habría sido peor
+# que la enfermedad.
+#
+# Lo que se acota es el TRABAJO, no las peticiones: el resultado de las sondas se
+# reutiliza durante un segundo. Diez mil peticiones por segundo pasan a costar
+# una consulta, y el orquestador nunca recibe un código que no espera.
+#
+# QUÉ NO CUBRE (ADR-0014):
+# - No limita el ancho de banda ni el coste de atender la petición HTTP en sí;
+#   para eso hace falta el borde.
+# - Un segundo de retardo en detectar una caída real. Con sondas cada 5-10 s es
+#   ruido; si alguien baja el intervalo por debajo de un segundo, esta caché deja
+#   de ser transparente y hay que revisar el valor.
+# - La caché es POR PROCESO. Con varias réplicas cada una tiene la suya, que es
+#   justamente lo que se quiere: cada réplica informa de su propio estado.
+
+SEGUNDOS_DE_CACHE_SONDA = 1.0
+_ultima_sonda: tuple[float, bool, bool] | None = None
+_cerrojo_sonda = Lock()
+
+
+def _reloj_sonda() -> float:
+    """Aislado en una función a propósito, igual que `rate_limit._ahora`: los
+    tests lo sustituyen para envejecer la caché y comprobar que CADUCA, sin
+    dormir de verdad.
+
+    Hizo falta porque una mutación sobrevivió: con la caché puesta a no caducar
+    nunca, la suite entera seguía verde. Una caché eterna convierte una caída
+    real de la base en un 200 permanente, que es peor que no tener caché.
+    """
+    return time.monotonic()
+
+
+def _sondas_con_cache(db: Session) -> tuple[bool, bool]:
+    """(bd_ok, redis_ok), reutilizando el resultado durante un segundo."""
+    global _ultima_sonda
+    ahora = _reloj_sonda()
+    with _cerrojo_sonda:
+        if _ultima_sonda is not None and ahora - _ultima_sonda[0] < SEGUNDOS_DE_CACHE_SONDA:
+            return _ultima_sonda[1], _ultima_sonda[2]
+    # Fuera del cerrojo: las sondas hacen E/S y no deben serializar peticiones.
+    # El precio es que dos peticiones simultáneas pueden sondear las dos; es
+    # aceptable y preferible a encolar a todo el mundo tras una consulta lenta.
+    bd_ok, _ = _comprobar_bd(db)
+    redis_ok, _ = _comprobar_redis()
+    with _cerrojo_sonda:
+        _ultima_sonda = (ahora, bd_ok, redis_ok)
+    return bd_ok, redis_ok
+
+
+def reiniciar_cache_sonda() -> None:
+    """Solo para los tests: el estado es de proceso y se filtraría entre ellos."""
+    global _ultima_sonda
+    with _cerrojo_sonda:
+        _ultima_sonda = None
 
 
 def _diagnostico_de_red(peticion: Request) -> dict:
@@ -247,6 +313,15 @@ def _diagnostico_de_red(peticion: Request) -> dict:
     return {
         "par_tcp": peticion.client.host if peticion.client else red.IP_DESCONOCIDA,
         "ip_resuelta": red.ip_cliente(peticion),
+        # A-2: sin esto, que este módulo dejara de resolver la IP no producía
+        # ningún síntoma. `sin_resolver` cerca de 1 con la política activa
+        # significa que la cabecera no está llegando y que los límites por
+        # origen han vuelto a ser un cupo global compartido.
+        "resolucion_ip": {
+            "politica_activa": red.politica_actual().activa,
+            "sin_resolver": round(red.proporcion_sin_resolver(), 4),
+            "por_motivo": red.recuento_resoluciones(),
+        },
         "politica_activa": politica.activa,
         "cabecera": politica.cabecera or None,
         "saltos": politica.saltos,

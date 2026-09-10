@@ -305,9 +305,19 @@ def test_detalle_publica_la_politica_de_red_vigente(api, headers, monkeypatch):
     cuerpo = api.get(URL_DETALLE, headers=headers).json()
 
     assert set(cuerpo["red"]) == {"par_tcp", "ip_resuelta", "politica_activa",
-                                  "cabecera", "saltos", "redes_de_confianza"}
+                                  "cabecera", "saltos", "redes_de_confianza",
+                                  "resolucion_ip"}
     assert cuerpo["red"]["politica_activa"] is False      # sin proxies declarados
     assert cuerpo["red"]["par_tcp"] == cuerpo["red"]["ip_resuelta"]
+
+    # Fase 16 (A-2). Comparar `par_tcp` con `ip_resuelta` delata la política mal
+    # declarada en UNA petición; lo que no dice es si el problema es constante o
+    # esporádico, y esa diferencia es la que distingue «el proxy nunca envía la
+    # cabecera» de «alguien manda cabeceras raras». De ahí la proporción.
+    resolucion = cuerpo["red"]["resolucion_ip"]
+    assert set(resolucion) == {"politica_activa", "sin_resolver", "por_motivo"}
+    assert 0.0 <= resolucion["sin_resolver"] <= 1.0
+    assert isinstance(resolucion["por_motivo"], dict)
 
 
 def test_detalle_no_vuelca_las_cabeceras_crudas(api, headers, monkeypatch):
