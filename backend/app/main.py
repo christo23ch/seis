@@ -6,6 +6,7 @@ from app.api.auth import router as auth_router
 from app.api.captacion import router as captacion_router
 from app.api.conocimiento import router as conocimiento_router
 from app.api.cuenta import router as cuenta_router
+from app.api.cuenta import router_legal as legal_router
 from app.api.notificaciones import router as notificaciones_router
 from app.api.notificaciones import router_alertas as alertas_router
 from app.api.organizacion import router as organizacion_router
@@ -33,4 +34,5 @@ app.include_router(captacion_router, prefix=settings.api_v1_prefix)
 app.include_router(notificaciones_router, prefix=settings.api_v1_prefix)
 app.include_router(alertas_router, prefix=settings.api_v1_prefix)
 app.include_router(cuenta_router, prefix=settings.api_v1_prefix)
+app.include_router(legal_router, prefix=settings.api_v1_prefix)
 app.include_router(salud_router, prefix=settings.api_v1_prefix)

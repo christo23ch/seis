@@ -377,3 +377,42 @@ def test_cancelar_entre_la_seleccion_y_el_borrado_salva_la_cuenta(api, db):
     db.expire_all()
     assert db.get(models.Usuario, s["usuario_id"]) is not None, (
         "la cancelación llegó a tiempo y aun así se borró la cuenta")
+
+
+# ═══════════════════════ Textos legales ═══════════════════════
+
+def test_los_textos_legales_se_leen_sin_tener_cuenta(api):
+    """Una casilla de consentimiento que no deja leer lo que se acepta no recoge
+    consentimiento, recoge un clic. Y hay que poder leerlo ANTES del alta, así
+    que el endpoint no puede exigir sesión."""
+    from app.legal import textos
+
+    r = api.get(f"{API}/legal/terminos")            # sin cabecera de autenticación
+
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    assert cuerpo["version"] == textos.VERSION_VIGENTE
+    assert cuerpo["titulo"]
+    assert cuerpo["cuerpo"]
+
+
+def test_un_texto_provisional_se_declara_provisional(api):
+    """Se informa en vez de ocultarlo: un texto pendiente que se presenta como
+    definitivo es peor que uno que se declara pendiente."""
+    r = api.get(f"{API}/legal/privacidad")
+    assert r.json()["pendiente_de_redaccion"] is True, (
+        "si los textos ya son definitivos, actualice este test y "
+        "VERSION_VIGENTE; si no, alguien quitó el marcador sin escribirlos")
+
+
+def test_un_texto_que_no_existe_responde_404(api):
+    assert api.get(f"{API}/legal/inventado").status_code == 404
+
+
+def test_el_indice_legal_dice_cual_es_obligatorio(api):
+    """El frontend lo usa para saber qué casillas marcar como requeridas."""
+    cuerpo = api.get(f"{API}/legal").json()
+    obligatorios = {t["tipo"] for t in cuerpo["textos"] if t["obligatorio"]}
+    assert obligatorios == {"terminos", "privacidad"}, (
+        "condicionar el alta a las comunicaciones comerciales haría que ese "
+        "consentimiento no fuera libre")

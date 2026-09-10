@@ -11,7 +11,7 @@ llamada, y esa comprobación es justo la que se olvida.
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -23,6 +23,33 @@ from app.legal import textos
 from app.services import cuenta_service
 
 router = APIRouter(prefix="/cuenta", tags=["cuenta"])
+
+# Router aparte y SIN autenticar: los textos legales hay que poder leerlos antes
+# de tener cuenta. Una casilla de consentimiento que no deja leer lo que se
+# acepta no recoge consentimiento, recoge un clic.
+router_legal = APIRouter(prefix="/legal", tags=["legal"])
+
+
+@router_legal.get("/{tipo}")
+def texto_legal(tipo: str) -> dict:
+    """Devuelve un texto legal con su versión. Público."""
+    texto = textos.TEXTOS.get(tipo)
+    if texto is None:
+        raise HTTPException(404, "Texto no encontrado")
+    return {"tipo": texto.tipo, "titulo": texto.titulo, "version": texto.version,
+            "cuerpo": texto.cuerpo, "obligatorio": texto.obligatorio,
+            # El frontend lo usa para avisar de que aún no es definitivo. Se
+            # informa en vez de ocultarlo: un texto provisional que se presenta
+            # como definitivo es peor que uno que se declara provisional.
+            "pendiente_de_redaccion": texto.pendiente}
+
+
+@router_legal.get("")
+def indice_legal() -> dict:
+    return {"version_vigente": textos.VERSION_VIGENTE,
+            "textos": [{"tipo": t.tipo, "titulo": t.titulo,
+                        "obligatorio": t.obligatorio}
+                       for t in textos.TEXTOS.values()]}
 
 
 class RespuestaBorrado(BaseModel):
