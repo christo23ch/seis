@@ -264,9 +264,15 @@ ni exportación, ni borrado de cuenta. Además el registro self-service ya está
   **Un solo camino de borrado**, el de `purga_service.py`, que ya resolvió el problema difícil:
   **no hay `ondelete` en ninguna de las seis claves foráneas**, así que un borrado desordenado
   aborta la transacción en PostgreSQL y —peor— deja huérfanos en SQLite.
-- **Tú:** abogado para los textos. El hueco está preparado: `app/legal/textos.py` tiene la
-  estructura, las versiones y un marcador «PENDIENTE DE REDACCIÓN LEGAL» que un test vigila —
-  cuando lleguen los textos, ese test se pone rojo y obliga a subir `VERSION_VIGENTE` a mano.
+- **Tú:** abogado para los textos. El hueco está preparado de punta a punta: `app/legal/textos.py`
+  tiene la estructura y las versiones, `GET /legal/{tipo}` los sirve sin exigir sesión —hay que
+  poder leerlos antes de registrarse— y `/legal/[tipo]` los muestra avisando de que aún son
+  provisionales. Un test vigila el marcador «PENDIENTE DE REDACCIÓN LEGAL»: cuando lleguen los
+  textos, se pone rojo y obliga a subir `VERSION_VIGENTE` a mano.
+- **Deuda que abre esta fase (dueña: Fase 16):** `usuario_service` sigue escribiendo la DIRECCIÓN
+  en `auditoria.quien`/`entidad_id` en el alta, la verificación y el cambio de contraseña. El
+  borrado la limpia después ([[ADR-0013]]), pero el origen no está arreglado, y `auditoria` no
+  tiene clave foránea a `usuario`, así que ningún test derivado del esquema puede vigilarlo.
 - **Salida verificable:** un usuario exporta sus datos y borra su cuenta sin intervención; los
   consentimientos quedan con versión y fecha; la auditoría del borrado queda anonimizada. Y,
   como condiciones explícitas de la aprobación:
