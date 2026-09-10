@@ -46,10 +46,14 @@ export const Select = ({ className, ...p }: React.SelectHTMLAttributes<HTMLSelec
 export const Textarea = ({ className, ...p }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => (
   <textarea className={cx("w-full rounded-md border border-slate-300 bg-white px-3 py-2 font-cifra text-xs", className)} {...p} />
 );
-export const Check = ({ label, className, ...p }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) => (
-  <label className={cx("flex cursor-pointer items-center gap-2 text-sm text-slate-700", className)}>
-    <input type="checkbox" className="h-4 w-4 rounded border-slate-300 accent-[#2E4B8F]" {...p} />
-    {label}
+// `label` es ReactNode y no string: las casillas de consentimiento (Fase 14)
+// llevan dentro el enlace al texto que se acepta. `items-start` porque esas
+// etiquetas ocupan varias líneas y con `items-center` la casilla queda flotando
+// a media altura del párrafo.
+export const Check = ({ label, className, ...p }: React.InputHTMLAttributes<HTMLInputElement> & { label: React.ReactNode }) => (
+  <label className={cx("flex cursor-pointer items-start gap-2 text-sm text-slate-700", className)}>
+    <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 accent-[#2E4B8F]" {...p} />
+    <span>{label}</span>
   </label>
 );
 

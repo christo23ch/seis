@@ -43,8 +43,17 @@ export const api = {
 
   // Fase 10 — alta self-service. Todos cuelgan de /auth, que `req` ya exime del
   // redirect global a /login ante un 401, así que funcionan sin sesión.
-  registro: (b: { email: string; password: string; nombre?: string }) =>
-    req<RespuestaSimple>("/auth/registro", { method: "POST", body: JSON.stringify(b) }),
+  // Fase 14 (RGPD): los dos obligatorios NO son opcionales en el tipo. El
+  // backend responde 422 sin ellos, y dejarlos opcionales aquí solo trasladaría
+  // el fallo de la compilación al tiempo de ejecución.
+  registro: (b: {
+    email: string; password: string; nombre?: string;
+    acepta_terminos: boolean; acepta_privacidad: boolean;
+    acepta_comunicaciones_comerciales?: boolean;
+  }) => req<RespuestaSimple>("/auth/registro", { method: "POST", body: JSON.stringify(b) }),
+  textoLegal: (tipo: string) =>
+    req<{ tipo: string; titulo: string; version: string; cuerpo: string;
+          obligatorio: boolean; pendiente_de_redaccion: boolean }>(`/legal/${tipo}`),
   verificar: (token: string) =>
     req<RespuestaSimple>("/auth/verificar", { method: "POST", body: JSON.stringify({ token }) }),
   reenviarVerificacion: (email: string) =>
