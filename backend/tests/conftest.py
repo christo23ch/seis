@@ -57,15 +57,24 @@ ADMIN = {"username": "admin@seis.local", "password": "admin"}
 def _limpiar_rate_limit():
     """Cada test arranca y termina con el limitador anti-abuso a cero (Fase 10).
 
-    Es `autouse` porque el limitador es estado de proceso compartido: sin esto,
-    un test que agota los intentos de login dejaría bloqueado al siguiente, y el
-    fallo aparecería en un fichero que no tiene nada que ver con la causa.
+    Es `autouse` porque son estado de proceso compartido: sin esto, un test que
+    agota los intentos de login dejaría bloqueado al siguiente, y el fallo
+    aparecería en un fichero que no tiene nada que ver con la causa.
     """
-    from app.core import rate_limit
+    from app.api import salud
+    from app.core import rate_limit, red
 
+    # Tres estados DE PROCESO, no de base de datos: el limitador, los contadores
+    # de resolución de IP (Fase 16, A-2) y la caché de la sonda de readiness
+    # (M-2). Los tres se filtrarían entre tests y harían que un fallo dependiera
+    # del orden — que es como se descubrieron los dos últimos.
     rate_limit.limpiar_todo()
+    red.reiniciar_recuento()
+    salud.reiniciar_cache_sonda()
     yield
     rate_limit.limpiar_todo()
+    red.reiniciar_recuento()
+    salud.reiniciar_cache_sonda()
 
 
 @pytest.fixture(scope="module")

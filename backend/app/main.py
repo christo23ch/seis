@@ -12,6 +12,7 @@ from app.api.notificaciones import router_alertas as alertas_router
 from app.api.organizacion import router as organizacion_router
 from app.api.routes import router
 from app.api.salud import router as salud_router
+from app.core.cabeceras import CabecerasDeSeguridad
 from app.core.config import get_settings
 
 settings = get_settings()
@@ -22,6 +23,10 @@ app = FastAPI(
     description="Sistema Experto de Inversión en Subastas — motor determinista, "
                 "auditable y explicable según la especificación funcional y técnica v1.0.",
 )
+# El de seguridad se añade ANTES que el de CORS. Starlette ejecuta los
+# middlewares en orden inverso al de registro, de modo que CORS envuelve a este y
+# sus respuestas de preflight también salen con las cabeceras.
+app.add_middleware(CabecerasDeSeguridad)
 app.add_middleware(
     CORSMiddleware, allow_origins=settings.cors_origins,
     allow_credentials=True, allow_methods=["*"], allow_headers=["*"],

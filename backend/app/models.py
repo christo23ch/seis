@@ -9,8 +9,11 @@ from datetime import datetime, timezone
 
 from sqlalchemy import (Boolean, DateTime, ForeignKey, Integer, Numeric, SmallInteger,
                         String, Text, UniqueConstraint)
+from sqlalchemy import event
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.core.datos_personales import (DatoPersonalEnAuditoria, buscar_correo,
+                                       mensaje_de_veto)
 from app.core.db import Base, PortableJSON
 
 
@@ -358,6 +361,24 @@ class Auditoria(Base):
     entidad_id: Mapped[str] = mapped_column(String(36))
     accion: Mapped[str] = mapped_column(String(32))
     delta: Mapped[dict] = mapped_column(PortableJSON, default=dict)
+
+
+# ─────────────────── Barrera de datos personales (Fase 16, 1.3) ───────────────
+#
+# Se registra AQUÍ y no en un servicio a propósito. Un embudo que hay que
+# acordarse de usar es una convención, no una barrera, y las convenciones de este
+# proyecto ya han fallado cuatro veces por lo mismo (ADR-0014). Colgado del
+# modelo, cubre toda inserción por el ORM y está activo en cualquier proceso que
+# importe los modelos: API, worker de Celery, scripts.
+#
+# Lo que NO cubre está escrito en `app/core/datos_personales.py`, junto al
+# mecanismo: solo detecta la forma del correo, solo en `delta`, solo en INSERT y
+# solo por el ORM.
+@event.listens_for(Auditoria, "before_insert")
+def _vetar_datos_personales_en_delta(_mapper, _conexion, fila) -> None:
+    donde = buscar_correo(fila.delta or {})
+    if donde is not None:
+        raise DatoPersonalEnAuditoria(mensaje_de_veto(fila.accion, donde))
 
 
 __all__ = [n for n in dir() if n[0].isupper()]

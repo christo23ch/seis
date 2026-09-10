@@ -32,8 +32,9 @@ DOCUMENTOS QUE DEBES LEER ANTES DE PLANIFICAR
   están vivos. Es la fuente de verdad sobre el estado.
 - docs/PLAN_FASES.md — orden de fases y criterios de salida.
 - CLAUDE.md — convenciones. docs/PENDIENTES.md — deuda conocida.
-- 30-Decisiones/ADR/ — nueve ADRs con decisiones ya tomadas. NO las reabras sin
-  motivo nuevo; si crees que una está mal, dilo y para.
+- 30-Decisiones/ADR/ — catorce ADRs con decisiones ya tomadas. NO las reabras sin
+  motivo nuevo; si crees que una está mal, dilo y para. El ADR-0014 es de
+  proceso y te obliga en CADA fase: léelo.
 
 CONVENCIONES OBLIGATORIAS
 1. Español en código, comentarios, mensajes de error, UI y commits.
@@ -55,6 +56,21 @@ PROTOCOLO, SIN EXCEPCIONES
   hacerse, permisos, aislamiento entre organizaciones, tokens caducados o
   reutilizados. Verifica que cada test nuevo FALLA contra el código anterior; si
   pasa en ambos, no está probando lo que crees.
+- DEMOSTRACIÓN POR MUTACIÓN en todo hallazgo o corrección de severidad alta o
+  media: rompe el mecanismo a mano, enseña el rojo, y revierte. Un test que nunca
+  se ha visto fallar no ha demostrado nada. Es la práctica que ha encontrado los
+  cuatro puntos ciegos de este proyecto; no es opcional.
+- DECLARACIÓN DE ALCANCE (ADR-0014). Todo mecanismo de verificación que
+  escribas —un test derivado del esquema, una limpieza por nombre de columna, un
+  auditor, un matcher, un detector— lleva en su propio docstring una sección
+  «QUÉ NO CUBRE», junto al código y no en un documento aparte: quien va a confiar
+  en el mecanismo está leyendo el mecanismo.
+  Y si puede detectar que no está en condiciones de hacer su trabajo —la
+  colección que recorre está vacía, la tabla que busca no existe, falta la
+  configuración que necesita—, que FALLE. Un verde que no comprobó nada es peor
+  que un rojo, porque produce confianza. Cuando fallar cause más daño del que
+  evita (una sonda pública, un middleware en el camino crítico), que lo diga en
+  voz alta —log y contador visible— y quede escrito por qué no falla.
 - Antes de cerrar el PR, actualiza la tabla «Frentes abiertos» de
   docs/ESTADO_ACTUAL.md, y escribe un ADR en 30-Decisiones/ADR/ por cada decisión
   discutible, usando 900-Plantillas/Plantilla-ADR.md.

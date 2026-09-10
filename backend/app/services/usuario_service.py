@@ -52,7 +52,13 @@ def crear_usuario(db: Session, email: str, password: str, nombre: str | None = N
         raise ValueError("rol de organización inválido")
     if obtener_por_email(db, email):
         raise ValueError("email ya registrado")
-    u = models.Usuario(email=email.lower(), nombre=nombre,
+    # `.strip()` además de `.lower()` (Fase 16, M-4). `obtener_por_email` ya
+    # recortaba, y esta no: un correo con un espacio pegado se guardaba con él y
+    # quedaba **imposible de encontrar después**, de modo que la cuenta existía y
+    # su titular no podía iniciar sesión, ni verificar, ni recuperar la clave.
+    # No era alcanzable desde el alta pública —`EmailStr` recorta antes—, pero sí
+    # desde `scripts/sembrar.py`, que lee ADMIN_EMAIL del entorno sin tocarlo.
+    u = models.Usuario(email=email.strip().lower(), nombre=nombre,
                        hash_pwd=hash_password(password), rol=rol,
                        organizacion_id=organizacion_id, rol_org=rol_org,
                        es_superadmin=es_superadmin, activo=activo,

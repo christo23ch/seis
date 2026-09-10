@@ -37,8 +37,11 @@ def test_create_all_no_se_ejecuta_en_los_entornos_estrictos(entorno, monkeypatch
         monkeypatch.setenv("SEIS_ENV", entorno)
         monkeypatch.setenv("JWT_SECRET", "kJ7pQz2Xv9RtNw4bYm6HcE8sLdA3fUgW1oPiZxTq")
         monkeypatch.setenv("ADMIN_PASSWORD", "Zq8Rm2Vt6Yx4Bn7Kw")
-        # Los entornos estrictos exigen pronunciarse sobre los proxies (Bloque H).
+        # Los entornos estrictos exigen pronunciarse sobre los proxies (Bloque H)
+        # y, desde la Fase 16 (A-1), también sobre CORS. Los dos centinelas
+        # declaran la ausencia: este test no atiende peticiones de nadie.
         monkeypatch.setenv("PROXIES_DE_CONFIANZA", "ninguno")
+        monkeypatch.setenv("SEIS_CORS_ORIGINS", "ninguno")
 
         assert init_db.crear_esquema_si_procede() is False
     finally:

@@ -85,7 +85,16 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins(self) -> list[str]:
-        return [o.strip() for o in self.seis_cors_origins.split(",") if o.strip()]
+        """Orígenes declarados. El centinela `ninguno` produce lista VACÍA.
+
+        Devolver `["ninguno"]` habría montado el middleware con un origen
+        literal llamado «ninguno»: no autorizaría a nadie —que es el efecto
+        buscado— pero por accidente y no por diseño. La lista vacía lo dice.
+        """
+        crudos = [o.strip() for o in self.seis_cors_origins.split(",") if o.strip()]
+        if len(crudos) == 1 and crudos[0].lower() == SIN_CORS:
+            return []
+        return crudos
 
 
 class ConfiguracionInseguraError(RuntimeError):
@@ -139,6 +148,12 @@ ENTORNOS_SOPORTADOS = ("development", "test", "staging", "production")
 # desactivada—, que es justo lo que el hallazgo P1-1 vino a cerrar. Si un entorno
 # merece existir en internet, merece secretos propios.
 ENTORNOS_ESTRICTOS = ("staging", "production")
+
+# Centinela de `SEIS_CORS_ORIGINS`, hermano de `ninguno` en
+# `PROXIES_DE_CONFIANZA`: «ningún navegador consume esta API, y lo declaro».
+# Sin él, una API sin frontend no tendría forma de pasar la guardia salvo
+# inventándose un origen, que es peor que declarar la ausencia.
+SIN_CORS = "ninguno"
 
 # Campos que en producción deben ser secretos propios y fuertes.
 _CAMPOS_SECRETOS = ("jwt_secret", "admin_password")
@@ -254,6 +269,60 @@ TTL_MAXIMO_JTI_HORAS = 24
 # abandonos y empieza a castigar a usuarios legítimos: quien se registra un
 # viernes y abre el correo el lunes.
 PURGA_CUENTAS_DIAS_MINIMO = 7
+
+
+def _validar_cors(s: "Settings") -> None:
+    """Aborta el arranque si la política de CORS es peligrosa (A-1, Fase 16).
+
+    El motivo por el que esto es una guardia y no una nota en la documentación:
+    `main.py` monta `CORSMiddleware` con `allow_credentials=True`, y Starlette,
+    ante `allow_origins=["*"]` con credenciales, **no emite `*`** —que el
+    navegador rechazaría, avisando del problema— sino que **refleja el origen de
+    quien pregunta**. Medido:
+
+        SEIS_CORS_ORIGINS="*", Origin: https://sitio-del-atacante.example
+        → Access-Control-Allow-Origin: https://sitio-del-atacante.example
+        → Access-Control-Allow-Credentials: true
+
+    Es decir, la configuración más peligrosa es también la que menos síntomas da:
+    todo funciona, y cualquier página de internet puede usar la API como cliente.
+
+    Se exige además `https://`. Un origen `http://` en producción invita a que la
+    sesión viaje en claro, y el navegador no lo impide.
+
+    Solo aplica en `ENTORNOS_ESTRICTOS`: en desarrollo el origen es
+    `http://localhost:3000` y debe seguir funcionando.
+    """
+    if entorno_normalizado(s.seis_env) not in ENTORNOS_ESTRICTOS:
+        return
+
+    # El centinela se comprueba sobre el valor CRUDO, no sobre `cors_origins`:
+    # esa propiedad ya lo ha convertido en lista vacía, de modo que aquí
+    # «declarado ninguno» y «sin configurar» serían indistinguibles y el
+    # centinela abortaría el arranque que existe para permitir.
+    if s.seis_cors_origins.strip().lower() == SIN_CORS:
+        return
+
+    origenes = s.cors_origins
+    problemas = []
+    if not origenes:
+        problemas.append("  · SEIS_CORS_ORIGINS está vacío: declare el origen del "
+                         "frontend, o `ninguno` si no hay navegador que lo use.")
+    for origen in origenes:
+        if origen == "*":
+            problemas.append(
+                "  · SEIS_CORS_ORIGINS contiene «*». Con `allow_credentials=True` "
+                "eso NO emite un comodín: Starlette refleja el origen de quien "
+                "pregunta, de modo que cualquier sitio queda autorizado. Declare "
+                "los orígenes uno a uno.")
+        elif not origen.startswith("https://"):
+            problemas.append(
+                f"  · SEIS_CORS_ORIGINS contiene {origen!r}, que no es «https://». "
+                "En un entorno estricto el frontend se sirve por HTTPS.")
+    if problemas:
+        raise ConfiguracionInseguraError(
+            f"Arranque abortado: SEIS_ENV={entorno_normalizado(s.seis_env)} y la "
+            "política de CORS no es segura:\n" + "\n".join(problemas))
 
 
 def _validar_purgas(s: "Settings") -> None:
@@ -377,6 +446,7 @@ def get_settings() -> Settings:
     s = Settings()
     _validar_seguridad_entorno(s)
     _validar_politica_de_proxy(s)
+    _validar_cors(s)
     # Se valida en TODOS los entornos, no solo en los estrictos: un borrado
     # irreversible mal configurado es igual de destructivo en desarrollo.
     _validar_purgas(s)
