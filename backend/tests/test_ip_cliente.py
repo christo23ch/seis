@@ -290,8 +290,12 @@ def test_la_clave_de_origen_deja_intactas_las_ipv4_y_los_valores_no_ip():
 
 # ─────────── Guardia de arranque ───────────
 
+# Esta batería vigila la guardia de PROXIES, así que las demás guardias del
+# entorno estricto se satisfacen aquí para que sus fallos no se confundan con
+# los que este módulo prueba. `SEIS_CORS_ORIGINS` entra con la Fase 16 (A-1).
 SECRETOS = {"JWT_SECRET": "kJ7pQz2Xv9RtNw4bYm6HcE8sLdA3fUgW1oPiZxTq",
-            "ADMIN_PASSWORD": "Zq8Rm2Vt6Yx4Bn7Kw"}
+            "ADMIN_PASSWORD": "Zq8Rm2Vt6Yx4Bn7Kw",
+            "SEIS_CORS_ORIGINS": "ninguno"}
 
 
 def _arrancar(monkeypatch, **variables):

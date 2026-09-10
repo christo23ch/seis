@@ -33,6 +33,10 @@ SECRETOS_ESTRICTOS = {
     "ADMIN_EMAIL": "admin@ejemplo-siembra.test",
     # El vacío aborta en entornos estrictos; el centinela declara «no hay proxy».
     "PROXIES_DE_CONFIANZA": "ninguno",
+    # Fase 16 (A-1): la guardia de CORS también aborta en entorno estricto. Aquí
+    # se declara el centinela porque estos tests siembran una base, no atienden a
+    # ningún navegador.
+    "SEIS_CORS_ORIGINS": "ninguno",
 }
 
 
