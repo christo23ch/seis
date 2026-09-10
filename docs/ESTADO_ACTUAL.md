@@ -10,12 +10,12 @@
 
 ## Frentes abiertos
 
-**Actualizado:** 2026-09-10 · **`main`:** `5fb3024` · **Suite:** 479 con PostgreSQL, 0 omitidos · **E2E:** alta real verde (`e2e/correr.sh`)
+**Actualizado:** 2026-09-10 · **`main`:** `5fb3024` · **Suite:** 513 con PostgreSQL, 0 omitidos · **E2E:** alta real verde (`e2e/correr.sh`)
 **Última fase cerrada:** 14 (RGPD) · **Fase 16 parte 1: informe entregado** · **Puerta: ABIERTA**
 
 | Rama | PR | Estado | Qué contiene | Siguiente acción |
 |---|---|---|---|---|
-| `fase-16-auditoria` | *(pendiente de abrir)* | 🟡 informe listo | Fase 16 parte 1: `docs/AUDITORIA_SEGURIDAD.md`. **No toca código.** Espera tu decisión sobre qué corregir | Revisar el informe |
+| `fase-16-auditoria` | *(pendiente de abrir)* | 🟢 lista | Fase 16 completa: informe + las 3 altas y 7 medias corregidas con mutación, y **ADR-0014** (regla de alcance) | Abrir PR |
 
 Sin más frentes abiertos.
 
@@ -28,7 +28,7 @@ Sin más frentes abiertos.
 **La puerta está abierta:** (a) test de `init_db.main()` ✅ · (b) PostgreSQL en la CI ✅ ·
 (c) regla de activación de la purga, no una tarea · (d) cerrada.
 
-**Siguiente:** decidir las correcciones de la auditoría (parte 2 de la Fase 16).
+**Siguiente:** con la 16 cerrada, quedan 🟢 la Fase 0' (sistema de diseño) y la 15.
 
 **Fusionados:** [#12](https://github.com/christo23ch/seis/pull/12) Fase 17-A ·
 [#13](https://github.com/christo23ch/seis/pull/13) puerta (a) ·

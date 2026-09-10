@@ -2,7 +2,8 @@
 
 **Fecha:** 2026-09-10 · **Commit auditado:** `5fb3024` · **Modelo:** Opus 5
 **Alcance:** backend (`backend/app`), frontend (`frontend`), CI, dependencias.
-**Estado:** informe. **No se ha tocado una línea de código de producto.**
+**Estado:** ✅ **parte 2 aplicada** (2026-09-10). Las 3 altas y las 7 medias
+corregidas, cada una con demostración por mutación. Ver §7.
 
 ---
 
@@ -423,3 +424,74 @@ lo detiene. Verificable en el despliegue con `/health/detalle`, que ya expone
 **Una petición para la parte 2:** cada corrección de severidad alta o media
 debería ir con su demostración por mutación, como en las tres últimas fases. En
 este proyecto la prueba de que un test sirve ha sido, cuatro veces, verlo en rojo.
+
+
+---
+
+## 7 · Parte 2 · Qué se corrigió y qué no
+
+Aprobadas las 3 altas y las 7 medias. Estado tras aplicarlas: **513 passed con
+PostgreSQL, 0 omitidos**; frontend compila.
+
+| # | Corrección | Mutación aplicada | Rojo |
+|---|---|---|---|
+| A-1 | Guardia de CORS en `config.py` | desactivar la guardia | 4 tests |
+| A-1 | ídem, parcial | mirar `*` pero no exigir `https` | 1 test |
+| A-2 | Motivo + contador + `/health/detalle` | dejar de contar la caída | 2 tests |
+| 1.3 | Oyente `before_insert` sobre `Auditoria` | desenganchar el veto | 1 test |
+| 1.3 | ídem, sutil | dejar de mirar las CLAVES del dict | 1 test |
+| 1.5 | `tablas_hijas_de` falla en vacío | quitar la guarda | 1 test |
+| M-1 | Middleware de cabeceras | no emitirlas | 5 tests |
+| M-2 | Caché de la sonda | volver a consultar siempre | 1 test |
+| M-2 | ídem, sutil | **caché que nunca caduca** | **sobrevivió dos veces** |
+| M-4 | `crear_usuario` normaliza | quitar el `.strip()` | 1 test |
+| M-5 | Enlace de baja a 7 días | volver a 30 | 1 test |
+
+### La mutación que sobrevivió, y por qué importa
+
+**Una caché de sonda que nunca caduca** pasó la suite entera. Es un defecto real:
+convertiría una caída de la base en un `200 OK` permanente, es decir, la sonda
+mentiría exactamente en el momento en que sirve para algo.
+
+Se añadió un test de caducidad. **Y volvió a sobrevivir.** El test hacía
+
+```python
+reloj["t"] += salud.SEGUNDOS_DE_CACHE_SONDA + 0.01
+```
+
+es decir, **leía su valor esperado de la constante que estaba probando**: con la
+constante a infinito, el avance también era infinito y la caché caducaba igual.
+
+Es la quinta vez que aparece la misma forma, y esta vez dentro del test escrito
+para cerrarla. Cerrada con dos aserciones independientes: un avance **fijo** de
+5 s, y una comprobación aparte de que la ventana es finita y del orden de un
+segundo.
+
+### Dos desviaciones respecto a lo que este informe proponía
+
+**M-2: caché en vez de límite de tasa.** El informe proponía limitar. Al
+implementarlo quedó claro que un 429 —o un 503— en una sonda de readiness lo lee
+el orquestador como «no está lista», y como la configuración sería idéntica en
+todas las réplicas **sacaría de rotación a las sanas**. Se acota el TRABAJO (una
+consulta por segundo como mucho) en vez de las peticiones, y el orquestador nunca
+recibe un código que no espera.
+
+**A-2: avisa, no falla.** La regla del ADR-0014 dice «que lo diga en voz alta o
+que falle». Aquí se eligió hablar: rechazar la petición dejaría el sitio
+inaccesible por una cabecera mal configurada, y degradar la readiness sacaría de
+rotación a todas las réplicas a la vez. Queda escrito en el propio módulo como
+límite conocido.
+
+### Lo que NO se tocó, por decisión
+
+- **M-3 (PostCSS vía Next 15).** No se actualiza a Next 16. Los cuatro advisories
+  exigen CSS controlado por el atacante y aquí el CSS viene del repositorio; el
+  salto mayor en vísperas de producción es riesgo real a cambio de riesgo
+  teórico. Reevaluar en la Fase 15.
+- **1.4 (`token_consumido`).** Un `jti` es un UUID sin nada del titular y ya hay
+  purga por antigüedad. Se documenta y no se cambia.
+- **B-3 (acciones ancladas a etiqueta).** Sigue en `PENDIENTES.md`.
+- **Las bajas B-4, B-5, B-6.** Anotadas; ninguna aprobada para esta tanda.
+- **B-1/B-2** sí se corrigieron de paso al tocar `red.py`: `politica_actual`
+  pasa a estar cacheada. Sin test propio — su efecto es de µs y un test de
+  rendimiento sería frágil sin proteger nada.
