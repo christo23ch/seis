@@ -28,6 +28,10 @@ celery.conf.beat_schedule = {
     # persiste su horario entre recreaciones del contenedor.
     "vigilancia-fuentes": {"task": "seis.vigilancia_fuentes",
                            "schedule": crontab(hour=9, minute=0)},
+    # Después de la purga (04:30) a propósito: si una cuenta sin verificar
+    # además pidió el borrado, la limpia la purga y aquí ya no aparece.
+    "borrados-rgpd": {"task": "seis.borrados_rgpd",
+                      "schedule": crontab(hour=5, minute=0)},
 }
 celery.autodiscover_tasks(["app.tasks"], related_name="notificaciones_tasks")
 celery.autodiscover_tasks(["app.tasks"], related_name="mantenimiento_tasks")

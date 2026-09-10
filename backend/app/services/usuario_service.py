@@ -98,7 +98,9 @@ def autenticar_con_motivo(db: Session, email: str,
 # ─────────────── Alta self-service (Fase 10) ───────────────
 
 def registrar_usuario(db: Session, email: str, password: str,
-                      nombre: str | None = None) -> models.Usuario | None:
+                      nombre: str | None = None,
+                      consentimientos: dict[str, bool] | None = None
+                      ) -> models.Usuario | None:
     """Alta pública: organización propia + usuario propietario, sin activar.
 
     Devuelve `None` si la dirección ya tiene cuenta. El llamante **no** debe
@@ -139,9 +141,17 @@ def registrar_usuario(db: Session, email: str, password: str,
             db.delete(huerfana)
             db.commit()
         return None
+    # Los consentimientos van en LA MISMA transacción que el alta (Fase 14). Si
+    # se guardaran después, un fallo entre ambos commits dejaría una cuenta viva
+    # sin constancia de qué aceptó su titular — y demostrar el consentimiento es
+    # obligación del responsable, no del usuario.
+    from app.services.cuenta_service import registrar_consentimientos
+    registrar_consentimientos(db, u, consentimientos or {})
+
     db.add(models.Auditoria(quien=u.email, entidad="usuario", entidad_id=u.email,
                             accion="registro_self_service",
-                            delta={"organizacion_id": org.id}))
+                            delta={"organizacion_id": org.id,
+                                   "consentimientos": sorted(consentimientos or {})}))
     db.commit()
     db.refresh(u)
     return u

@@ -17,7 +17,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from sqlalchemy import text
+from sqlalchemy import or_, text
 
 from app import models
 from app.services import purga_service
@@ -164,8 +164,12 @@ def test_la_purga_no_deja_filas_huerfanas_con_claves_foraneas_activas(db):
                                asunto="z", cuerpo="w", estado="pendiente"))
     db.commit()
 
+    db.add(models.Consentimiento(id=str(uuid.uuid4()), usuario_id=u.id,
+                                 tipo="terminos", version="1", otorgado=True))
+    db.commit()
+
     sembradas = {"preferencias_notificacion", "codigo_telegram", "alerta",
-                 "notificacion"}
+                 "notificacion", "consentimiento"}
     sin_cubrir = _tablas_hija_de_usuario() - sembradas
     assert not sin_cubrir, (
         f"Hay tablas con clave foránea a `usuario.id` que este test no siembra: "
@@ -370,21 +374,40 @@ def test_no_borra_a_quien_se_verifico_entre_la_seleccion_y_el_borrado(db):
     assert _existe(db, models.Usuario, u.id)
 
 
-def test_la_auditoria_del_usuario_purgado_sobrevive_al_borrado(db):
-    """Una traza cuya vida depende de la existencia del auditado no es auditoría."""
+def test_la_auditoria_del_usuario_purgado_sobrevive_al_borrado_pero_anonimizada(db):
+    """Una traza cuya vida depende de la existencia del auditado no es auditoría.
+
+    Pero una traza que sigue nombrando a quien ya no está tampoco vale: hasta la
+    Fase 14, la purga borraba la fila de `usuario` y **dejaba la dirección de
+    correo** en `auditoria.quien` y `auditoria.entidad_id`, donde la escribe
+    `registrar_usuario`. Se borraba la cuenta y se conservaba el dato personal
+    más identificativo que hay.
+
+    Ahora se conserva la fila y se sustituye la dirección por un seudónimo
+    estable: la traza sigue siendo traza —dos acciones del mismo titular siguen
+    agrupándose— y ya no nombra a nadie.
+    """
+    from app.services.borrado_service import (marca_anonima,
+                                              marca_anonima_entidad)
+
     org = _crear_org(db)
     u = _crear_usuario(db, org)
+    email, usuario_id = u.email, u.id
     db.add(models.Auditoria(quien=u.email, entidad="usuario", entidad_id=u.email,
                             accion="registro_self_service", delta={}))
     db.commit()
 
     _purgar(db)
 
-    quedan = (db.query(models.Auditoria)
-              .filter(models.Auditoria.accion == "registro_self_service",
-                      models.Auditoria.entidad_id == u.email)
-              .count())
-    assert quedan == 1
+    fila = (db.query(models.Auditoria)
+            .filter(models.Auditoria.accion == "registro_self_service").one())
+    assert fila.quien == marca_anonima(usuario_id)
+    assert fila.entidad_id == marca_anonima_entidad(usuario_id)
+
+    assert db.query(models.Auditoria).filter(
+        or_(models.Auditoria.quien == email,
+            models.Auditoria.entidad_id == email)).count() == 0, (
+        "la dirección del titular sigue en la auditoría tras purgar su cuenta")
 
 
 def test_no_borra_organizaciones_sin_usuarios_solo_las_cuenta(db):

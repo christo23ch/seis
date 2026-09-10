@@ -170,7 +170,7 @@ no un descubrimiento posterior:
 
 | # | Qué | Naturaleza | Por qué no puede esperar más allá de la 17-B |
 |---|---|---|---|
-| 1 | **Decidir cuál debe ser el modo de notificación por defecto** (§3), con las tres opciones de arriba sobre la mesa | **Decisión de producto pendiente**, no optimización | 50 correos por cabeza y noche **con diez usuarios**. No hace falta crecer para que ocurra: ocurre la primera noche |
+| 1 | **Decidir cuál debe ser el modo de notificación por defecto** (§3), con las tres opciones de arriba sobre la mesa. **Dueña: la ficha de la Fase 17-B** (`PLAN_FASES.md`), que no cierra su PR sin resolverla | **Decisión de producto pendiente**, no optimización | 50 correos por cabeza y noche **con diez usuarios**. No hace falta crecer para que ocurra: ocurre la primera noche |
 | 2 | **Sacar el envío del camino de la ingesta**, a su propia tarea | Diseño, no rendimiento | Cuando reviente el correo, lo que parecerá roto es la captación, y se depurará en el sitio equivocado (§4). Frontera dura: **antes de configurar un proveedor real** |
 
 **Lo que NO hay que hacer ahora**, dicho explícitamente para que nadie lo haga por

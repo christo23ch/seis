@@ -471,7 +471,9 @@ def test_tras_un_proxy_declarado_dos_clientes_no_comparten_cupo(api, monkeypatch
         # desapercibido solo porque /registro responde 201 exista o no la cuenta.
         return cliente.post("/api/v1/auth/registro",
                             json={"email": f"{uuid.uuid4().hex[:12]}@example.com",
-                                  "password": "unaClaveLarga123", "nombre": "X"},
+                                  "password": "unaClaveLarga123", "nombre": "X",
+                                  # Fase 14: obligatorios en el alta pública.
+                                  "acepta_terminos": True, "acepta_privacidad": True},
                             headers={"X-Forwarded-For": ip_real})
 
     codigos = [_registrar("203.0.113.10").status_code for _ in range(6)]
