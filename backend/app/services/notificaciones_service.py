@@ -114,8 +114,27 @@ def desvincular_telegram(db: Session, usuario: models.Usuario) -> None:
 
 # ── Baja firmada ────────────────────────────────────────────────────────────
 
+# Vida del enlace de baja. Era de 30 días (Fase 12) y baja a 7 (Fase 16, M-5).
+#
+# El razonamiento original —«darse de baja dos veces es inocuo», y por eso el
+# token no consume su `jti`— es correcto en cuanto al EFECTO e incompleto en
+# cuanto al TIEMPO: era un portador válido un mes que nombra a una persona.
+# Quien lo obtuviera (un correo reenviado, un log de proxy con la query string,
+# un escáner corporativo de enlaces) podía mantener a esa persona dada de baja
+# indefinidamente, rebajando su consentimiento comercial sin que lo pidiera.
+#
+# NO se le añade uso único, y es una decisión: con `jti` consumido, el segundo
+# clic desde el mismo correo —el reenvío, el prefetch del cliente de correo—
+# devolvería un error a quien solo quería confirmar que ya estaba dado de baja.
+# Se acorta la ventana en vez de romper la reentrada.
+#
+# Siete días cubre el caso real (alguien que abre un boletín el fin de semana
+# siguiente) sin dejar un portador vivo un mes.
+HORAS_ENLACE_BAJA = 24 * 7
+
+
 def enlace_baja(email: str) -> str:
-    token = crear_token_proposito(email, "baja", horas=24 * 30)
+    token = crear_token_proposito(email, "baja", horas=HORAS_ENLACE_BAJA)
     return f"{get_settings().frontend_url}/baja?token={token}"
 
 
