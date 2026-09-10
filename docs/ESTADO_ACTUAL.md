@@ -10,14 +10,14 @@
 
 ## Frentes abiertos
 
-**Actualizado:** 2026-09-10 · **`main`:** `9360e49` · **Suite:** 518 con PostgreSQL, 0 omitidos · **E2E:** alta real verde (`e2e/correr.sh`)
-**Última fase cerrada:** 14 (RGPD) · **Fase 16 parte 1: informe entregado** · **Puerta: ABIERTA**
+**Actualizado:** 2026-09-10 · **`main`:** `5f14119` · **Suite:** 518 con PostgreSQL, 0 omitidos (en SQLite: 510 + 8 omitidos, los exclusivos de PG) · **E2E:** alta real verde (`e2e/correr.sh`)
+**Última fase cerrada:** 16 (seguridad) · **Puerta: ABIERTA**
 
 | Rama | PR | Estado | Qué contiene | Siguiente acción |
 |---|---|---|---|---|
-| `fix/puja-inviable` | *(pendiente de abrir)* | 🟢 lista | M13 devolvía 500 en toda operación con puja máxima negativa | Abrir PR |
+| `docs/fase-17c-comparables` | *(pendiente de abrir)* | 🟢 lista | Ficha de la Fase 17-C (comparables de mercado): solo planificación, sin código | Abrir PR |
 
-Sin más frentes abiertos de código.
+Sin frentes abiertos de código.
 
 ### 🔴 Frente abierto de PRODUCTO, con dueño: el puente captación → análisis
 
@@ -38,23 +38,40 @@ defecto. No es una nota al pie: es condición de la fase.
 Descubierto el 2026-09-10 recorriendo el flujo completo con un caso real de la
 AEAT, no con una fixture.
 
+### 🟡 Frente abierto de PRODUCTO, planificado: sin comparables, el motor se compara consigo mismo
+
+En el mismo recorrido real (Santiponce, 44 m², tasada en 23.391,72 €) el motor devolvió
+`VM = 23.391,72 € · método = sin_comparables · confianza = 0,0`: **el valor de mercado cayó al
+valor del propio tasador de la AEAT.** El motor fue honesto —confianza 0, carencia en el ICI,
+que se hundió a 20— pero no tenía ancla independiente.
+
+**Es el caso por defecto de todo lo que entre por la 17-B**, porque nadie teclea seis
+comparables por subasta cuando el conector traiga doscientas al mes.
+
+**Registrado como fase propia: [Fase 17-C](PLAN_FASES.md) — «Fuente automática de comparables
+de mercado»**, ordenada justo después de la 17-B. No se implementa todavía. La ficha lleva el
+caso real como contexto motivador, cinco fuentes candidatas con coste y viabilidad legal
+investigados, y las reglas no negociables (nunca inventar un comparable; trazabilidad por
+comparable congelada en el snapshot, P1).
+
+**Hallazgo colateral, INDEPENDIENTE y más urgente que la fase:** la base imponible del ITP es el
+**mayor** de (valor de referencia, valor declarado, precio pagado), y SEIS lo calcula sobre la
+puja (`m11_rentabilidad.py:41`). En una subasta —donde el atractivo es pujar por debajo del
+valor— **eso subestima el impuesto en todo análisis que se haga hoy**. Sin dueño: pendiente de
+decidir si se corrige por separado y antes.
+
 **Fusionados:** [#12](https://github.com/christo23ch/seis/pull/12) Fase 17-A ·
 [#13](https://github.com/christo23ch/seis/pull/13) puerta (a) ·
 [#14](https://github.com/christo23ch/seis/pull/14) puerta (b) ·
 [#15](https://github.com/christo23ch/seis/pull/15) Fase 14 ·
-[#11](https://github.com/christo23ch/seis/pull/11) ADR-0010 y revisión visual.
+[#11](https://github.com/christo23ch/seis/pull/11) ADR-0010 y revisión visual ·
+[#16](https://github.com/christo23ch/seis/pull/16) Fase 16 (auditoría, correcciones, ADR-0014) ·
+[#17](https://github.com/christo23ch/seis/pull/17) M13 en operaciones inviables.
 
 **La puerta está abierta:** (a) test de `init_db.main()` ✅ · (b) PostgreSQL en la CI ✅ ·
 (c) regla de activación de la purga, no una tarea · (d) cerrada.
 
 **Siguiente:** con la 16 cerrada, quedan 🟢 la Fase 0' (sistema de diseño) y la 15.
-
-**Fusionados:** [#12](https://github.com/christo23ch/seis/pull/12) Fase 17-A ·
-[#13](https://github.com/christo23ch/seis/pull/13) puerta (a) ·
-[#14](https://github.com/christo23ch/seis/pull/14) puerta (b).
-
-**La puerta está abierta:** (a) test de `init_db.main()` ✅ · (b) PostgreSQL en la CI ✅ ·
-(c) regla de activación de la purga, no una tarea · (d) cerrada.
 
 ---
 

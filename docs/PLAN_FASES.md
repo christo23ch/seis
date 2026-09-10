@@ -255,6 +255,185 @@ alertas de la Fase 12 vigilan el vacío y no hay nada que monetizar en la 13.
 - **Modelo recomendado:** **Opus 5** para el andamiaje; **Sonnet 5** para el ajuste de selectores
   cuando tengas el HTML (tarea acotada de parsing, con fixtures como red).
 
+### Fase 17-C · Fuente automática de comparables de mercado 🟡 — **nueva, sin empezar**
+
+**Objetivo.** Que el motor pueda valorar un inmueble **sin depender de que alguien teclee
+comparables a mano**, y que cuando no pueda lo diga en vez de compararse consigo mismo.
+
+---
+
+#### Dónde encaja en el plan, y por qué es fase propia
+
+**Decisión: fase nueva, 17-C, inmediatamente después de la 17-B.** No es una ampliación de la
+17-A/B ni una condición de cierre de la 17-B. Las tres razones, en orden de peso:
+
+1. **Es otro problema.** La Fase 17 (A y B) trata de **encontrar** subastas: descubrir anuncios,
+   parsearlos, no duplicarlos, avisar. Esto trata de **valorarlas**: traer un ancla de precio
+   independiente del tasador. Comparten fontanería, no objetivo. Metido dentro de la 17-B,
+   ampliaría su alcance justo cuando lo que le falta es un HTML real y acabaría retrasando ambas.
+2. **Pero depende de ella, no al revés.** Reutiliza tres piezas que la 17-A ya construyó
+   —parser defensivo, parámetros de fuente en T3, `vigilancia_service` para fuentes en
+   silencio— y su urgencia **la crea** la 17-B: mientras el alta sea manual, el usuario puede
+   teclear comparables; en cuanto entren doscientas subastas al mes, nadie lo hará. De ahí
+   *después* y no *antes*.
+3. **Tiene tamaño de fase, no de condición.** El puente captación→análisis sí es una condición
+   de cierre de la 17-B (`docs/ESTADO_ACTUAL.md`): son horas y no tiene decisiones abiertas.
+   Esto son semanas y arranca con **una investigación cuyo resultado puede cambiar el alcance**
+   (si el valor de referencia no tiene servicio web libre, la fuente recomendada cambia).
+
+**Qué la desbloquea:** nada externo para empezar la fuente 1 (dato público y gratuito). La
+opción 2 (idealista/data) sí exige una negociación comercial previa, así que **no se estima en
+euros** hasta tenerla.
+
+---
+
+#### El caso que la motiva (2026-09-10, real, no una fixture)
+
+Se recorrió el flujo completo con una subasta real de la AEAT: **vivienda de 44 m² de 1940 en
+Calle Feria 15, Santiponce (Sevilla), tasada en 23.391,72 €**, sin comparables de mercado
+porque el anuncio no los trae y nadie los tenía.
+
+Lo que hizo el motor, medido:
+
+```
+VM = 23.391,72 €    método = sin_comparables    confianza = 0,0
+```
+
+**El valor de mercado cayó al valor del propio tasador de la AEAT.** Es decir: el análisis
+comparó la subasta consigo misma. El motor fue honesto —`confianza=0,0`, la carencia
+«Comparables insuficientes (n≥6, CV≤20%)» en el ICI, que se hundió a 20— pero **no tenía nada
+con lo que contrastar**.
+
+Y esto no es un caso raro: **es el caso por defecto de todo lo que entre por la 17-B.** Nadie va
+a teclear seis comparables por subasta cuando el conector traiga doscientas al mes. Si el
+producto depende de que el usuario los aporte, no escala — y el análisis, que es lo único que
+SEIS vende, queda sin ancla independiente.
+
+> Se registra aquí, en la ficha, y no como nota al pie, por la misma razón que el trade-off del
+> matcher acabó en el [[ADR-0011]]: para que quien lo implemente entienda **por qué existe** en
+> vez de reconstruirlo.
+
+---
+
+#### Fuentes candidatas, con lo que se pudo verificar de cada una
+
+Investigado antes de proponer. **Lo que no se pudo confirmar está marcado como tal.**
+
+**1 · Valor de referencia del Catastro — RECOMENDADA, y es la que más resuelve**
+
+- **Qué es:** valor oficial que la Dirección General del Catastro fija **cada año y por
+  inmueble**. Consulta **gratuita y pública** —a diferencia del valor catastral, que solo puede
+  consultar el titular—. Publicado para 2026 en el BOE (`BOE-B-2025-46480`).
+- **Por qué encaja mejor que cualquier portal:** es **por inmueble**, oficial, sin condiciones de
+  uso que prohíban la reutilización, y **ya está ligado a la referencia catastral que la subasta
+  trae en el anuncio** (en el caso real: `1282034TG3418S0001UL`).
+- **Y resuelve un segundo problema, mayor de lo que parece.** La base imponible del ITP es **el
+  mayor** de: valor de referencia, valor declarado, o precio pagado. SEIS calcula el ITP sobre la
+  puja (`m11_rentabilidad.py:41`, `p * (1 + c_v)`). En una subasta —donde el atractivo es pujar
+  por debajo del valor— **eso subestima sistemáticamente el impuesto**. Con el valor de
+  referencia disponible, la base pasa a ser la correcta.
+  **Es un hallazgo aparte de esta ficha y hay que decidir si se corrige antes** (ver §Riesgos).
+- **Coste:** gratuito.
+- **Viabilidad legal:** la más limpia de todas. Dato público de una administración.
+- **⚠️ Lo que NO se pudo confirmar:** que exista un **servicio web libre y documentado para el
+  valor de referencia concretamente**. Los servicios libres de la Sede Electrónica que sí están
+  documentados (`Webservices_Libres.pdf`, v2.6) son callejero, conversor de coordenadas y
+  consulta por referencia catastral, y son **SOAP** (algunos accesibles por REST sobre HTTP). La
+  consulta del valor de referencia está descrita como *interactiva* en la Sede. **Primera tarea
+  de la fase: comprobarlo, y si no hay API, decidir entre el acceso autenticado con certificado
+  o descartarla.** No se da por hecho.
+
+**2 · idealista/data (API comercial) — VIABLE PERO DE PAGO Y A NEGOCIAR**
+
+- **Qué ofrece:** API de **comparables y métricas** de zona hasta nivel de barrio.
+- **Coste:** **no hay plan gratuito ni autoservicio.** Todo acceso pasa por solicitud y
+  aprobación del proyecto por parte de Idealista, y el precio **se negocia caso por caso**: no
+  hay tarifa publicada. **Imposible presupuestar esta fase sin hablar con ellos.**
+- **Restricción de uso relevante:** está orientada a análisis de mercado y métricas, **no a
+  extraer anuncios individuales con fines comerciales**. Habría que confirmar con ellos que el
+  uso de SEIS —valorar un inmueble concreto para un cliente— encaja en su licencia.
+- **Viabilidad legal:** limpia si se licencia. Es la vía correcta si se quiere dato de portal.
+
+**3 · Scraping de portales (Idealista, Fotocasa) — NO RECOMENDADA**
+
+Tres razones, en orden de peso:
+
+- **El dato es peor de lo que parece.** Un portal publica **precios de oferta**, no de
+  transacción. El propio motor ya lo sabe: `ComparableInput.origen` distingue `portal_oferta`
+  de `testigo` y de `notarial` precisamente porque no valen lo mismo. Alimentarlo con ofertas
+  sesgaría la valoración al alza justo en el lado que hace perder dinero.
+- **Exposición legal real, no teórica.** La técnica en sí es legal, pero: el TJUE (sentencia de
+  15-01-2021) confirmó que el titular de una base de datos **puede prohibir contractualmente la
+  reutilización**, y los términos de estos portales lo hacen; a eso se suma la vía de competencia
+  desleal por aprovechamiento del esfuerzo ajeno. Y en 2025 la AEPD sancionó por scraping
+  **299 veces, 40 M€** —principalmente por datos personales, que en un anuncio inmobiliario
+  aparecen con facilidad (teléfono del anunciante, nombre de la agencia)—.
+- **Fragilidad operativa.** Es exactamente la deuda que la 17-A ya asumió con el BOE
+  (selectores en T3, vigilancia de fuentes en silencio), multiplicada por un portal que **sí
+  tiene interés en romperlo**.
+
+**Recomendación: descartarla.** Si se quiere dato de portal, se licencia (opción 2).
+
+**4 · Estadística oficial agregada — COMPLEMENTO BARATO Y LIMPIO**
+
+- INE (Estadística de Transmisiones de Derechos de la Propiedad), Ministerio de Vivienda (valor
+  tasado de vivienda), Consejo General del Notariado.
+- **Gratuitas y sin restricción de reutilización.** Precio real de transacción, no de oferta.
+- **Limitación:** son **agregadas** por municipio o provincia, no por inmueble. No sirven como
+  «comparable» en el sentido de M03, pero **sí para construir una banda de €/m² de zona**, que es
+  lo que M03/M04 necesitan para dar un rango en vez de un punto.
+- Encaja como **red de seguridad**: cuando no haya comparables por inmueble, una banda de zona
+  con confianza declarada es mucho mejor que VM = el valor del tasador.
+
+**5 · Registradores / notariado (precio real por operación) — DESCARTADA POR AHORA**
+
+Es el dato ideal —transacción real, por inmueble— pero el acceso es restringido y de pago, y no
+hay indicio de una vía de autoservicio. Se anota y no se explora hasta que haya ingresos.
+
+---
+
+#### Reglas de diseño, no negociables
+
+1. **Nunca inventar un comparable para rellenar el hueco.** Si la fuente no cubre la zona o el
+   tipo de inmueble, el motor debe seguir marcando `confianza` baja y la carencia en el ICI,
+   exactamente como hace hoy. **Un comparable falso es peor que ninguno**: convierte un «no lo
+   sé» honesto en un número que alguien va a creerse. Esta regla es la razón de ser de la fase,
+   no un detalle de implementación.
+2. **Trazabilidad por comparable, no caja negra.** Cada comparable que use el motor guarda
+   **de dónde salió**: fuente, identificador en origen, fecha de obtención, y URL o referencia
+   cuando exista. `ComparableInput` ya tiene `origen` y `meses_antiguedad`; hay que ampliarlo y
+   **persistirlo en el snapshot del análisis** (P1: el análisis es inmutable, así que el
+   comparable que se usó tiene que quedar congelado con él, no releerse después).
+   Criterio de salida: **desde el informe se puede llegar a cada comparable**.
+3. **La fuente se declara en T3**, como los selectores del BOE: cambiar de proveedor no debe
+   exigir un despliegue.
+4. **Vigilancia de silencio**, reutilizando `vigilancia_service` de la 17-A: una fuente de
+   comparables que deja de devolver nada tiene el mismo modo de fallo mudo que un conector roto.
+5. **Declaración de alcance (ADR-0014)** en cada mecanismo nuevo: qué zonas cubre, qué
+   tipologías, y qué NO.
+
+---
+
+#### Riesgos específicos
+
+- **La base del ITP.** El hallazgo de §1 —SEIS calcula el impuesto sobre la puja y no sobre
+  `max(puja, valor de referencia)`— es **independiente de esta fase y probablemente más urgente**,
+  porque afecta a todo análisis que ya se haga hoy. Decidir si se corrige antes, por separado.
+- **Sesgo de oferta.** Si acaba entrando dato de portal, el motor debe seguir ponderándolo por
+  `origen`. No mezclar ofertas y testigos en el mismo saco.
+- **Coste no presupuestable hoy.** La opción 2 exige negociación previa. La fase **no se puede
+  estimar en euros** hasta tener esa respuesta.
+- **Dependencia externa nueva** justo en el camino crítico del producto: si la fuente cae, la
+  valoración se degrada. De ahí la regla 4.
+
+---
+
+#### Modelo recomendado
+
+**Opus 5** para el diseño y la capa de trazabilidad —es donde está la decisión difícil, y P1
+obliga a congelar el comparable en el snapshot—. **Sonnet 5** para el cliente de cada fuente una
+vez decidida, que es trabajo acotado de parsing con fixtures como red.
+
 ### Fase 14 · RGPD 🟢 — ✅ **hecha** (rama `fase-14-rgpd`; falta el texto del abogado)
 **Objetivo.** Poder operar legalmente con datos de personas reales en la UE.
 **Por qué aquí.** Es 🟢 casi entera, y **bloquea el lanzamiento**: hoy no hay consentimientos,
@@ -402,6 +581,7 @@ en `docs/HERRAMIENTAS.md` (Paso 4), no aquí.
 | **0** | **Deuda de cobertura (§2-bis a y b)** | 🟢 | — · **PUERTA: nada que toque producción se despliega antes** |
 | 1 | 11-B · Despliegue | 🟡 | Dominio, hosting · **la puerta 0** |
 | 2 | 17-A · Captación | 🟡 + 🔴 | HTML real del BOE |
+| 2-bis | 17-C · Comparables de mercado | 🟡 | La 17-B · investigar si el valor de referencia tiene servicio web libre |
 | 3 | 14 · RGPD | 🟢 | Abogado (textos) |
 | 4 | 13 · Stripe | 🟡 | **Figura fiscal** (empieza hoy) |
 | 5 | 16 · Seguridad | 🟢 | Que existan 13 y 17 |
