@@ -16,13 +16,14 @@ from __future__ import annotations
 import jwt as pyjwt
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy.orm import Session
 
 from app import models
 from app.api.deps import get_current_user, require_superadmin
 from app.core import rate_limit, red
 from app.core.db import get_db
+from app.legal import textos
 from app.core.security import (PROPOSITO_RESETEAR, PROPOSITO_VERIFICAR,
                                crear_token, decodificar_token_proposito,
                                verify_password)
@@ -77,6 +78,38 @@ class RegistroBody(BaseModel):
     # tope, un valor más largo abortaría la transacción en PostgreSQL y saldría
     # como un 500 en vez de como el 422 que corresponde a una entrada inválida.
     nombre: str | None = Field(default=None, max_length=80)
+    # Fase 14 (RGPD). Los obligatorios se EXIGEN aquí y no se dan por
+    # supuestos: sin validación, un cliente que no los enviara crearía cuentas
+    # sin constancia de consentimiento, y demostrarlo es obligación del
+    # responsable. Los no obligatorios se omiten libremente y quedan como «no
+    # otorgado».
+    # SIN VALOR POR DEFECTO, y esto es la parte importante: con `= False` los
+    # campos parecían obligatorios y no lo eran. Pydantic v2 no valida los
+    # valores por defecto salvo que se le pida (`validate_default`), así que un
+    # cliente que no los enviara pasaba la validación con «no acepta» y creaba
+    # la cuenta igual. Requerirlos es lo único que hace que falte sea un 422 y
+    # no un consentimiento inventado.
+    acepta_terminos: bool
+    acepta_privacidad: bool
+    # Este SÍ tiene defecto, y a propósito: no es obligatorio, y omitirlo
+    # significa «no otorgado», que es una respuesta legítima.
+    acepta_comunicaciones_comerciales: bool = False
+
+    @field_validator("acepta_terminos", "acepta_privacidad")
+    @classmethod
+    def _obligatorio(cls, valor: bool) -> bool:
+        if not valor:
+            # Condicionar el alta a los textos obligatorios es legítimo; hacerlo
+            # con las comunicaciones comerciales NO lo sería, porque entonces el
+            # consentimiento no sería libre. De ahí que solo estos dos se validen.
+            raise ValueError("Es obligatorio aceptar las condiciones del servicio "
+                             "y la política de privacidad.")
+        return valor
+
+    def consentimientos(self) -> dict[str, bool]:
+        return {textos.TERMINOS: self.acepta_terminos,
+                textos.PRIVACIDAD: self.acepta_privacidad,
+                textos.COMUNICACIONES_COMERCIALES: self.acepta_comunicaciones_comerciales}
 
 
 class EmailBody(BaseModel):
@@ -239,7 +272,7 @@ def registro(body: RegistroBody, request: Request,
     rate_limit.registrar_intento(clave)
 
     usuario = usuario_service.registrar_usuario(db, body.email, body.password,
-                                                body.nombre)
+                                                body.nombre, body.consentimientos())
     if usuario is None:
         existente = usuario_service.obtener_por_email(db, body.email)
         if existente is not None:

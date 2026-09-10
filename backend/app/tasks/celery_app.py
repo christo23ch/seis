@@ -24,6 +24,14 @@ celery.conf.beat_schedule = {
     # despliegue con recreaciones frecuentes la purga podría no ejecutarse nunca.
     # Un horario anclado al reloj no tiene ese problema.
     "purga-diaria": {"task": "seis.purgar", "schedule": crontab(hour=4, minute=30)},
+    # Mismo motivo que la purga para usar `crontab` y no un intervalo: `beat` no
+    # persiste su horario entre recreaciones del contenedor.
+    "vigilancia-fuentes": {"task": "seis.vigilancia_fuentes",
+                           "schedule": crontab(hour=9, minute=0)},
+    # Después de la purga (04:30) a propósito: si una cuenta sin verificar
+    # además pidió el borrado, la limpia la purga y aquí ya no aparece.
+    "borrados-rgpd": {"task": "seis.borrados_rgpd",
+                      "schedule": crontab(hour=5, minute=0)},
 }
 celery.autodiscover_tasks(["app.tasks"], related_name="notificaciones_tasks")
 celery.autodiscover_tasks(["app.tasks"], related_name="mantenimiento_tasks")

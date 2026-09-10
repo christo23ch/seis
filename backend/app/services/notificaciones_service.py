@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 
 from app import models
+from app.ingesta.contratos import OrigenCaptacion
 from app.core.config import get_settings
 from app.core.security import crear_token_proposito
 from app.notificadores import Mensaje, obtener_notificadores
@@ -148,41 +149,61 @@ def casa_alerta(alerta: models.Alerta, subasta: models.Subasta) -> bool:
 
 
 def evaluar_subasta(db: Session, subasta: models.Subasta,
-                    organizacion_id: str | None) -> list[models.Notificacion]:
+                    origen: OrigenCaptacion) -> list[models.Notificacion]:
     """Casa la subasta con las alertas activas y crea notificaciones.
 
     Modo instantáneo ⇒ intenta el envío inmediato (respetando franja de silencio);
     modos digest ⇒ la notificación queda pendiente para la tarea beat.
 
-    REGLA DE AISLAMIENTO ENTRE ORGANIZACIONES (cierre Fase 12, P0.2 — corrige H1):
-    solo se evalúan las alertas cuyo usuario propietario pertenece a la MISMA
-    organización que el usuario que ejecutó la captación (`organizacion_id`,
-    derivado del captador; las entidades `Alerta`/`Notificacion` no tienen
-    columna de organización propia por decisión de producto — el eje de tenant
-    se deriva siempre vía `Usuario`).
+    EL ALCANCE LO DECIDE `origen`, Y ES EXPLÍCITO (Fase 17-A, ADR-0011):
 
-    Esto NO restringe el catálogo compartido: `Subasta` sigue sin organización y
-    `GET /subastas` sigue siendo legible por cualquier usuario de cualquier
-    organización — el dato compartido permanece compartido. Lo que se acota es
-    el EFECTO PRIVADO de un acto de escritura: sin este filtro, un analista de
-    la organización A podía disparar notificaciones —privadas— hacia usuarios de
-    las organizaciones B, C, D con solo captar una subasta, rompiendo el
-    invariante de la Fase 9 de que ninguna acción de un tenant produce efectos
-    observables en otro.
+    - `OrigenCaptacion.manual(org)` — un usuario capta a mano. Se evalúan solo
+      las alertas de SU organización. Es la regla de la Fase 12 (P0.2, corrige
+      H1) y sigue intacta: sin ella, un analista de A dispararía notificaciones
+      privadas hacia usuarios de B, C y D con solo captar una subasta.
+    - `OrigenCaptacion.plataforma()` — un conector automático capta. Se evalúan
+      las alertas de TODAS las organizaciones.
 
-    Trade-off asumido: si NINGÚN usuario de la organización B vuelve a captar
-    esta misma subasta, sus alertas coincidentes no dispararán notificación
-    automática — aunque la subasta sigue siendo visible para B vía GET /subastas
-    en cualquier momento. Se prioriza el aislamiento del efecto colateral sobre
-    la cobertura completa de notificación cross-organización; ampliar esa
-    cobertura es una decisión de producto futura, no asumida aquí.
+    Por qué la segunda no rompe el aislamiento de la Fase 9: el invariante que
+    aquella protege es que ninguna acción de un TENANT produzca efectos
+    observables en otro, y una ingesta automática no es un acto de ningún
+    tenant. El BOE no es un tenant.
+
+    Antes esto era un `organizacion_id: str | None` y `None` era una trampa: el
+    filtro `Usuario.organizacion_id == None` no significa «todas» sino «los
+    usuarios sin organización», que no es nadie. Una ingesta automática que
+    pasara `None` no habría notificado a NADIE, en silencio, sin romper ningún
+    test. De ahí que ahora el tipo obligue a elegir.
+
+    Las entidades `Alerta` y `Notificacion` no tienen columna de organización
+    propia por decisión de producto: el eje de tenant se deriva vía `Usuario`.
+
+    Nada de esto restringe el catálogo compartido: `Subasta` sigue sin columna
+    de organización y `GET /subastas` sigue siendo legible por cualquier usuario
+    de cualquier organización. Lo que el origen decide es el alcance del EFECTO
+    PRIVADO (la notificación), no la visibilidad del dato.
+
+    Alcance ampliado tampoco significa datos compartidos: con origen plataforma
+    cada usuario recibe SU aviso sobre un dato común, construido únicamente con
+    su propia alerta y la subasta. El cuerpo no lleva nada de otra organización,
+    y hay un test que falla si alguien lo rompe
+    (`test_una_notificacion_de_plataforma_no_contiene_datos_de_otra_organizacion`).
+
+    Trade-off que la Fase 12 asumió y la 17-A revisa: aquella regla decía que si
+    ningún usuario de B vuelve a captar la misma subasta, sus alertas no se
+    disparan. Con captación automática ese "si nadie la capta" pasa a ser el caso
+    normal —el conector capta por todos—, y mantenerlo dejaría las alertas
+    inertes. Se revisa solo para el origen plataforma; para el manual sigue
+    vigente palabra por palabra. Ver `30-Decisiones/ADR/ADR-0011`.
     """
     creadas: list[models.Notificacion] = []
-    alertas = (db.query(models.Alerta)
-               .join(models.Usuario, models.Alerta.usuario_id == models.Usuario.id)
-               .filter(models.Alerta.activa.is_(True),
-                       models.Usuario.organizacion_id == organizacion_id)
-               .all())
+    consulta = (db.query(models.Alerta)
+                .join(models.Usuario, models.Alerta.usuario_id == models.Usuario.id)
+                .filter(models.Alerta.activa.is_(True)))
+    if origen.tipo == "manual":
+        # El acto es de un tenant: su efecto no sale de su organización.
+        consulta = consulta.filter(models.Usuario.organizacion_id == origen.organizacion_id)
+    alertas = consulta.all()
     for alerta in alertas:
         if not casa_alerta(alerta, subasta):
             continue

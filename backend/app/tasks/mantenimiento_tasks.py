@@ -105,3 +105,55 @@ def purgar_tokens_consumidos() -> int:
         log.info("Purga de token_consumido: %d filas anteriores a %s",
                  borrados, corte.isoformat())
     return borrados
+
+
+@celery.task(name="seis.vigilancia_fuentes")
+def vigilancia_fuentes() -> dict:
+    """Avisa al superadministrador si una fuente activa lleva demasiado en silencio.
+
+    Es la única señal automática de que un conector se rompió. Sin ella, el modo
+    de fallo es el peor posible: el sistema sigue funcionando, las alertas siguen
+    activas y sencillamente no llega nada — indistinguible, desde fuera, de que
+    no haya subastas nuevas.
+
+    No repite el aviso mientras siga pendiente uno anterior de la misma fuente:
+    una fuente rota durante una semana debe producir un aviso, no siete.
+    """
+    from app.core.db import SessionLocal
+    from app.services import vigilancia_service
+
+    db = SessionLocal()
+    try:
+        return vigilancia_service.revisar_fuentes(db)
+    except Exception as e:                       # noqa: BLE001 — nunca tumbar el planificador
+        log.warning("vigilancia_fuentes: %s: %s", type(e).__name__, e)
+        return {"error": type(e).__name__}
+    finally:
+        db.close()
+
+
+@celery.task(name="seis.borrados_rgpd")
+def borrados_rgpd() -> dict:
+    """Ejecuta los borrados cuya gracia de 14 días ya venció (Fase 14).
+
+    Va en tarea propia y no dentro de `seis.purgar` aunque comparta camino de
+    borrado, porque son dos cosas distintas con dos razones distintas para
+    fallar: la purga limpia cuentas que nadie reclamó, esto ejecuta una petición
+    expresa de una persona. Mezclarlas haría que un fallo en una retrasara la
+    otra, y retrasar un derecho ejercido no es lo mismo que retrasar higiene.
+
+    Corre DESPUÉS de la purga (05:00 frente a 04:30) por si acaso comparten
+    candidatas: una cuenta sin verificar que además pidió el borrado la limpia
+    la purga y aquí ya no aparece.
+    """
+    from app.core.db import SessionLocal
+    from app.services import cuenta_service
+
+    db = SessionLocal()
+    try:
+        return cuenta_service.ejecutar_borrados_vencidos(db)
+    except Exception:                                    # noqa: BLE001
+        log.exception("Fallo ejecutando los borrados RGPD vencidos")
+        return {"error": True}
+    finally:
+        db.close()

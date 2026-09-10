@@ -10,29 +10,31 @@
 
 ## Frentes abiertos
 
-**Actualizado:** 2026-09-08 · **`main`:** `cc5b782` · **Suite:** 412 passed, 1 skipped
-**Última fase cerrada:** 11-A · **Siguiente:** deuda de cobertura (a y b) y luego Fase 17-A
+**Actualizado:** 2026-09-10 · **`main`:** `f3dbc35` · **Suite:** 479 con PostgreSQL, 0 omitidos · **E2E:** alta real verde (`e2e/correr.sh`)
+**Última fase cerrada:** 14 (RGPD) · **Puerta: ABIERTA**
 
 | Rama | PR | Estado | Qué contiene | Siguiente acción |
 |---|---|---|---|---|
-| `docs/adr-diseno-y-revision-visual` | — | 🟡 en revisión | ADR-0010 (UI propia), flujo de revisión visual, puerta de la deuda | Fusionar |
+| `docs/adr-diseno-y-revision-visual` | [#11](https://github.com/christo23ch/seis/pull/11) | 🟡 fusionando | ADR-0010 (UI propia), flujo de capturas repetible, puerta de la deuda | — |
 
-Sin más frentes abiertos: los PR #4 a #10 están fusionados o cerrados.
+Sin más frentes abiertos.
 
-**Ramas pendientes de borrar** (el proxy de la sesión no permite borrar refs; hay que hacerlo
-desde la interfaz de GitHub o desde una máquina local): `claude/wizardly-wright-nkscpg`,
-`infra/fase-11-rescate`, `fase-11-infraestructura`, `fix/seguridad-urgente`, `docs/estado-actual`,
-`docs/plan-fases`, `fix/pdf-guion-bajo`, `docs/avisos-readme`.
+**Fusionados:** [#12](https://github.com/christo23ch/seis/pull/12) Fase 17-A ·
+[#13](https://github.com/christo23ch/seis/pull/13) puerta (a) ·
+[#14](https://github.com/christo23ch/seis/pull/14) puerta (b) ·
+[#15](https://github.com/christo23ch/seis/pull/15) Fase 14.
 
----|---|---|---|---|
-| `docs/estado-actual` | [#5](https://github.com/christo23ch/seis/pull/5) | 🟡 en revisión | Este documento | Fusionar |
-| `docs/plan-fases` | [#8](https://github.com/christo23ch/seis/pull/8) | 🟡 en revisión | Plan de fases hasta el lanzamiento | Fusionar |
-| `fix/pdf-guion-bajo` | [#9](https://github.com/christo23ch/seis/pull/9) | 🟡 en revisión | `C_F` salía como «C F» en el informe | Fusionar |
-| `docs/avisos-readme` | [#10](https://github.com/christo23ch/seis/pull/10) | 🟡 en revisión | Avisos de arranque tras la 11-A | Fusionar |
+**La puerta está abierta:** (a) test de `init_db.main()` ✅ · (b) PostgreSQL en la CI ✅ ·
+(c) regla de activación de la purga, no una tarea · (d) cerrada.
 
-**Ramas muertas que conviene borrar:** `claude/wizardly-wright-nkscpg` (Fase 10 duplicada,
-descartada), `infra/fase-11-rescate` (PR #6, cerrado), `fase-11-infraestructura` (PR #4,
-fusionado), `fix/seguridad-urgente` (PR #7, fusionado).
+**Siguiente:** Fase 16 (auditoría de seguridad), informe primero.
+
+**Fusionados:** [#12](https://github.com/christo23ch/seis/pull/12) Fase 17-A ·
+[#13](https://github.com/christo23ch/seis/pull/13) puerta (a) ·
+[#14](https://github.com/christo23ch/seis/pull/14) puerta (b).
+
+**La puerta está abierta:** (a) test de `init_db.main()` ✅ · (b) PostgreSQL en la CI ✅ ·
+(c) regla de activación de la purga, no una tarea · (d) cerrada.
 
 ---
 

@@ -58,15 +58,19 @@ ramas y qué PRs están vivos*, que es justo lo que se perdió.
 **`docs/ESTADO_ACTUAL.md` es el índice, y ninguna fase cierra su PR sin actualizarlo.**
 Se le añade una sección de cabecera, obligatoria y corta:
 
+> Lo de abajo es **la forma de la tabla, no su contenido**: los valores son de relleno a
+> propósito. La versión anterior de este ejemplo traía un «PR #12» inventado que con el tiempo
+> pasó a existir de verdad (Fase 17-A), y un ejemplo que se puede leer como estado real es peor
+> que no tener ejemplo. **El estado vivo está en `docs/ESTADO_ACTUAL.md`, y solo ahí.**
+
 ```markdown
 ## Frentes abiertos  (actualizado: AAAA-MM-DD · commit de main: XXXXXXX)
 
 | Rama | PR | Estado | Qué contiene | Siguiente acción |
 |---|---|---|---|---|
-| fase-13-stripe | #12 | 🟡 en curso | Suscripción + webhooks | Falta enforcement |
-| (ninguna otra) | | | | |
+| <rama> | #<n> | 🟡 en revisión | <una línea> | <qué falta> |
 
-**Suite:** 402 passed, 1 skipped · **Última fase cerrada:** 11-A
+**Suite:** <n> passed, <n> skipped · **Última fase cerrada:** <fase>
 ```
 
 ### Cómo se mantiene sin depender de que te acuerdes
@@ -124,13 +128,17 @@ permitió entender 7.000 líneas ajenas en minutos en vez de leerlas enteras.
 Cuatro asuntos que no son una fase pero van por delante de todas. Tres los documentó la propia
 Fase 11-A al cerrarse; el cuarto es un defecto en el entregable que ve el cliente.
 
-> **Puerta explícita:** (a) y (b) se cierran **antes de la Fase 11-B**, es decir, antes de que
-> nada toque producción. No después. El motivo es que ambos protegen justo el camino que 11-B
-> estrena: (a) cubre el arranque de una instalación nueva —donde ya no hay `create_all` de red—
-> y (b) ejecuta por primera vez los tres caminos que solo existen en PostgreSQL, que es el motor
-> que 11-B pone en producción. Cerrarlos después sería estrenarlos con datos reales.
+> **Por qué existía la puerta:** (a) y (b) se cerraban **antes de la Fase 11-B**, es decir, antes
+> de que nada tocara producción. No después. Ambos protegen justo el camino que 11-B estrena:
+> (a) cubre el arranque de una instalación nueva —donde ya no hay `create_all` de red— y (b)
+> ejecuta por primera vez los tres caminos que solo existen en PostgreSQL, que es el motor que
+> 11-B pone en producción. Cerrarlos después habría sido estrenarlos con datos reales.
+>
+> **Estado: ABIERTA** (2026-09-09). Las dos filas están hechas y demostradas por mutación. (c) no
+> es una tarea sino una regla de activación, y (d) ya se cerró. Con PostgreSQL disponible la
+> suite no deja ninguna omisión escondiendo nada.
 
-### a) Test de `init_db.main()` — 🟢 prioridad alta, coste bajo
+### a) Test de `init_db.main()` — ✅ **hecho** (`tests/test_siembra.py`)
 
 **El hueco más peligroso de los cuatro.** Los tests prueban las tres piezas de la siembra por
 separado (conocimiento, administrador, sesión), pero **nunca la orquestación**. La mutación que
@@ -144,9 +152,14 @@ Y no se detecta hasta el despliegue, que es justo cuando más caro es. Es el def
 - **Qué hacer:** un test que ejecute `init_db.main()` de extremo a extremo contra una base
   vacía y afirme que después existen reglas, parámetros y administrador. Y otro que cubra la
   duplicación de esa orquestación en `sembrar.py`.
-- **Salida verificable:** con la mutación `if creado:` aplicada a mano, el test falla.
+- **Salida verificable:** con la mutación `if creado:` aplicada a mano, el test falla. ✅
+  Demostrado: `test_init_db_siembra_aunque_el_esquema_no_lo_cree_el` falla con «sin reglas T2 el
+  motor no evalúa nada», y quitar `sembrar_conocimiento` de `sembrar.main()` tumba el suyo. Lo
+  que no se veía al plantearlo: **un test en el entorno de desarrollo no habría servido**, porque
+  ahí `creado` es True y la mutación no cambia nada. El test tiene que correr en un entorno donde
+  `create_all` NO corra, que es el único parecido a un despliegue.
 
-### b) PostgreSQL en la CI — 🟢 coste bajo
+### b) PostgreSQL en la CI — ✅ **hecho** (job `postgres` + `tests/test_postgres.py`)
 
 Hoy la CI solo corre SQLite, así que **tres caminos exclusivos de PostgreSQL no se ejecutan en
 ninguna parte**: `SET LOCAL statement_timeout` en la sonda de salud,
@@ -156,7 +169,10 @@ T5 queda omitido de forma permanente.
 - **Qué hacer:** añadir `services: postgres:16` al job de backend y definir
   `SEIS_TEST_POSTGRES_URL`.
 - **Salida verificable:** la CI deja de reportar la omisión de T5, y los tres caminos aparecen
-  ejecutados.
+  ejecutados. ✅ Con PostgreSQL disponible: **455 passed, 0 skipped**. Y no basta con que
+  aparezcan ejecutados: los tres están demostrados por mutación, porque un test que pasa con el
+  camino puesto y sin él no prueba nada. El job además **falla si algún test se omite**, que era
+  la forma exacta en que este hueco podía volver sin que nadie se enterara.
 
 ### c) La purga en modo `borrar` no se activa todavía — 🟡 regla, no tarea
 
@@ -199,17 +215,30 @@ acumula riesgo no medido. Y la 11-A ya dejó el repositorio listo, así que es l
   es estricto, y exige `PROXIES_DE_CONFIANZA`). Te morderá al recuperar el portátil.
 - **Modelo recomendado:** **Opus 5.** El diseño operativo ya está decidido en la 11-A y sus ADRs.
 
-### Fase 17-A · Conector de captación 🟡 (con una parte 🔴)
+### Fase 17-A · Conector de captación 🟡 (con una parte 🔴) — ✅ **hecha** (rama `fase-17a-captacion`)
+> Lo 🟢 de esta ficha está construido y probado. Queda la 17-B: los selectores reales,
+> que necesitan el HTML del portal. Dos hallazgos que la ficha no preveía: el alcance
+> del matcher tuvo que decidirse de nuevo ([[ADR-0011]]) porque `organizacion_id=None`
+> no significaba «todas» sino «nadie»; y el coste del despacho con ingesta diaria
+> impone dos condiciones a la 17-B (`docs/VOLUMEN_MATCHER.md` §5).
+
 **Objetivo.** Que entren subastas solas, que es la promesa del producto.
 **Por qué aquí, y no en la posición 17.** Es el riesgo número uno del proyecto: sin caudal, las
 alertas de la Fase 12 vigilan el vacío y no hay nada que monetizar en la 13.
 
 - **Modelo (🟢, ahora):** `app/ingesta/` con parser defensivo (nunca lanza, cuenta lo no
   parseado), parámetros T3 `ingesta.boe.*` para que selectores y cadencia se cambien sin
-  desplegar, dedupe por `UniqueConstraint(fuente_codigo, identificador_externo)` —hoy
-  `UniqueConstraint` está importado en `models.py` pero **sin aplicar a ninguna tabla**—,
+  desplegar, dedupe por `UniqueConstraint(fuente_codigo, identificador_externo)` —estaba
+  importado en `models.py` y **sin aplicar a ninguna tabla**; lo aplica la migración `0007`,
+  que aborta listando los duplicados en vez de borrar filas por su cuenta—,
   transaccionalidad por lote, y vigilancia de fuentes (aviso al superadmin si una fuente lleva
   24 h a cero) reutilizando `Notificacion`, que ya existe.
+- **Decisión de producto con dueño (🟢, sin dependencias externas): cuál es el modo de
+  notificación por defecto.** No es una optimización y no puede heredarse: con ingesta diaria,
+  el `instantaneo` de fábrica manda **50 correos por cabeza y noche con diez usuarios**
+  (`docs/VOLUMEN_MATCHER.md` §3, medido). La ficha de la 17-B es su propietaria y **no cierra su
+  PR sin haberla resuelto**, con las tres opciones de esa nota decididas explícitamente, no por
+  omisión. Es la primera tarea de la 17-B porque no depende del HTML.
 - **Tú (🔴 o desde el móvil):** pegar el HTML real de `subastas.boe.es` (listado + una ficha).
   **Comprobado: el sandbox no puede descargarlo** — el proxy de egreso deniega ese dominio, así
   que el ajuste de selectores no se puede hacer sin que tú aportes el HTML.
@@ -221,19 +250,45 @@ alertas de la Fase 12 vigilan el vacío y no hay nada que monetizar en la 13.
 - **Modelo recomendado:** **Opus 5** para el andamiaje; **Sonnet 5** para el ajuste de selectores
   cuando tengas el HTML (tarea acotada de parsing, con fixtures como red).
 
-### Fase 14 · RGPD 🟢
+### Fase 14 · RGPD 🟢 — ✅ **hecha** (rama `fase-14-rgpd`; falta el texto del abogado)
 **Objetivo.** Poder operar legalmente con datos de personas reales en la UE.
 **Por qué aquí.** Es 🟢 casi entera, y **bloquea el lanzamiento**: hoy no hay consentimientos,
 ni exportación, ni borrado de cuenta. Además el registro self-service ya está vivo.
 
+> **DECISIÓN PREVIA, tomada antes de escribir una línea (2026-09-09).** La Fase 14
+> **extiende `purga_service`; no escribe un borrador paralelo.** Un segundo camino de borrado
+> reproduciría las filas huérfanas que resolvió el [[ADR-0009]], y en SQLite volvería **en
+> verde**, con datos personales sobreviviendo a un borrado que el sistema da por completo.
+>
+> Si al implementarlo resulta que extender `purga_service` no encaja, **se para y se consulta
+> antes de bifurcar**: se prefiere replantear a tener dos borradores. Esto no es una
+> preferencia de estilo, es la condición bajo la que se aprobó la fase.
+
 - **Modelo:** consentimientos granulares con versión y fecha en el registro; `GET
   /cuenta/exportar`; `DELETE /cuenta` con gracia de 14 días y anonimización de auditoría.
-  Aprovecha que la Fase 11-A ya construyó `purga_service.py`, que resolvió el problema difícil:
+  **Un solo camino de borrado**, el de `purga_service.py`, que ya resolvió el problema difícil:
   **no hay `ondelete` en ninguna de las seis claves foráneas**, así que un borrado desordenado
   aborta la transacción en PostgreSQL y —peor— deja huérfanos en SQLite.
-- **Tú:** abogado para los textos (el modelo redacta borradores marcando los huecos).
+- **Tú:** abogado para los textos. El hueco está preparado de punta a punta: `app/legal/textos.py`
+  tiene la estructura y las versiones, `GET /legal/{tipo}` los sirve sin exigir sesión —hay que
+  poder leerlos antes de registrarse— y `/legal/[tipo]` los muestra avisando de que aún son
+  provisionales. Un test vigila el marcador «PENDIENTE DE REDACCIÓN LEGAL»: cuando lleguen los
+  textos, se pone rojo y obliga a subir `VERSION_VIGENTE` a mano.
+- **Deuda que abre esta fase (dueña: Fase 16):** `usuario_service` sigue escribiendo la DIRECCIÓN
+  en `auditoria.quien`/`entidad_id` en el alta, la verificación y el cambio de contraseña. El
+  borrado la limpia después ([[ADR-0013]]), pero el origen no está arreglado, y `auditoria` no
+  tiene clave foránea a `usuario`, así que ningún test derivado del esquema puede vigilarlo.
 - **Salida verificable:** un usuario exporta sus datos y borra su cuenta sin intervención; los
-  consentimientos quedan con versión y fecha; la auditoría del borrado queda anonimizada.
+  consentimientos quedan con versión y fecha; la auditoría del borrado queda anonimizada. Y,
+  como condiciones explícitas de la aprobación:
+  1. **Cero filas huérfanas tras `DELETE /cuenta`, demostrado también contra PostgreSQL** en el
+     job `postgres` de la CI. SQLite miente justo aquí: con las claves foráneas apagadas, un
+     borrado incompleto pasa en verde.
+  2. **Demostración por mutación:** romper el borrado en cascada o la anonimización de auditoría
+     debe verse en rojo.
+  3. **La exportación no cruza organizaciones**, con test negativo explícito.
+  4. **Consentimientos con versión y fecha, guardados ya por el registro**, con el hueco de los
+     textos legales preparado para cuando lleguen.
 - **Riesgo específico:** el borrado toca datos irrecuperables. Los tests deben cubrir el ciclo
   completo con cancelación dentro de la gracia.
 - **Modelo recomendado:** **Opus 5.** El borrado en cascada manual es delicado, pero es

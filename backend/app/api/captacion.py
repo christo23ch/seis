@@ -1,42 +1,25 @@
-"""Fase 12 — Captación mínima: ingesta manual de subastas con scoring exprés.
+"""Captación de subastas: alta manual y consulta del catálogo.
 
 Las subastas captadas son conocimiento COMPARTIDO entre organizaciones (CLAUDE.md §4);
-lo privado son las alertas y notificaciones que generan. El conector BOE real es
-trabajo de la Fase 17: este router da la vía de entrada manual y para conectores.
+lo privado son las alertas y notificaciones que generan.
+
+Desde la Fase 17-A este router NO ingiere por su cuenta: delega en
+`services/ingesta_service.py`, que es el único camino de entrada de una subasta
+al sistema. Así el scoring, el dedupe y el disparo de alertas ocurren igual venga
+de un formulario o de un conector automático.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
-from fastapi import APIRouter, Depends
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app import models
 from app.api.deps import ROLES_ESCRITURA, get_current_user, require_rol
 from app.core.db import get_db
-from app.engine.scoring_expres import puntuar_subasta
-from app.services import notificaciones_service
-from app.services.conocimiento_service import parametros_vigentes
+from app.ingesta.contratos import OrigenCaptacion, SubastaCaptada
+from app.services import ingesta_service
 
 router = APIRouter(prefix="/subastas", tags=["captacion"])
-
-
-class SubastaCaptada(BaseModel):
-    fuente_codigo: str = Field(min_length=1, max_length=32)
-    identificador_externo: str | None = None
-    url: str | None = None
-    valor_subasta: float = Field(gt=0)
-    valor_referencia: float | None = Field(default=None, gt=0)  # tasación/mercado si la fuente lo da
-    puja_minima: float | None = None
-    deposito_pct: float = 0.05
-    fecha_cierre: datetime | None = None
-    subastas_desiertas_previas: int = 0
-    tiene_descripcion: bool = False
-    tiene_superficie: bool = False
-    tiene_ubicacion: bool = False
-    tiene_fotos: bool = False
-    datos_extra: dict = Field(default_factory=dict)
 
 
 def _subasta_dict(s: models.Subasta) -> dict:
@@ -55,39 +38,22 @@ def _subasta_dict(s: models.Subasta) -> dict:
 def captar_subasta(body: SubastaCaptada,
                    user: models.Usuario = Depends(require_rol(*ROLES_ESCRITURA)),
                    db: Session = Depends(get_db)) -> dict:
-    """Ingesta una subasta, calcula el scoring exprés y dispara el matcher de alertas."""
-    params = parametros_vigentes(db)
-    datos_scoring = body.model_dump(mode="json")
-    # P0.3 — ahora se calcula UNA sola vez aquí y se pasa explícito: puntuar_subasta()
-    # ya no lee el reloj internamente, así que el score queda ligado a este instante
-    # congelado, no al momento en que alguien lo reevalúe.
-    ahora = datetime.now(timezone.utc)
-    puntuacion = puntuar_subasta(datos_scoring, params, ahora)
+    """Alta manual de una subasta.
 
-    subasta = models.Subasta(
-        fuente_codigo=body.fuente_codigo,
-        identificador_externo=body.identificador_externo,
-        url=body.url, valor_subasta=body.valor_subasta,
-        puja_minima=body.puja_minima, deposito_pct=body.deposito_pct,
-        fecha_cierre=body.fecha_cierre,
-        subastas_desiertas_previas=body.subastas_desiertas_previas,
-        datos_brutos={**body.datos_extra, "captacion": datos_scoring,
-                      "score": puntuacion["score"],
-                      "score_desglose": puntuacion["desglose"],
-                      "score_version_parametros": puntuacion["version_parametros"],
-                      "score_calculado_en": ahora.isoformat()})
-    db.add(subasta)
-    db.flush()                                       # asigna el id antes de auditar
-    db.add(models.Auditoria(quien=user.email, entidad="subasta", entidad_id=subasta.id,
-                            accion="captar", delta={"fuente": body.fuente_codigo,
-                                                    "score": puntuacion["score"]}))
-    db.commit()
-    db.refresh(subasta)
+    El origen es `manual`, de modo que el matcher solo alcanza alertas de la
+    organización de quien capta: un acto de un tenant no produce efectos en otro
+    (regla de la Fase 12, P0.2). La ingesta automática usa
+    `OrigenCaptacion.plataforma()` y sí alcanza a todas — ver ADR-0011.
+    """
+    resumen, nuevas = ingesta_service.procesar_lote(
+        db, [body], OrigenCaptacion.manual(user.organizacion_id), quien=user.email)
 
-    # P0.2 — el matcher solo evalúa alertas de la MISMA organización que el
-    # captador (ver la regla documentada en notificaciones_service.evaluar_subasta).
-    notificaciones = notificaciones_service.evaluar_subasta(db, subasta, user.organizacion_id)
-    return {**_subasta_dict(subasta), "alertas_disparadas": len(notificaciones)}
+    if not nuevas:
+        if resumen.duplicadas:
+            raise HTTPException(409, "Esa subasta ya estaba captada")
+        raise HTTPException(422, "No se pudo captar la subasta: " +
+                            "; ".join(resumen.motivos_de_fallo))
+    return {**_subasta_dict(nuevas[0]), "alertas_disparadas": resumen.notificaciones}
 
 
 @router.get("")

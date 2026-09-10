@@ -301,7 +301,7 @@ Resumen (detalle y prompts de ejecución en `docs/SEIS_Plan_Maestro_Fases_920.md
 | 14 | Cumplimiento legal y RGPD | consentimientos, ARCO, textos legales (revisión de abogado) |
 | 15 | Landing pública, onboarding y ayuda | — |
 | 16 | Endurecimiento de seguridad | OWASP, rate-limit global, cabeceras |
-| 17 | Escalado de la captación (BOE real) | ajuste del conector contra el portal real |
+| 17 | Captación (BOE) | Partida en **17-A** (andamiaje: contratos, parser defensivo, ingesta unificada, unicidad `0007`, vigilancia de fuentes, alcance del matcher por origen — ADR-0011) ✅ y **17-B** (ajuste de los selectores contra el HTML real del portal, que el sandbox no puede descargar). La 17-B hereda dos condiciones de volumen medidas en `docs/VOLUMEN_MATCHER.md` §5 |
 | 18 | Canal WhatsApp (condicional) | solo si Fase 12 demuestra demanda |
 | 19 | Analítica y panel de negocio | Plausible/PostHog, embudo, MRR |
 | 20 | Beta cerrada y lanzamiento | QA guionizado, carga, go-live |
@@ -527,28 +527,47 @@ Ninguno bloquea la fusión del código —la rama no despliega nada por sí sola
   `setup-node@v4`). Es la otra mitad del punto 4 de la lista anterior.
 - **`init_db.main()` y `sembrar.main()` duplican la orquestación de siembra** (abrir
   sesión, sembrar conocimiento, sembrar admin, cerrar). Es el modo de fallo que el
-  ancla YAML de `docker-compose.yml` documenta como razón de existir, y `init_db.main()`
-  no lo ejecuta ningún test, así que la copia duplicada tampoco.
+  ancla YAML de `docker-compose.yml` documenta como razón de existir. ✅ **Cubierto**
+  (`tests/test_siembra.py`): ambas orquestaciones tienen test de extremo a extremo, y
+  la duplicación sigue ahí — lo que ya no queda es sin ejercitar.
 
 ## Huecos de cobertura detectados en la revisión final de la Fase 11-A
 
 Ninguno bloquea la fusión —los dos que sí lo hacían se cerraron en la rama—, pero
 todos son puntos donde una mutación plausible sobrevive a la suite.
 
-1. **`init_db.main()` no lo ejecuta ningún test** *(propietario: **Fase 11-B**, y no
-   debería cruzar su puerta sin cerrarse)*. Los tests prueban las tres piezas por
-   separado, nunca la orquestación. Mutación que sobrevive: envolver la siembra en
-   `if creado:`. En `development` y `test` no cambia nada y la suite queda verde; en
-   `staging` y `production`, donde `create_all` ya no corre, **la instalación arranca
-   sin reglas, sin parámetros y sin administrador** — el defecto de la Fase 9.5 por
-   otra puerta.
-2. **La CI no levanta PostgreSQL, así que T5 está omitido también allí, de forma
-   permanente** *(propietario: **Fase 11-B**)*. Consecuencia concreta: esta fase añadió
-   **tres caminos exclusivos de PostgreSQL que no ejecuta ningún test en ninguna
-   plataforma** — `SET LOCAL statement_timeout` en la sonda de salud,
-   `with_for_update(skip_locked=True)` en la purga, y el motivo de
-   `_rollback_silencioso`. Añadir `services: postgres:16` al workflow es barato y
-   elimina una de las dos omisiones para siempre.
+1. ~~**`init_db.main()` no lo ejecuta ningún test**~~ → ✅ **CERRADO** (fila 0 de la
+   puerta, `tests/test_siembra.py`). Los tests probaban las tres piezas por separado y
+   nunca la orquestación; la mutación que sobrevivía era envolver la siembra en
+   `if creado:` — en `development` y `test` no cambia nada y la suite queda verde; en
+   `staging` y `production`, donde `create_all` ya no corre, **la instalación arrancaba
+   sin reglas, sin parámetros y sin administrador**.
+
+   El test que lo cierra no es el del entorno cómodo: es
+   `test_init_db_siembra_aunque_el_esquema_no_lo_cree_el`, que ejercita el caso en el
+   que `create_all` NO corre, porque es el único que se parece a un despliegue.
+   Demostrado por mutación: con `if creado:` aplicado a mano, falla con «sin reglas T2
+   el motor no evalúa nada»; y quitando `sembrar_conocimiento` de `sembrar.main()`,
+   falla el suyo. Con el código sano, 449 passed.
+2. ~~**La CI no levanta PostgreSQL, así que T5 está omitido también allí**~~ → ✅
+   **CERRADO** (fila (b) de la puerta). Job `postgres` en `ci.yml` con
+   `services: postgres:16`, en paralelo con la suite para no alargar la CI, y
+   `tests/test_postgres.py` para los tres caminos que **no se habían ejecutado nunca**:
+   `SET LOCAL statement_timeout` en la sonda de salud,
+   `with_for_update(skip_locked=True)` en la purga y `_rollback_silencioso`.
+
+   Los tres están demostrados por mutación (ver el PR de la fila (b)). El job falla si
+   algún test marcado `postgres` se omite: un verde que no ejecutó nada es peor que un
+   rojo, y era justo el estado anterior. Con PostgreSQL disponible la suite queda en
+   **455 passed, 0 skipped** — ninguna omisión.
+
+   **Hallazgo al escribir el test del timeout:** en PostgreSQL un `SET` a secas dentro
+   de una transacción **también** se deshace con el `ROLLBACK`; la diferencia con
+   `SET LOCAL` solo se ve al CONFIRMAR (medido: `SET LOCAL` → `0`, `SET` → `50ms`). Como
+   la sonda nunca confirma —`get_db` cierra sin commit—, un test que reprodujera el
+   camino real **no distinguiría las dos grafías**. El test confirma a propósito y lo
+   dice en su docstring; fija la propiedad para el día en que un llamante escriba algo
+   en la misma transacción.
 3. **La purga en modo `borrar` nunca ha corrido por la ruta de la tarea**
    *(propietario: quien active el modo)*. Todos los tests de borrado pasan `modo=`
    explícito y la sesión de la fixture. El día que alguien ponga
