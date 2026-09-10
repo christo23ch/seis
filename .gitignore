@@ -68,3 +68,6 @@ graphify-out/
 .obsidian/plugins/*/data.json.bak
 .trash/
 .obsidian/plugins/quickadd/logs/
+
+# Capturas de revisión visual (docs/REVISION_VISUAL.md): se adjuntan al PR, no se versionan
+capturas/

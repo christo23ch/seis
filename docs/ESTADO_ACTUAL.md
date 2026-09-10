@@ -10,13 +10,24 @@
 
 ## Frentes abiertos
 
-**Actualizado:** 2026-09-10 · **`main`:** `e256c05` · **Suite:** 479 con PostgreSQL, 0 omitidos · **E2E:** alta real verde (`e2e/correr.sh`)
-**Última fase cerrada:** puerta (a) y (b) · **Puerta: ABIERTA**
+**Actualizado:** 2026-09-10 · **`main`:** `f3dbc35` · **Suite:** 479 con PostgreSQL, 0 omitidos · **E2E:** alta real verde (`e2e/correr.sh`)
+**Última fase cerrada:** 14 (RGPD) · **Puerta: ABIERTA**
 
 | Rama | PR | Estado | Qué contiene | Siguiente acción |
 |---|---|---|---|---|
-| `docs/adr-diseno-y-revision-visual` | [#11](https://github.com/christo23ch/seis/pull/11) | 🟡 en revisión | ADR-0010 (UI propia), flujo de capturas repetible | Fusionar |
-| `fase-14-rgpd` | [#15](https://github.com/christo23ch/seis/pull/15) | 🟡 en revisión | Fase 14: consentimientos con versión, exportación, borrado con gracia sobre un solo camino (ADR-0012/0013) **+ pantalla de alta y e2e real** | Fusionar |
+| `docs/adr-diseno-y-revision-visual` | [#11](https://github.com/christo23ch/seis/pull/11) | 🟡 fusionando | ADR-0010 (UI propia), flujo de capturas repetible, puerta de la deuda | — |
+
+Sin más frentes abiertos.
+
+**Fusionados:** [#12](https://github.com/christo23ch/seis/pull/12) Fase 17-A ·
+[#13](https://github.com/christo23ch/seis/pull/13) puerta (a) ·
+[#14](https://github.com/christo23ch/seis/pull/14) puerta (b) ·
+[#15](https://github.com/christo23ch/seis/pull/15) Fase 14.
+
+**La puerta está abierta:** (a) test de `init_db.main()` ✅ · (b) PostgreSQL en la CI ✅ ·
+(c) regla de activación de la purga, no una tarea · (d) cerrada.
+
+**Siguiente:** Fase 16 (auditoría de seguridad), informe primero.
 
 **Fusionados:** [#12](https://github.com/christo23ch/seis/pull/12) Fase 17-A ·
 [#13](https://github.com/christo23ch/seis/pull/13) puerta (a) ·

@@ -128,10 +128,15 @@ permitió entender 7.000 líneas ajenas en minutos en vez de leerlas enteras.
 Cuatro asuntos que no son una fase pero van por delante de todas. Tres los documentó la propia
 Fase 11-A al cerrarse; el cuarto es un defecto en el entregable que ve el cliente.
 
-> **Estado de la puerta: ABIERTA** (2026-09-09). Las dos filas que la cerraban —(a) test de
-> `init_db.main()` y (b) PostgreSQL en la CI— están hechas y demostradas por mutación. (c) no es
-> una tarea sino una regla de activación, y (d) ya se cerró. Con PostgreSQL disponible la suite
-> queda en **455 passed, 0 skipped**: ninguna omisión escondiendo nada.
+> **Por qué existía la puerta:** (a) y (b) se cerraban **antes de la Fase 11-B**, es decir, antes
+> de que nada tocara producción. No después. Ambos protegen justo el camino que 11-B estrena:
+> (a) cubre el arranque de una instalación nueva —donde ya no hay `create_all` de red— y (b)
+> ejecuta por primera vez los tres caminos que solo existen en PostgreSQL, que es el motor que
+> 11-B pone en producción. Cerrarlos después habría sido estrenarlos con datos reales.
+>
+> **Estado: ABIERTA** (2026-09-09). Las dos filas están hechas y demostradas por mutación. (c) no
+> es una tarea sino una regla de activación, y (d) ya se cerró. Con PostgreSQL disponible la
+> suite no deja ninguna omisión escondiendo nada.
 
 ### a) Test de `init_db.main()` — ✅ **hecho** (`tests/test_siembra.py`)
 
@@ -389,7 +394,8 @@ en `docs/HERRAMIENTAS.md` (Paso 4), no aquí.
 
 | # | Fase | Clase | Depende de |
 |---|---|---|---|
-| 1 | 11-B · Despliegue | 🟡 | Dominio, hosting |
+| **0** | **Deuda de cobertura (§2-bis a y b)** | 🟢 | — · **PUERTA: nada que toque producción se despliega antes** |
+| 1 | 11-B · Despliegue | 🟡 | Dominio, hosting · **la puerta 0** |
 | 2 | 17-A · Captación | 🟡 + 🔴 | HTML real del BOE |
 | 3 | 14 · RGPD | 🟢 | Abogado (textos) |
 | 4 | 13 · Stripe | 🟡 | **Figura fiscal** (empieza hoy) |

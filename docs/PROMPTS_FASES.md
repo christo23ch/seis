@@ -58,6 +58,11 @@ PROTOCOLO, SIN EXCEPCIONES
 - Antes de cerrar el PR, actualiza la tabla «Frentes abiertos» de
   docs/ESTADO_ACTUAL.md, y escribe un ADR en 30-Decisiones/ADR/ por cada decisión
   discutible, usando 900-Plantillas/Plantilla-ADR.md.
+- Si la fase toca FRONTEND: adjunta capturas del ANTES y el DESPUÉS de cada
+  pantalla afectada, generadas con `node scripts/capturar.mjs antes|despues`
+  (procedimiento en docs/REVISION_VISUAL.md). Sin ellas la revisión de diseño se
+  hace a ciegas y no se acepta el PR. Referencia obligatoria en toda decisión
+  visual: docs/DESIGN_SYSTEM.md.
 - Termina con un RESUMEN DE CAMBIOS POR FICHERO apto para revisar en el móvil:
   una línea por fichero y, aparte, las 3 decisiones más discutibles señaladas.
   No pegues diffs largos.
@@ -304,6 +309,20 @@ Produce docs/DESIGN_SYSTEM.md con: dirección estética argumentada con referenc
 concretas del sector (herramientas de análisis financiero profesional), escala
 tipográfica, paleta y tokens, tratamiento de datos numéricos y tablas densas,
 estados de carga y de error, densidad de información y reglas de gráficos.
+
+LA TIPOGRAFÍA NO SE ELIGE POR GUSTO. Hoy la cara del producto es Georgia, la serif
+que todo sistema trae por defecto (tailwind.config.ts:18): no es una elección, es
+la ausencia de una. Presenta DOS O TRES opciones y deja que yo decida. Para cada
+una:
+  · qué transmite y por qué encaja con un producto de análisis financiero que ve
+    un inversor —no «se ve moderna»: qué asocia el lector con esa forma—;
+  · cómo se comporta con CIFRAS: ¿tiene cifras tabulares? ¿el cero se distingue de
+    la O, el uno de la ele? Es el 80 % de lo que SEIS muestra;
+  · cómo se comporta en TABLAS DENSAS, con varias filas de números comparables;
+  · licencia y peso, porque se sirve al navegador.
+Y acompáñalas de CAPTURAS COMPARATIVAS reales generadas con
+`node scripts/capturar.mjs` (ver docs/REVISION_VISUAL.md): la misma pantalla con
+cada opción, para poder compararlas mirando y no imaginando. No decidas tú.
 
 Requisitos duros:
 - Cada regla debe ser verificable, no una opinión: «tabular-nums en toda cifra
