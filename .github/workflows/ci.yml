@@ -148,6 +148,14 @@ jobs:
     defaults:
       run:
         working-directory: frontend
+    env:
+      # Playwright es devDependency del frontend desde la Fase 14 (la prueba de
+      # alta de punta a punta), pero este job SOLO compila: no abre un navegador.
+      # Sin esto, `npm ci` se descarga Chromium en cada runner nuevo. Medido: la
+      # caché de npm pasó de ~60 MB a 169 MB en la primera ejecución que lo
+      # incluyó. El e2e se ejecuta a mano con `npm run e2e`, donde el navegador
+      # ya está instalado.
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
     steps:
       - uses: actions/checkout@v4
 
