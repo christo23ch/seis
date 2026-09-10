@@ -233,6 +233,11 @@ alertas de la Fase 12 vigilan el vacío y no hay nada que monetizar en la 13.
   que aborta listando los duplicados en vez de borrar filas por su cuenta—,
   transaccionalidad por lote, y vigilancia de fuentes (aviso al superadmin si una fuente lleva
   24 h a cero) reutilizando `Notificacion`, que ya existe.
+- **Condición de cierre (🟢, sin dependencias externas): el puente captación → análisis.**
+  Hoy `crear_analisis` crea su propia `Subasta` y no reutiliza las captadas, de modo que una
+  subasta traída por el conector **no se puede analizar sin re-teclear todo**. El caudal que
+  abre la 17-A desembocaría en un formulario de diez pasos. Descubierto con un caso real de la
+  AEAT (ver `ESTADO_ACTUAL.md`). Esta ficha no cierra su PR sin resolverlo.
 - **Decisión de producto con dueño (🟢, sin dependencias externas): cuál es el modo de
   notificación por defecto.** No es una optimización y no puede heredarse: con ingesta diaria,
   el `instantaneo` de fábrica manda **50 correos por cabeza y noche con diez usuarios**
