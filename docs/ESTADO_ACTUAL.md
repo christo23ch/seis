@@ -10,14 +10,33 @@
 
 ## Frentes abiertos
 
-**Actualizado:** 2026-09-10 · **`main`:** `5fb3024` · **Suite:** 513 con PostgreSQL, 0 omitidos · **E2E:** alta real verde (`e2e/correr.sh`)
+**Actualizado:** 2026-09-10 · **`main`:** `9360e49` · **Suite:** 518 con PostgreSQL, 0 omitidos · **E2E:** alta real verde (`e2e/correr.sh`)
 **Última fase cerrada:** 14 (RGPD) · **Fase 16 parte 1: informe entregado** · **Puerta: ABIERTA**
 
 | Rama | PR | Estado | Qué contiene | Siguiente acción |
 |---|---|---|---|---|
-| `fase-16-auditoria` | *(pendiente de abrir)* | 🟢 lista | Fase 16 completa: informe + las 3 altas y 7 medias corregidas con mutación, y **ADR-0014** (regla de alcance) | Abrir PR |
+| `fix/puja-inviable` | *(pendiente de abrir)* | 🟢 lista | M13 devolvía 500 en toda operación con puja máxima negativa | Abrir PR |
 
-Sin más frentes abiertos.
+Sin más frentes abiertos de código.
+
+### 🔴 Frente abierto de PRODUCTO, con dueño: el puente captación → análisis
+
+**No existe.** `analisis_service.crear_analisis` **crea su propia fila `Subasta`**
+a partir del `AnalisisInput`; no reutiliza ninguna captada. `POST /subastas`
+(captación, con su scoring exprés) y `POST /analisis` (motor M01-M14) son dos
+caminos que no se hablan.
+
+**Consecuencia, y por eso es prioritario: BLOQUEA LA 17-B.** En cuanto la ingesta
+automática del BOE empiece a producir subastas, serán subastas **que nadie podrá
+analizar sin volver a teclear todos los datos a mano**. El caudal que la 17-A
+existe para abrir desembocaría en un formulario de diez pasos.
+
+**Dueña: la ficha de la Fase 17-B** (`PLAN_FASES.md`), que no cierra su PR sin
+resolverlo — igual que ya no cierra sin decidir el modo de notificación por
+defecto. No es una nota al pie: es condición de la fase.
+
+Descubierto el 2026-09-10 recorriendo el flujo completo con un caso real de la
+AEAT, no con una fixture.
 
 **Fusionados:** [#12](https://github.com/christo23ch/seis/pull/12) Fase 17-A ·
 [#13](https://github.com/christo23ch/seis/pull/13) puerta (a) ·

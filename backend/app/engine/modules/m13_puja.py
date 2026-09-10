@@ -33,7 +33,21 @@ def ejecutar(inp: AnalisisInput, params, hechos: dict, escalera: EscaleraPrecios
 
     p_adj = vt * ratio
     rvc = escalera.p_max / p_adj if p_adj > 0 else 0.0
-    banda = next(b["banda"] for b in params.get("adjudicacion.rvc_bandas") if rvc >= b["min"])
+    # `inviable` por defecto, y no es defensa decorativa: `rvc` puede ser
+    # NEGATIVO. Ocurre siempre que la puja máxima sensata sale por debajo de
+    # cero, es decir, cuando la operación no se sostiene ni pujando 0 € — el
+    # caso más común es una tasación baja sin comparables, con ICI hundido y
+    # por tanto contingencia alta.
+    #
+    # La tabla `rvc_bandas` ya termina en `{min: 0.0, banda: inviable}`, de modo
+    # que la INTENCIÓN de cubrir este caso estaba escrita; lo que faltaba era
+    # que un valor negativo encajara en alguna banda. Sin el valor por defecto,
+    # `next()` lanzaba `StopIteration` y el motor devolvía un 500 **justo en las
+    # operaciones que debe rechazar**, que son la mitad de las reales. Detectado
+    # con un caso real de la AEAT (44 m², 1940, sin comparables), no con una
+    # fixture: el caso dorado §19 no lo cubre porque es una operación buena.
+    banda = next((b["banda"] for b in params.get("adjudicacion.rvc_bandas")
+                  if rvc >= b["min"]), "inviable")
 
     deposito = inp.subasta.deposito_pct * vt
     plan = [
