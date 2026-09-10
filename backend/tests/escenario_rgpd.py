@@ -22,6 +22,11 @@ from app import models
 
 PASSWORD = "unaClaveLarga-14"
 
+# Suelo de cordura del esquema. Hoy hay 23 tablas; se deja margen para que añadir
+# una no obligue a tocar esto, pero no tanto como para que un metadata vacío o a
+# medio poblar lo pase.
+MINIMO_TABLAS_ESPERADAS = 15
+
 
 def tablas_hijas_de(metadata, *padres: str) -> set[str]:
     """Tablas con clave foránea a alguno de esos padres, DERIVADAS del metadata.
@@ -31,11 +36,36 @@ def tablas_hijas_de(metadata, *padres: str) -> set[str]:
     cubra en `borrado_service` verá este test en rojo con el nombre de su tabla,
     sin haber tenido que acordarse de nada.
     """
+    # FALLA EN VEZ DE PASAR EN VACÍO (hallazgo 1.5 de la auditoría, ADR-0014).
+    # `Base.metadata` se puebla al importar `app.models`; si nadie lo ha
+    # importado, esta función devolvía el conjunto vacío y el
+    # `assert not sin_cubrir` de quien la llama pasaba **sin comprobar nada**.
+    # Una red que no encuentra nada porque no puede ver nada tiene que ponerse
+    # roja, no verde.
+    if len(metadata.sorted_tables) < MINIMO_TABLAS_ESPERADAS:
+        raise AssertionError(
+            f"El metadata solo tiene {len(metadata.sorted_tables)} tablas, menos "
+            f"de las {MINIMO_TABLAS_ESPERADAS} esperadas: casi seguro que nadie "
+            "ha importado `app.models` y esta comprobación no está viendo el "
+            "esquema. Pasaría en verde sin comprobar nada.")
+
     hijas = set()
     for tabla in metadata.sorted_tables:
         for fk in tabla.foreign_keys:
             if fk.column.table.name in padres and tabla.name not in padres:
                 hijas.add(tabla.name)
+
+    # Segunda guarda, contra el otro modo de pasar en vacío: que el esquema esté
+    # poblado pero `padres` no exista en él (una errata en el nombre de la tabla).
+    # Sin esto, `tablas_hijas_de(metadata, "usuarios")` —en plural— devolvería
+    # vacío y también pasaría en verde.
+    nombres = {t.name for t in metadata.sorted_tables}
+    desconocidos = set(padres) - nombres
+    if desconocidos:
+        raise AssertionError(
+            f"Estas tablas «padre» no existen en el esquema: {sorted(desconocidos)}. "
+            "Con un nombre mal escrito la búsqueda no encuentra hijas y la "
+            "comprobación pasa en vacío.")
     return hijas
 
 
