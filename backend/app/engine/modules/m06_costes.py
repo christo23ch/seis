@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import math
 
+from app.engine import fiscal
 from app.engine.contracts import AnalisisInput, CostesResultado, ICIResultado, ReformaResultado, ValoracionResultado
 
 
@@ -39,6 +40,13 @@ def ejecutar(inp: AnalisisInput, params, hechos: dict, reforma: ReformaResultado
     regimen, tipo_imp, desglose_fiscal = _arbol_fiscal(inp, params)
     c_v_d: dict[str, float] = {**desglose_fiscal,
                                "aranceles_variables": float(params.get("aranceles.variable_pct"))}
+
+    # Base imponible del ITP: el mayor de (valor de referencia, valor declarado, precio
+    # pagado). El tipo sigue dentro de c_v —proporcional a P— y el tramo no proporcional
+    # se calcula en app/engine/fiscal.py. Solo afecta al ITP: en IVA la base es el precio.
+    b_min, b_origen = fiscal.base_minima(inp.costes.valor_referencia_catastral,
+                                         inp.costes.valor_declarado)
+    tipo_b_min = float(desglose_fiscal.get("itp", 0.0)) if b_min > 0 else 0.0
     fin = inp.financiacion
     plazo_obra = reforma.plazo_obra_meses
 
@@ -108,7 +116,11 @@ def ejecutar(inp: AnalisisInput, params, hechos: dict, reforma: ReformaResultado
         desglose_p50=d50, desglose_p80=d80, contingencia_pct=round(conting_pct, 4),
         tenencia_mensual=tenencia_mensual, plazo_meses_p50=plazo_p50, plazo_meses_p80=round(plazo_p80, 1),
         regimen_fiscal=regimen, tipo_impositivo=tipo_imp,
+        base_fiscal_minima=round(b_min, 2), base_fiscal_origen=b_origen,
+        tipo_base_minima=tipo_b_min,
     )
     hechos.update({"c_v": res.c_v, "c_f_p50": res.c_f_p50, "c_f_p80": res.c_f_p80,
-                   "plazo_p50": plazo_p50, "plazo_p80": res.plazo_meses_p80})
+                   "plazo_p50": plazo_p50, "plazo_p80": res.plazo_meses_p80,
+                   "base_fiscal_minima": res.base_fiscal_minima,
+                   "base_fiscal_origen": res.base_fiscal_origen})
     return res

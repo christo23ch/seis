@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from app.engine import fiscal
 from app.engine.contracts import (AnalisisInput, CostesResultado, EscenarioOut,
                                   RentabilidadResultado, ValoracionResultado)
 
@@ -22,8 +23,9 @@ class ParametrosEscenario:
     contingencia_incluida: float          # para el calendario de flujos
 
 
-def inversion(p: float, c_v: float, c_f: float) -> float:
-    return p * (1 + c_v) + c_f
+def inversion(p: float, costes: CostesResultado, c_f: float) -> float:
+    """I(P). Delega en `fiscal` porque el impuesto ya no es proporcional a P."""
+    return fiscal.inversion(p, costes, c_f)
 
 
 def _roi_anualizado(roi: float, plazo_meses: float) -> float:
@@ -38,7 +40,9 @@ def _roi_anualizado(roi: float, plazo_meses: float) -> float:
 def _flujos_detallados(p: float, esc: ParametrosEscenario, costes: CostesResultado,
                        d: dict, n: int) -> list[float]:
     flujos = [0.0] * (n + 1)
-    flujos[0] -= p * (1 + costes.c_v) + d["adquisicion_fija"] + d["atrasos_comunidad_ibi"] \
+    # El sobrecoste fiscal se paga con la adquisición: va en el mes 0, no prorrateado.
+    flujos[0] -= p * (1 + costes.c_v) + fiscal.sobrecoste(p, costes) \
+        + d["adquisicion_fija"] + d["atrasos_comunidad_ibi"] \
         + esc.contingencia_incluida + d["cargas_subsistentes"] + d["plusvalia_municipal"]
 
     # tenencia del escenario = C_F del escenario − resto de partidas ⇒ suma exacta = B(P)
@@ -113,7 +117,7 @@ def evaluar(p: float, escenarios: list[ParametrosEscenario], costes: CostesResul
             inp: AnalisisInput, params) -> RentabilidadResultado:
     outs: list[EscenarioOut] = []
     for e in escenarios:
-        i_total = inversion(p, costes.c_v, e.c_f)
+        i_total = inversion(p, costes, e.c_f)
         b = e.vs - i_total
         roi = b / i_total if i_total > 0 else 0.0
         outs.append(EscenarioOut(nombre=e.nombre, probabilidad=e.probabilidad, vs=round(e.vs, 2),

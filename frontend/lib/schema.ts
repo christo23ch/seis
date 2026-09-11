@@ -84,6 +84,10 @@ export const esquemaAnalisis = z.object({
     primera_entrega: z.boolean(),
     comprador_deduce_iva: z.boolean(),
     itp_tipo_override: optNum,          // en %
+    // Base imponible del ITP: el mayor de (valor de referencia, declarado, puja).
+    // Vacío ⇒ el motor usa la puja como suelo y lo declara como carencia.
+    valor_referencia_catastral: optNum,
+    valor_declarado: optNum,
     atrasos_comunidad_ibi: optNum,
     adquisicion_fija_override: optNum,
     tenencia_mensual: optNum,
@@ -137,7 +141,8 @@ export const valoresIniciales: ValoresAnalisis = {
   comparables: [{ precio_m2: 0, estado: "reformado", origen: "testigo", meses_antiguedad: 0 }],
   reforma: { nivel_override: "", visita_interior: false, k_provincia: 1, coste_m2_override: undefined, partidas_extra: 0 },
   costes: { regimen_fiscal: "auto", transmitente_empresario: false, primera_entrega: false, comprador_deduce_iva: false,
-            itp_tipo_override: undefined, atrasos_comunidad_ibi: undefined, adquisicion_fija_override: undefined,
+            itp_tipo_override: undefined, valor_referencia_catastral: undefined, valor_declarado: undefined,
+            atrasos_comunidad_ibi: undefined, adquisicion_fija_override: undefined,
             tenencia_mensual: undefined, plusvalia_municipal_estimada: 0 },
   financiacion: { tipo: "cash", preaprobada: false, ltv: 0, interes_anual_pct: 3.5 },
   rentista: { renta_mensual_estimada: 0, vacancia_pct: 5, ibi_anual: 0, comunidad_mensual: 0,

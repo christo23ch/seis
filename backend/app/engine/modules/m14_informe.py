@@ -64,8 +64,12 @@ def construir_checklist(inp: AnalisisInput, dec: DecisionFinal, hechos: dict) ->
     add("B. Jurídico", "Procedimiento sin incidentes visibles que amenacen la adjudicación", False, "pendiente")
 
     # C. Fiscal
-    add("C. Fiscal", "Tributación de la adquisición determinada (árbol §8.7.3) y aplicada en c_v", True, "ok",
-        f"Régimen calculado por el motor según los datos declarados")
+    base_min = float(hechos.get("base_fiscal_minima", 0.0))
+    add("C. Fiscal", "Tributación de la adquisición determinada (árbol §8.7.3) y aplicada en c_v", True,
+        "ok" if base_min > 0 else "pendiente",
+        "Régimen calculado por el motor según los datos declarados; base imponible "
+        + (f"= {_eur(base_min)} ({hechos.get('base_fiscal_origen', '')})" if base_min > 0 else
+           "tomada de la puja por no constar valor de referencia: el impuesto es un mínimo"))
     add("C. Fiscal", "Plusvalía municipal y quién la soporta según condiciones de la subasta", False,
         "ok" if inp.costes.plusvalia_municipal_estimada > 0 else "pendiente")
     add("C. Fiscal", "Vehículo de compra decidido (persona física / sociedad) y coherente", False, "pendiente")
@@ -117,6 +121,15 @@ def construir_informe(inp: AnalisisInput, res_parciales: dict, dec: DecisionFina
         f"{_eur(e.beneficio)} | {e.roi:.1%} | {e.roi_anualizado:.1%} | {e.plazo_meses:.0f} m |"
         for e in rent.escenarios)
     filas_c50 = "\n".join(f"| {k} | {_eur(v)} |" for k, v in costes.desglose_p50.items())
+    if costes.base_fiscal_minima > 0:
+        base_fiscal = (f" Base imponible del impuesto: {_eur(costes.base_fiscal_minima)} "
+                       f"({costes.base_fiscal_origen.replace('_', ' ')}), no la puja, cuando esta "
+                       f"queda por debajo (art. 10 TRLITPAJD).")
+    else:
+        base_fiscal = (" **Base imponible del impuesto calculada sobre la puja, como suelo: no consta "
+                       "valor de referencia del Catastro ni valor declarado.** La base legal es el mayor "
+                       "de los tres, así que el impuesto aquí es un MÍNIMO y el real puede ser mayor. "
+                       "Supuesto no verificado, no dato confirmado.")
     bloq = [c for c in checklist if c.bloqueante and c.estado == "pendiente"]
     filas_bloq = "\n".join(f"- [ ] **[B]** {c.texto}" + (f" — _{c.detalle}_" if c.detalle else "") for c in bloq) or "- (ninguno)"
     condiciones = "\n".join(f"- {c}" for c in dec.condiciones) or "- (ninguna)"
@@ -164,7 +177,7 @@ Método {val.metodo} con {val.n_comparables} comparables (CV {val.dispersion_cv:
 ICU {icu.icu} (macro {icu.macro_score:.0f} · micro {icu.micro_score:.0f}). Tendencia {icu.tendencia_5a_pct:+.1f} %/a · DOM venta {icu.dom_venta_dias:.0f} d · DOM alquiler {icu.dom_alquiler_dias:.0f} d · Potencial de revalorización {icu.potencial_revalorizacion}/100.
 
 ## 5 · Plan de obra y costes
-Reforma nivel **{ref.nivel}**: {_eur(ref.total_p50)} (P50) / {_eur(ref.total_p80)} (P80), {ref.plazo_obra_meses:.0f} meses de obra. c_v = {costes.c_v:.2%} ({costes.regimen_fiscal.upper()}). Plazo total {costes.plazo_meses_p50:.0f} m (P50) / {costes.plazo_meses_p80:.0f} m (P80). Contingencia {costes.contingencia_pct:.0%}.
+Reforma nivel **{ref.nivel}**: {_eur(ref.total_p50)} (P50) / {_eur(ref.total_p80)} (P80), {ref.plazo_obra_meses:.0f} meses de obra. c_v = {costes.c_v:.2%} ({costes.regimen_fiscal.upper()}).{base_fiscal} Plazo total {costes.plazo_meses_p50:.0f} m (P50) / {costes.plazo_meses_p80:.0f} m (P80). Contingencia {costes.contingencia_pct:.0%}.
 
 | Partida C_F (P50) | Importe |
 |---|---|
