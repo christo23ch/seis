@@ -11,6 +11,7 @@ from pathlib import Path
 
 import yaml
 
+from app.engine import fiscal
 from app.engine.contracts import (AnalisisInput, AnalisisResult, DecisionFinal,
                                   ReglaDisparadaOut)
 from app.engine.modules import (m01_captura, m02_validacion, m03_valoracion,
@@ -79,7 +80,7 @@ def ejecutar_analisis(inp: AnalisisInput, params: Parametros | None = None,
 
     # VPO: viabilidad frente a precio máximo legal (alimenta VETO-VPO-01)
     if inp.activo.vpo and inp.activo.vpo_precio_max_legal:
-        i_min = escalera.p_objetivo * (1 + costes.c_v) + costes.c_f_p50
+        i_min = fiscal.inversion(escalera.p_objetivo, costes, costes.c_f_p50)
         hechos["vpo_inviable"] = inp.activo.vpo_precio_max_legal < i_min
 
     # ── Escenarios y rentabilidad al precio objetivo ─────────────────────
@@ -99,7 +100,7 @@ def ejecutar_analisis(inp: AnalisisInput, params: Parametros | None = None,
     condiciones += sorted({c for r in riesgos if r.nivel in ("alto", "critico") for c in r.condiciones})
 
     # ── ICO y semáforo ───────────────────────────────────────────────────
-    ms_valor = m12_decision.margen_seguridad(p_eval, costes.c_v, costes.c_f_p50, valoracion.vs)
+    ms_valor = m12_decision.margen_seguridad(p_eval, costes, costes.c_f_p50, valoracion.vs)
     ico, ico_desglose = m12_decision.calcular_ico(inp, params, ra_res, rentabilidad, icu,
                                                   ici.ici, escalera, costes.plazo_meses_p50)
     semaforo, razones = m12_decision.decidir_semaforo(

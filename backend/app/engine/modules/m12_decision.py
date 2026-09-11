@@ -6,6 +6,7 @@ Todo determinista; cada disparo de regla queda trazado (P1, P2, P6).
 """
 from __future__ import annotations
 
+from app.engine import fiscal
 from app.engine.contracts import (AnalisisInput, CostesResultado, DecisionFinal,
                                   EscaleraPrecios, ICIResultado, ICUResultado,
                                   RAResultado, RentabilidadResultado, RiesgoOut,
@@ -53,8 +54,10 @@ def calcular_delta_v(params, banda_ra: str, cv: float, ici: ICIResultado) -> flo
 
 
 # ───────────────────── CAPA 3 · Escalera de precios (§9.1–9.3) ────────────────────
-def _precio_venta(m: float, vs: float, c_f: float, c_v: float) -> float:
-    return (vs / (1 + m) - c_f) / (1 + c_v)
+def _precio_venta(m: float, vs: float, c_f: float, costes: CostesResultado) -> float:
+    """P que deja margen `m` sobre la inversión. Dos tramos: ver app/engine/fiscal.py."""
+    return fiscal.resolver_por_tramos(
+        costes, lambda c_v, extra: (vs / (1 + m) - c_f - extra) / (1 + c_v))
 
 
 def calcular_escalera(inp: AnalisisInput, params, banda_ra: str, vs_p: float,
@@ -62,20 +65,21 @@ def calcular_escalera(inp: AnalisisInput, params, banda_ra: str, vs_p: float,
                       y_zona_pct: float, ici: int) -> EscaleraPrecios:
     perfil = params.seccion(f"perfiles.{inp.perfil}")
     fila = params.seccion(f"primas_ra.{banda_ra}")
-    c_v, cf50, cf80 = costes.c_v, costes.c_f_p50, costes.c_f_p80
+    cf50, cf80 = costes.c_f_p50, costes.c_f_p80
     detalle: dict[str, float] = {"delta_v_aplicado": 0.0}
 
     if perfil["tipo"] == "venta":
         m_obj = float(perfil["m_objetivo"]) * float(fila["mult_m"])
         m_min = float(perfil["m_minimo"]) * float(fila["mult_m"])
         m_exc = m_obj * float(params.get("precios.m_exc_mult"))
-        p_ideal = _precio_venta(m_exc, vs_p, cf50, c_v)
-        p_obj = _precio_venta(m_obj, vs_p, cf50, c_v)
-        p_a = _precio_venta(m_min, vs_p, cf50, c_v)
+        p_ideal = _precio_venta(m_exc, vs_p, cf50, costes)
+        p_obj = _precio_venta(m_obj, vs_p, cf50, costes)
+        p_a = _precio_venta(m_min, vs_p, cf50, costes)
         # rama pesimista: B_pes(P) = piso·I(P) ⇒ I = VS_pes/(1+piso)
         piso = float(perfil.get("piso_pesimista_frac_i", 0.0))
         vs_pes = vs_p * (1 - float(fila["stress_mercado"]))
-        p_pes = (vs_pes / (1 + piso) - cf80) / (1 + c_v)
+        p_pes = fiscal.resolver_por_tramos(
+            costes, lambda c_v, extra: (vs_pes / (1 + piso) - cf80 - extra) / (1 + c_v))
         p_max = min(p_a, p_pes)
         detalle.update({"m_objetivo_ajustado": round(m_obj, 4), "m_minimo_ajustado": round(m_min, 4),
                         "vs_pesimista": round(vs_pes, 2), "p_por_margen_min": round(p_a, 2),
@@ -90,7 +94,10 @@ def calcular_escalera(inp: AnalisisInput, params, banda_ra: str, vs_p: float,
         y_suelo = float(perfil["y_bono_10a"]) + float(perfil["y_suelo_pp_sobre_bono"])
 
         def p_de_y(y_pct: float) -> float:
-            return (rna / (y_pct / 100.0) - cf50) / (1 + c_v) if y_pct > 0 else 0.0
+            if y_pct <= 0:
+                return 0.0
+            return fiscal.resolver_por_tramos(
+                costes, lambda c_v, extra: (rna / (y_pct / 100.0) - cf50 - extra) / (1 + c_v))
 
         p_ideal, p_obj = p_de_y(y_req + 1.0), p_de_y(y_req + 0.5)
         candidatos = [p_de_y(y_req)]
@@ -100,16 +107,21 @@ def calcular_escalera(inp: AnalisisInput, params, banda_ra: str, vs_p: float,
             dscr_min = float(params.get("financiacion.dscr_minimo"))
             candidatos.append(rna / (dscr_min * f.ltv * ts))              # DSCR = 1,2 estresado
             coc = float(perfil["coc_min"])
-            den = coc * (1 + c_v - f.ltv) + f.ltv * f.interes_anual_pct / 100
-            candidatos.append((rna - coc * cf50) / den if den > 0 else 0.0)
+
+            def p_de_coc(c_v_ef: float, extra: float) -> float:
+                den = coc * (1 + c_v_ef - f.ltv) + f.ltv * f.interes_anual_pct / 100
+                return (rna - coc * (cf50 + extra)) / den if den > 0 else 0.0
+
+            candidatos.append(fiscal.resolver_por_tramos(costes, p_de_coc))
         p_max = min(candidatos)
         p_lim_rent = p_de_y(y_suelo)
         detalle.update({"y_req_pct": round(y_req, 3), "y_suelo_pct": round(y_suelo, 3), "rna": round(rna, 2)})
 
     # P_límite (§9.1): indiferencia estresada − coste de capital. Infranqueable por software.
     cc_anual = float(params.get("capital.coste_capital_anual"))
-    p_lim_bruto = (vs_p - cf80) / (1 + c_v)
-    i_aprox = p_max * (1 + c_v) + cf80
+    p_lim_bruto = fiscal.resolver_por_tramos(
+        costes, lambda c_v_ef, extra: (vs_p - cf80 - extra) / (1 + c_v_ef))
+    i_aprox = fiscal.inversion(p_max, costes, cf80)
     coste_capital = cc_anual * i_aprox * (costes.plazo_meses_p80 / 12.0)
     p_lim = p_lim_bruto - coste_capital
     if perfil["tipo"] == "rentista":
@@ -257,7 +269,7 @@ def decidir_semaforo(params, ico: int, ra_res: RAResultado, rent: RentabilidadRe
     return candidato, razones
 
 
-def margen_seguridad(p: float, c_v: float, c_f_p50: float, vs: float) -> float:
+def margen_seguridad(p: float, costes: CostesResultado, c_f_p50: float, vs: float) -> float:
     """MS_valor (§9.5): caída de VS soportable antes de entrar en pérdida, a precio P."""
-    i_total = p * (1 + c_v) + c_f_p50
+    i_total = fiscal.inversion(p, costes, c_f_p50)
     return max(0.0, 1 - i_total / vs) if vs > 0 else 0.0

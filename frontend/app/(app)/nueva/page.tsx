@@ -239,6 +239,10 @@ function Paso7() {
         <FIn name="costes.itp_tipo_override" label="ITP manual (%) — opcional" tipo="number" step="any"
           ayuda="Si se deja vacío se usa la tabla T3 de la CCAA." />
         <FIn name="costes.plusvalia_municipal_estimada" label="Plusvalía municipal estimada (€)" tipo="number" step="any" />
+        <FIn name="costes.valor_referencia_catastral" label="Valor de referencia del Catastro (€) — opcional" tipo="number" step="any"
+          ayuda="El ITP se liquida sobre el MAYOR de (valor de referencia, valor declarado, precio de remate). Si se deja vacío el motor usa el remate como suelo y avisa de que el impuesto es un mínimo." />
+        <FIn name="costes.valor_declarado" label="Valor declarado en escritura (€) — opcional" tipo="number" step="any"
+          ayuda="Solo si difiere del precio de remate." />
       </div>
       <div className="space-y-2.5">
         <FCheck name="costes.transmitente_empresario" label="El transmitente es empresario o profesional" />

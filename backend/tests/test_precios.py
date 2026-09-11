@@ -1,13 +1,22 @@
 """Unidades del algoritmo de precios (§9), δ_v (§9.4) y finanzas (M11)."""
 import pytest
 
-from app.engine.contracts import ICIResultado, RentistaInput
+from app.engine.contracts import CostesResultado, ICIResultado, RentistaInput
 from app.engine.modules.m11_rentabilidad import _roi_anualizado, _tir_anual
 from app.engine.modules.m12_decision import (_precio_venta, calcular_delta_v,
                                              margen_seguridad)
 from app.engine.params.store import cargar_defaults
 from app.engine.pipeline import ejecutar_analisis
 from tests.conftest import entrada_base
+
+
+def _costes(c_v: float, base_minima: float = 0.0, tipo_base: float = 0.0) -> CostesResultado:
+    """C_F y desgloses son irrelevantes aquí: estas fórmulas solo leen c_v y la base."""
+    return CostesResultado(
+        c_v=c_v, c_v_desglose={}, c_f_p50=0.0, c_f_p80=0.0, desglose_p50={}, desglose_p80={},
+        contingencia_pct=0.0, tenencia_mensual=0.0, plazo_meses_p50=0.0, plazo_meses_p80=0.0,
+        regimen_fiscal="itp", tipo_impositivo=tipo_base, base_fiscal_minima=base_minima,
+        tipo_base_minima=tipo_base)
 
 
 def _ici(delta_pp=0.0):
@@ -18,7 +27,7 @@ def _ici(delta_pp=0.0):
 
 def test_formula_precio_venta():
     # P(m=25%, VS=125.000, C_F=25.000, c_v=0) = 125.000/1,25 − 25.000 = 75.000
-    assert _precio_venta(0.25, 125000, 25000, 0.0) == pytest.approx(75000)
+    assert _precio_venta(0.25, 125000, 25000, _costes(0.0)) == pytest.approx(75000)
 
 
 def test_delta_v_suma_de_primas():
@@ -35,7 +44,7 @@ def test_delta_v_cap_20pct():
 
 def test_margen_seguridad():
     # I = 100.000·1,06 + 20.000 = 126.000; VS 180.000 ⇒ MS = 30%
-    assert margen_seguridad(100000, 0.06, 20000, 180000) == pytest.approx(0.30)
+    assert margen_seguridad(100000, _costes(0.06), 20000, 180000) == pytest.approx(0.30)
 
 
 def test_roi_anualizado_identidad_12m():

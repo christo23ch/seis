@@ -143,6 +143,11 @@ class CostesInput(BaseModel):
     primera_entrega: bool = False
     comprador_deduce_iva: bool = False
     itp_tipo_override: float | None = None
+    # Base imponible del ITP: es el MAYOR de (valor de referencia, valor declarado,
+    # precio pagado) —art. 10 TRLITPAJD—, no la puja. Sin ninguno de los dos, el
+    # motor usa la puja como SUELO y lo declara como carencia: no lo estima.
+    valor_referencia_catastral: float | None = Field(default=None, gt=0)
+    valor_declarado: float | None = Field(default=None, gt=0)
     atrasos_comunidad_ibi: float | None = None    # None ⇒ estimación prudente al alza (P5)
     adquisicion_fija_override: float | None = None
     tenencia_mensual: float | None = None
@@ -250,6 +255,11 @@ class CostesResultado(BaseModel):
     plazo_meses_p80: float
     regimen_fiscal: str
     tipo_impositivo: float
+    # Suelo de la base imponible y tipo al que se le aplica (0.0 ⇒ el impuesto es
+    # proporcional a P, como antes de la corrección; ver app/engine/fiscal.py).
+    base_fiscal_minima: float = 0.0
+    base_fiscal_origen: str = "precio_pagado"
+    tipo_base_minima: float = 0.0
 
 
 class RiesgoOut(BaseModel):
