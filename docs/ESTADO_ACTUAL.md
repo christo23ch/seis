@@ -15,7 +15,7 @@
 
 | Rama | PR | Estado | Qué contiene | Siguiente acción |
 |---|---|---|---|---|
-| `docs/fase-17c-comparables` | *(pendiente de abrir)* | 🟢 lista | Ficha de la Fase 17-C (comparables de mercado): solo planificación, sin código | Abrir PR |
+| `fase-0-sistema-diseno` | [#21](https://github.com/christo23ch/seis/pull/21) | 🟢 abierto | Fase 0': tipografía elegida (Source Serif 4 + Inter), tokens, contraste AAA vigilado por prueba | Revisar y fusionar |
 
 Sin frentes abiertos de código.
 
@@ -60,6 +60,29 @@ puja (`m11_rentabilidad.py:41`). En una subasta —donde el atractivo es pujar p
 valor— **eso subestima el impuesto en todo análisis que se haga hoy**. Sin dueño: pendiente de
 decidir si se corrige por separado y antes.
 
+### 🟡 Frente abierto de MAQUETACIÓN, con dueño: la tabla densa no cabe en móvil
+
+**Medido, no estimado:** con la tabla de escenarios (8 columnas) la página mide
+**765-766 px en un móvil de 390 px**. El móvil no desplaza la tabla: **arrastra
+toda la pantalla en horizontal**, cabecera y semáforo incluidos.
+
+**Por qué no se cierra donde se descubrió.** Salió de paso en la Fase 0' montando
+el muestrario tipográfico, y el propio muestrario demuestra que **no es un problema
+de letra**: el número es prácticamente idéntico en las cuatro opciones
+tipográficas, así que elegir una no lo arregla. Es maquetación.
+
+**Las salidas posibles son decisiones de producto, no de diseño visual**
+—contenedor con desplazamiento horizontal propio, columnas plegables por
+prioridad, o una vista de fichas por escenario en móvil—, y cada una cambia cómo
+se lee el análisis en el dispositivo en el que más se consulta.
+
+**Dueña: la ficha de la Fase 15** (`PLAN_FASES.md`), que no cierra su PR sin
+resolverlo. Se le asigna a la 15 y no a la 0' porque la 15 es la primera fase que
+vuelve a tocar maquetación de pantallas, y porque la 0' entrega tokens y reglas,
+no layout.
+
+Descubierto el 2026-09-11 midiendo con Playwright, no mirando una captura.
+
 **Fusionados:** [#12](https://github.com/christo23ch/seis/pull/12) Fase 17-A ·
 [#13](https://github.com/christo23ch/seis/pull/13) puerta (a) ·
 [#14](https://github.com/christo23ch/seis/pull/14) puerta (b) ·
@@ -71,7 +94,8 @@ decidir si se corrige por separado y antes.
 **La puerta está abierta:** (a) test de `init_db.main()` ✅ · (b) PostgreSQL en la CI ✅ ·
 (c) regla de activación de la purga, no una tarea · (d) cerrada.
 
-**Siguiente:** con la 16 cerrada, quedan 🟢 la Fase 0' (sistema de diseño) y la 15.
+**Siguiente:** cerrada la Fase 0', va la **Fase 15** (landing), que la tenía como
+prerrequisito y que hereda el frente de la tabla densa en móvil.
 
 ---
 
