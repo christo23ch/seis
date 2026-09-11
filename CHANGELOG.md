@@ -14,6 +14,184 @@ convertirse en un SaaS. Lo anterior está en el historial de git.
 
 ---
 
+## [Corrección del motor] — La base imponible del ITP y la puja inviable — 2026-09-11
+
+No es una fase. Van aquí porque **cambian el número que lee el cliente en el
+informe** y se descubrieron los dos el mismo día, recorriendo una subasta real de
+la AEAT de punta a punta —no con una fixture—.
+
+### Corregido
+
+- **El ITP se liquidaba sobre la puja y no sobre el mayor valor.** La base
+  imponible es el mayor de (valor de referencia del Catastro, valor declarado,
+  precio pagado) — art. 10 TRLITPAJD, Ley 11/2021. En una subasta, donde todo el
+  atractivo consiste en rematar por debajo del valor, el error iba **siempre** en
+  la misma dirección —infraestimar— y era **mayor cuanto mejor parecía la
+  operación**: 700 € frente a 2.800 € reales sobre un remate de 10.000 € con
+  valor de referencia de 40.000 €. Resuelto en `app/engine/fiscal.py`; `c_v` se
+  queda igual y aparece un sobrecoste que solo actúa en el tramo `P < B`, de modo
+  que la función de inversión y **su inversa —la escalera de precios de M12— pasan
+  a tener dos tramos**. Alcance y límites en [[ADR-0015]]. `tests/test_base_fiscal.py`
+  (16 tests); nueve mutaciones aplicadas, nueve detectadas.
+- **M13 dejaba caer el análisis justo en las operaciones que debe rechazar.**
+  `next()` sin valor por defecto lanzaba `StopIteration` —HTTP 500— cuando el RVC
+  salía negativo, que es lo que ocurre siempre que la puja máxima sensata cae por
+  debajo de cero: tasación baja sin comparables, ICI hundido, contingencia alta.
+  El caso dorado §19 no lo cubría porque es una operación buena.
+  `tests/test_puja_inviable.py` (5 tests).
+
+### Añadido
+
+- Campos opcionales `costes.valor_referencia_catastral` y `costes.valor_declarado`
+  en el motor, en la API y en el alta. Sin ellos la corrección no sería alcanzable
+  desde el producto.
+
+### Cambiado
+
+- **Comportamiento visible:** un análisis sin valor de referencia declara en el
+  informe que el impuesto es un **MÍNIMO**, y su ítem fiscal del checklist —que es
+  bloqueante— pasa de `ok` a `pendiente`. No se estima un valor de referencia a
+  partir de nada. Los análisis ya emitidos **no se recalculan**: son inmutables
+  por P1 y llevan el impuesto infraestimado.
+
+---
+
+## [Fase 16] — Auditoría de seguridad y correcciones — 2026-09-10
+
+Auditoría completa del proyecto con informe entregado antes de tocar nada
+(`docs/AUDITORIA_SEGURIDAD.md`, 497 líneas). Tres hallazgos altos y siete medios,
+todos corregidos **con demostración por mutación**.
+
+### Añadido
+
+- `app/core/cabeceras.py`: cinco cabeceras de seguridad por middleware, aplicadas
+  con `setdefault` para no pisar las que ya vengan. CSP de API cerrada.
+- `app/core/datos_personales.py` y una barrera `before_insert` sobre `Auditoria`:
+  **vetar datos personales en el `delta`**, recorriendo cadenas, listas, diccionarios
+  y también las **claves** de los diccionarios.
+- Contadores y motivos de resolución de IP en `app/core/red.py`, expuestos en
+  `/health/detalle` (`red.resolucion_ip`: política activa, sin resolver, por motivo).
+- `tests/test_fase16.py`: 34 tests, uno por hallazgo.
+- [[ADR-0014]]: **todo mecanismo de verificación declara qué NO cubre, y falla antes
+  que pasar en vacío.** Tres reglas operativas y una sección entera sobre dónde NO
+  llega la regla, que es la parte que importa.
+
+### Cambiado
+
+- **CORS: el arranque aborta** si la política es peligrosa, con un centinela
+  explícito (`ninguno`) para decir «sin CORS» a propósito. Antes una configuración
+  vacía se leía como permisiva.
+- **Las dos degradaciones silenciosas dejan de serlo**, tratadas como la misma
+  clase de defecto —un mecanismo de seguridad que deja de funcionar sin emitir
+  síntoma—: `red.py` cayendo al cupo global sin un solo registro, y la red de
+  guardia del esquema pasando en verde con la metadata sin poblar. Ahora **o lo
+  dicen en voz alta o fallan**.
+- Normalización del correo en el alta (`strip().lower()`), vida del enlace de baja
+  fijada en una constante (7 días) en vez de un literal, y caché de sondas de salud
+  con caducidad comprobada.
+
+---
+
+## [Fase 14] — RGPD: consentimientos, exportación y borrado — 2026-09-10
+
+Poder operar legalmente con datos de personas reales en la UE. **Decisión previa,
+escrita en la ficha antes de codificar:** la fase extiende el borrado existente,
+no escribe un borrador paralelo ([[ADR-0012]]).
+
+### Añadido
+
+- `app/services/borrado_service.py`: **un solo camino de borrado de personas**, en
+  orden de claves foráneas —ninguna de las seis tiene `ondelete`—, anonimizando la
+  auditoría **antes** de borrar la fila del titular.
+- `app/services/cuenta_service.py` y `app/api/cuenta.py`: `GET /cuenta/exportar`,
+  `DELETE /cuenta` con **gracia de 14 días**, `POST /cuenta/borrado/cancelar` y
+  `GET /cuenta/consentimientos`. Ninguno acepta un `{usuario_id}`: se actúa sobre
+  la sesión, deliberadamente.
+- Modelo `Consentimiento` con **versión y fecha**, guardados por el registro en la
+  misma transacción que la cuenta. Textos legales en `app/legal/textos.py` con un
+  marcador explícito de pendiente de redacción, servidos sin exigir sesión.
+- Casillas de consentimiento en la pantalla de alta: términos obligatorio, el resto
+  opcional y **desmarcado por defecto**.
+- `tests/test_rgpd.py` (20 tests) y `tests/escenario_rgpd.py`, con la comprobación
+  de filas huérfanas corriendo **también contra PostgreSQL**: es justo el caso en
+  el que SQLite miente, porque sin claves foráneas un borrado incompleto pasa en
+  verde.
+- `e2e/correr.sh` + `frontend/e2e/alta-real.mjs`: alta real de punta a punta con
+  navegador, contra el backend levantado.
+- `tests/test_esquemas.py`: recorre los 51 esquemas Pydantic y comprueba que **cada
+  valor por defecto pasa la validación de su propio campo**.
+
+### Corregido
+
+- **`acepta_terminos` tenía un valor por defecto y su validador nunca se
+  ejecutaba:** Pydantic v2 no valida los valores por defecto. El alta aceptaba un
+  registro sin consentimiento y la suite seguía verde. Se quitaron los defectos y
+  se auditaron los 51 esquemas del proyecto en busca del mismo patrón (0 casos más).
+- `auditoria.entidad_id` es `String(36)` y la marca de anonimización ocupaba 48
+  caracteres: **PostgreSQL aborta, SQLite lo habría guardado en silencio**.
+
+### Cambiado
+
+- La purga de cuentas nunca verificadas pasa a anonimizar la auditoría, por usar
+  ahora el camino único. Cambio de comportamiento documentado aparte en [[ADR-0013]].
+
+---
+
+## [Fase 0 · Deuda de cobertura] — La puerta — 2026-09-09
+
+Condición escrita en `docs/PLAN_FASES.md`: **nada que toque producción se despliega
+antes de cerrar esta deuda.** Ambas filas cerradas con el mismo criterio: no basta
+con que el test pase, hay que **verlo en rojo con la mutación aplicada**.
+
+### Añadido
+
+- `tests/test_siembra.py`: cubre la orquestación de `init_db.main()` y `sembrar.main()`,
+  que nunca se habían ejecutado en ninguna prueba. El test decisivo corre en
+  `staging` y **comprueba su propia premisa** antes de afirmar nada.
+- **PostgreSQL en la CI** (`.github/workflows/ci.yml`, servicio `postgres:16`), con
+  una guarda que **hace fallar el job si algún test se omite**. Los tres caminos
+  exclusivos de PostgreSQL —que no se habían ejecutado nunca, ni en local ni en la
+  CI— se demostraron por mutación uno a uno.
+
+### Corregido
+
+- Un test de `SET LOCAL` pasaba con y sin el camino puesto: resultó que **un `SET`
+  normal dentro de una transacción también se revierte**, y la diferencia solo
+  aparece al hacer COMMIT. Reescrito para que el COMMIT ocurra, y documentado que
+  el camino real no puede distinguirlos.
+
+---
+
+## [Fase 17-A] — Conector de captación, andamiaje — 2026-09-09
+
+Primera mitad de la captación automática: todo lo que no depende de tener HTML real
+del BOE delante. La 17-B queda abierta con los selectores reales y dos condiciones
+de cierre heredadas de aquí.
+
+### Añadido
+
+- `app/ingesta/contratos.py`: contratos de captación y el tipo `OrigenCaptacion`,
+  que hace **imposible el `None` ambiguo** entre alta manual y alta de plataforma.
+- `app/ingesta/boe.py`: parser defensivo — un HTML corrupto devuelve lista vacía,
+  no una excepción.
+- Unicidad de subasta por `(fuente, identificador_externo)`: ejecutar dos veces el
+  mismo lote no duplica filas.
+- `app/services/vigilancia_service.py`: **avisar cuando una fuente lleva demasiado
+  tiempo en silencio**. Una fuente muda tiene el mismo aspecto que una fuente sin
+  novedades, y ese es el modo de fallo que importa.
+- `evaluar_subasta(db, subasta, origen)`: el alcance del matcher lo decide el
+  **origen** de la captación, no un parámetro implícito ([[ADR-0011]]). Con test
+  negativo explícito de que una notificación de plataforma **nunca** contiene datos
+  de otra organización.
+- `docs/VOLUMEN_MATCHER.md`: análisis de coste del matcher, medido.
+
+### Cambiado
+
+- Dos puntos de volumen quedan registrados como **decisiones de diseño, no de
+  escala**, y son condición de cierre de la 17-B: el modo `instantaneo` por defecto
+  de fábrica (50 correos por noche con diez usuarios), y el envío síncrono dentro
+  de la ingesta (cuando el correo se rompe, la captación **parece** rota).
+
 ## [Fase 11-A] — Infraestructura de producción, parte agnóstica del proveedor — 2026-08-05
 
 La Fase 11 se parte en dos por decisión del responsable: **11-A** es de repositorio
