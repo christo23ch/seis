@@ -58,3 +58,5 @@ Se escribe aquí por [[ADR-0014]]: un mecanismo que no declara su alcance acaba 
 La propiedad que hace revisable el cambio: **con `B = 0` el sobrecoste es 0 en todo el dominio y todas las fórmulas recuperan su forma anterior al último decimal**. El caso dorado §19 pasó sin tocar ni un número.
 
 Nueve mutaciones aplicadas, nueve detectadas (`tests/test_base_fiscal.py`), incluidas las dos que no eran obvias: elegir siempre el mismo tramo en la inversa, y olvidar el sobrecoste en el flujo de caja del mes 0 —que cuadraría el total y mentiría en la TIR—.
+
+**Y una advertencia que vale más que el resto de este apartado:** de esas nueve, la del aviso del informe **sobrevivió en la primera pasada porque la mutación era falsa** —sustituía el texto del aviso por otro que seguía conteniendo el aviso—. No sobrevivió el código: sobrevivió una mutación que no mutaba nada. Es la segunda vez en el proyecto que el fallo aparece **dentro de la herramienta de verificación** y no en lo verificado; queda nombrado como patrón en el punto 6 de [[ADR-0014]].
