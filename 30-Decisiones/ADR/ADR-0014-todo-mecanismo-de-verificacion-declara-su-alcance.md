@@ -97,7 +97,23 @@ Conviene decirlo, porque es donde está el rendimiento real y no quiero que esta
 
 La declaración de alcance **hace más barato encontrar el quinto**, porque pone la duda delante de quien lee. No lo previene. **La práctica que lo previene es la mutación**, y esa ya es norma de este proyecto desde la Fase 17-A.
 
-Esta regla es un complemento de aquella, no un sustituto. Si hubiera que quedarse con una, sería con la mutación.
+Esta regla es un complemento de aquella, no un sustituto. Si hubiera que quedarse con una, sería con la mutación — con la reserva del punto 6, que se añadió después y que conviene leer antes de fiarse de esa frase.
+
+### 6. La propia herramienta de verificación comete el fallo que persigue
+
+Añadido el 2026-09-11, después de la corrección de la base imponible del ITP ([[ADR-0015]]), porque **ya van dos veces que el defecto aparece dentro del mecanismo de prueba y no en el código probado**:
+
+1. **Fase 16.** El test de caducidad de la caché de sondas **leía su valor esperado de la propia constante que estaba probando**. Pasaba con cualquier valor de esa constante, incluido uno roto.
+2. **ADR-0015.** Una de las nueve mutaciones —«el informe deja de avisar de que el impuesto es un mínimo»— **sobrevivió porque la mutación era falsa**: sustituía el texto del aviso por otro texto que seguía conteniendo el aviso. Lo que sobrevivió no fue el código: fue una mutación que no mutaba nada.
+3. **Fase 0'.** `scripts/capturar.mjs` —el script con el que `docs/REVISION_VISUAL.md` obliga a capturar el antes y el después de **toda** pantalla que toque una fase de frontend— **estaba en un sitio desde el que no podía ejecutarse**. ESM resuelve los `import` desde el directorio del fichero, y `playwright` vive en `frontend/node_modules`: lanzado tal y como lo documentaba ese mismo apartado, moría con `ERR_MODULE_NOT_FOUND` **antes de abrir el navegador**. Es decir, la red de seguridad que exige ver el resultado en vez de suponerlo llevaba desde que se escribió **sin poder ver nada**, y es el tercer tropiezo del proyecto con esta misma causa —`frontend/e2e/alta-real.mjs` se movió por lo mismo—.
+
+Los tres tienen **la misma forma, y conviene nombrarla**: *la herramienta de verificación se rompe —o pasa en vacío— antes de verificar nada, y su silencio es indistinguible de un resultado correcto.* En el caso 1 el test pasaba con cualquier valor; en el 2 la mutación no mutaba; en el 3 el script ni siquiera arrancaba. En los tres, la consola decía exactamente lo mismo que habría dicho si todo estuviera bien.
+
+Esto no es una anécdota de descuidos sueltos. Es la misma clase de defecto un nivel más adentro: **un mecanismo funcionando correctamente dentro de un alcance que nunca declaró**, salvo que aquí el mecanismo es el que se usa para detectar precisamente eso. Y tiene una consecuencia incómoda: la mutación, que es la práctica en la que más confía este proyecto, **no se audita a sí misma**. Una mutación que sobrevive puede significar que falta un test, o puede significar que la mutación no rompía nada — y los dos casos se ven exactamente igual en la consola.
+
+Lo único que ha funcionado contra esto es barato y no es una regla nueva: **antes de creerse un verde, comprobar que la herramienta llegó a hacer su trabajo.** Ante una mutación que sobrevive, mirar el diff aplicado antes que la lista de tests; ante una herramienta que se estrena, ejecutarla y ver su salida en vez de razonar que debería funcionar. En los tres casos citados eso lo habría dicho a la primera, y en el tercero bastaba con lanzar el comando que el propio documento mandaba lanzar.
+
+No se convierte en cuarta regla porque no se puede exigir mecánicamente (punto 3), y una regla que solo produce la frase no vale nada. Queda escrito para que quien lea esto dentro de unos meses vea el patrón **nombrado**, no solo corregido en dos sitios distintos.
 
 ## Alternativas consideradas
 
@@ -137,4 +153,5 @@ inexistente) y `test_esquemas.py` (menos esquemas de los esperados).
 
 - Fase: [[Fase-16-auditoria-seguridad]] · `docs/AUDITORIA_SEGURIDAD.md` §1
 - [[ADR-0012-un-solo-camino-de-borrado-de-personas]] y [[ADR-0013-la-purga-anonimiza-la-auditoria]] — los dos mecanismos cuyo alcance motivó el caso 4
+- [[ADR-0015-base-imponible-del-itp-sobre-el-mayor-valor]] — donde apareció la mutación falsa del punto 6
 - `docs/PROMPTS_FASES.md` — bloque de contexto, donde la regla se hace exigible
