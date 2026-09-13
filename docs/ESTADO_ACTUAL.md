@@ -17,7 +17,7 @@ fusionar** · **Puerta: ABIERTA**
 | Rama | PR | Estado | Qué contiene | Siguiente acción |
 |---|---|---|---|---|
 | `fase-15-onboarding` | [#24](https://github.com/christo23ch/seis/pull/24) | 🟢 abierto | Cierre de la Fase 15: checklist de arranque en tabla propia, quinto caso del ADR-0014, `capturar.mjs` con modo de encaje, credenciales fuera de `/login` | **Revisar y fusionar** |
-| `docs/17c-valor-referencia` | *(pendiente de abrir)* | 🟢 lista · **apilada sobre #24** | Resultado de la primera tarea de la 17-C: no hay servicio web libre para el valor de referencia | Decidir el alcance de la 17-C |
+| `docs/17c-valor-referencia` | [#25](https://github.com/christo23ch/seis/pull/25) | 🟢 abierto · **apilada sobre #24** | Resultado de la primera tarea de la 17-C + el primer paso pendiente para la próxima sesión | **Revisar y fusionar** |
 
 Sin frentes abiertos de código.
 
@@ -108,6 +108,12 @@ y `datos.gob.es`. Lo que hay es evidencia documental triangulada **más** la aus
 tres librerías comunitarias independientes que envuelven los servicios libres y **ninguna**
 expone el valor. **Antes de cerrar la fuente por definitiva, la llamada hay que hacerla desde
 una red sin ese bloqueo**: son diez minutos y convierte «muy probable» en «seguro».
+
+**▶️ QUÉ TIENE QUE HACER LA PRÓXIMA SESIÓN QUE RETOME ESTO, antes que nada:** la llamada real
+desde una red sin el bloqueo de salida. Los cuatro pasos concretos —con la referencia catastral
+del caso de Santiponce ya puesta— están en la ficha de la 17-C. **Hasta tener esa confirmación,
+ninguna de las tres rutas alternativas se descarta ni se explora**, y la fuente recomendada de la
+fase sigue sin decidir.
 
 Detalle completo en la ficha de la Fase 17-C (`docs/PLAN_FASES.md`).
 

@@ -368,10 +368,35 @@ Investigado antes de proponer. **Lo que no se pudo confirmar está marcado como 
   definitiva, la llamada hay que hacerla desde una red sin ese bloqueo** — son diez minutos y
   responde con certeza lo que aquí queda en «muy probable».
 
-  **Rutas que quedan sin explorar, y que no se exploran sin decisión previa:** la descarga
-  masiva alfanumérica del Catastro (requiere identificación y aceptar licencia), la consulta
-  masiva por fichero de la Sede, y el dato como **entrada del usuario** — que es lo que el
-  [[ADR-0015]] ya soporta: campo opcional y carencia declarada si falta.
+  **▶️ PRIMER PASO PENDIENTE DE ESTA FASE, y va antes que cualquier otra cosa (decisión del
+  responsable, 2026-09-13): hacer la llamada real desde una red sin el bloqueo de salida.** Diez
+  minutos, y cierra la duda de verdad en vez de dejarla en «muy probable». Concretamente:
+
+  1. `GET https://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejeroCodigos.asmx/Consulta_DNPRC_Codigos`
+     con una referencia catastral real —vale la del caso de Santiponce,
+     `1282034TG3418S0001UL`— y **mirar si en la respuesta aparece algún valor**. Debería
+     devolver solo datos descriptivos; si apareciera un valor, todo lo de arriba cae.
+  2. Abrir `Webservices_Libres.pdf` (v2.6 o posterior) y **leer el catálogo completo**, que es
+     la fuente primaria que aquí no se pudo abrir.
+  3. Entrar en `SECAccvr.aspx` **sin identificarse** y comprobar si hay alguna ruta de consulta
+     que no exija Cl@ve, DNIe ni certificado — es el punto exacto donde «público» podría no
+     significar «identificado».
+  4. Mirar la petición que hace el propio formulario de la Sede (red del navegador): si hay un
+     endpoint JSON detrás, ahí se ve, y con él si acepta llamadas sin sesión.
+
+  **Hasta tener esa confirmación, NINGUNA de las tres rutas alternativas se descarta ni se
+  explora** (decisión del responsable): la descarga masiva alfanumérica del Catastro (requiere
+  identificación y aceptar licencia), la consulta masiva por fichero de la Sede, y el dato como
+  **entrada del usuario** — que es lo que el [[ADR-0015]] ya soporta con campo opcional y
+  carencia declarada.
+
+  **Si la llamada real confirma que no hay API**, entonces se evalúan las tres **con el mismo
+  rigor de fuentes que el resto de esta ficha**: coste, viabilidad legal, y —encargo explícito—
+  **si «dato como entrada del usuario» no es reintroducir el problema original por otra
+  puerta.** Esa pregunta ya tiene una pista incómoda registrada: la 17-C existe porque *nadie va
+  a teclear seis comparables por subasta cuando el conector traiga doscientas al mes*, y un
+  valor de referencia que hay que teclear subasta por subasta cae bajo exactamente el mismo
+  argumento. Que se responda con evidencia, no con la intuición de quien lo implemente.
 
 **2 · idealista/data (API comercial) — VIABLE PERO DE PAGO Y A NEGOCIAR**
 
