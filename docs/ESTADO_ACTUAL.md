@@ -11,11 +11,13 @@
 ## Frentes abiertos
 
 **Actualizado:** 2026-09-13 · **`main`:** `4d1ff20` · **Suite:** 571 con PostgreSQL, 0 omitidos (en SQLite: 563 + 8 omitidos, los exclusivos de PG) · **E2E:** alta real verde (`e2e/correr.sh`) · **Responsividad:** 19 rutas, 0 desbordan · **Guard:** 12 privadas, 0 fugas
-**Última fase cerrada:** 15 (landing, onboarding, ayuda) · **Puerta: ABIERTA**
+**Última fase cerrada:** 15 (landing, onboarding, ayuda) — **su cierre está en el PR #24, sin
+fusionar** · **Puerta: ABIERTA**
 
 | Rama | PR | Estado | Qué contiene | Siguiente acción |
 |---|---|---|---|---|
-| `fase-15-onboarding` | *(pendiente de abrir)* | 🟢 lista | Cierre de la Fase 15: checklist de arranque en tabla propia, quinto caso del ADR-0014, `capturar.mjs` con modo de encaje, credenciales fuera de `/login` | Abrir PR |
+| `fase-15-onboarding` | [#24](https://github.com/christo23ch/seis/pull/24) | 🟢 abierto | Cierre de la Fase 15: checklist de arranque en tabla propia, quinto caso del ADR-0014, `capturar.mjs` con modo de encaje, credenciales fuera de `/login` | **Revisar y fusionar** |
+| `docs/17c-valor-referencia` | *(pendiente de abrir)* | 🟢 lista · **apilada sobre #24** | Resultado de la primera tarea de la 17-C: no hay servicio web libre para el valor de referencia | Decidir el alcance de la 17-C |
 
 Sin frentes abiertos de código.
 
@@ -85,6 +87,29 @@ en vez de arrastrar la página, y la cabecera de regla de `/reglas` partiendo l�
 y **sale con código 1** si alguna ruta desborda. Demostrado en rojo contra el armazón sin
 arreglar: 12 detectadas. Su alcance —solo 390 px, solo el estado inicial de cada ruta, y
 necesita datos para que las tablas tengan filas— va declarado en su cabecera.
+
+### 🔴 DECISIÓN ABIERTA, esperando al responsable: la fuente recomendada de la 17-C se cae
+
+**Primera tarea de la 17-C ejecutada el 2026-09-13. Resultado: no existe servicio web libre
+para el valor de referencia del Catastro.** Es gratuito y público —cualquiera puede consultar
+el de cualquier inmueble, no solo su titular— pero **exige una credencial PERSONAL en cada
+consulta** (Cl@ve, DNIe o certificado) a través de un servicio interactivo de la Sede. *Público*
+no es *anónimo*, y para un SaaS que analiza subastas de muchos clientes **eso no automatiza**.
+
+**Por qué importa:** la 17-C se planificó con el valor de referencia como fuente recomendada
+precisamente por ser gratis, oficial y ligada a la referencia catastral que el anuncio ya trae.
+Esa premisa se sostiene en todo menos en lo que hacía falta: **no se puede llamar sin una
+persona detrás.** Con eso sobre la mesa, la fuente recomendada de la fase puede cambiar, y
+**la decisión es del responsable del producto, no de la sesión** (así se pidió).
+
+**⚠️ Y la comprobación tiene un límite grande, declarado:** no se pudo ejecutar la prueba
+decisiva. La política de salida del entorno **bloquea todos los dominios del Catastro**, `boe.es`
+y `datos.gob.es`. Lo que hay es evidencia documental triangulada **más** la ausencia medida en
+tres librerías comunitarias independientes que envuelven los servicios libres y **ninguna**
+expone el valor. **Antes de cerrar la fuente por definitiva, la llamada hay que hacerla desde
+una red sin ese bloqueo**: son diez minutos y convierte «muy probable» en «seguro».
+
+Detalle completo en la ficha de la Fase 17-C (`docs/PLAN_FASES.md`).
 
 **Fusionados:** [#12](https://github.com/christo23ch/seis/pull/12) Fase 17-A ·
 [#13](https://github.com/christo23ch/seis/pull/13) puerta (a) ·

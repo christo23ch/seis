@@ -335,13 +335,43 @@ Investigado antes de proponer. **Lo que no se pudo confirmar está marcado como 
   **Es un hallazgo aparte de esta ficha y hay que decidir si se corrige antes** (ver §Riesgos).
 - **Coste:** gratuito.
 - **Viabilidad legal:** la más limpia de todas. Dato público de una administración.
-- **⚠️ Lo que NO se pudo confirmar:** que exista un **servicio web libre y documentado para el
-  valor de referencia concretamente**. Los servicios libres de la Sede Electrónica que sí están
-  documentados (`Webservices_Libres.pdf`, v2.6) son callejero, conversor de coordenadas y
-  consulta por referencia catastral, y son **SOAP** (algunos accesibles por REST sobre HTTP). La
-  consulta del valor de referencia está descrita como *interactiva* en la Sede. **Primera tarea
-  de la fase: comprobarlo, y si no hay API, decidir entre el acceso autenticado con certificado
-  o descartarla.** No se da por hecho.
+- **🔴 PRIMERA TAREA DE LA FASE, EJECUTADA EL 2026-09-13: NO hay servicio web libre para el
+  valor de referencia.** El resultado cambia la premisa de esta fuente y **la decisión de
+  alcance queda abierta al responsable del producto** — no se redefine aquí.
+
+  **Lo que se comprobó mecánicamente** (es lo único que se pudo ejecutar, ver la limitación
+  abajo): tres librerías comunitarias independientes que envuelven los servicios libres del
+  Catastro —`catastro-lib-python`, `Python-Catastro`, `go-catastro`— exponen **únicamente**
+  métodos descriptivos y de localización (`Consulta_DNPRC`, callejero, coordenadas,
+  provincias/municipios). **Ninguna** expone valor de referencia ni valor catastral. Que las
+  tres coincidan en la ausencia es señal, no casualidad.
+
+  **Lo que dice la documentación** (triangulado en varias fuentes, sin poder abrir la original):
+  los servicios libres se acotan por definición a *«datos catastrales NO protegidos, es decir,
+  los que no se refieren al titular ni al valor»*; la consulta del valor de referencia vive en
+  un servicio **interactivo** de la Sede (`SECAccvr.aspx`) que exige **Cl@ve, DNIe o certificado
+  electrónico**.
+
+  **El matiz que importa y que casi se cuela:** el valor de referencia **sí es público** —lo
+  puede consultar cualquiera, no solo el titular, y es gratis—, a diferencia del valor
+  catastral. Pero *público* **no es lo mismo que *anónimo***: es gratuito y universal, y aun así
+  pide una credencial **personal** en cada consulta. Para un SaaS que analiza subastas de muchos
+  clientes, eso **no automatiza**, y automatizarlo con un certificado propio significaría actuar
+  con la identidad personal de alguien — problema legal, no solo técnico.
+
+  **⚠️ LIMITACIÓN DE ESTA COMPROBACIÓN, Y ES GRANDE: no se pudo ejecutar la prueba decisiva.**
+  La política de salida del entorno donde se investigó **bloquea todos los dominios del
+  Catastro** (`catastro.hacienda.gob.es`, `ovc.catastro.meh.es`, `sedecatastro.gob.es`), y
+  también `boe.es` y `datos.gob.es` — 403 en el CONNECT del proxy. Así que **no se llamó a
+  ningún endpoint ni se abrió ninguna fuente primaria**: lo de arriba es evidencia documental
+  triangulada más la ausencia medida en tres librerías. **Antes de cerrar esta fuente por
+  definitiva, la llamada hay que hacerla desde una red sin ese bloqueo** — son diez minutos y
+  responde con certeza lo que aquí queda en «muy probable».
+
+  **Rutas que quedan sin explorar, y que no se exploran sin decisión previa:** la descarga
+  masiva alfanumérica del Catastro (requiere identificación y aceptar licencia), la consulta
+  masiva por fichero de la Sede, y el dato como **entrada del usuario** — que es lo que el
+  [[ADR-0015]] ya soporta: campo opcional y carencia declarada si falta.
 
 **2 · idealista/data (API comercial) — VIABLE PERO DE PAGO Y A NEGOCIAR**
 
