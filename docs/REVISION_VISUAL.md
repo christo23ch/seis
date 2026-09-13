@@ -26,6 +26,15 @@ npm run build && npm run start &
 node scripts/capturar.mjs despues
 ```
 
+> **El script vive en `frontend/scripts/`, y no es una preferencia de orden.** Estuvo en
+> `scripts/` en la raíz desde que se escribió este procedimiento y **ahí no podía funcionar**:
+> ESM resuelve los `import` desde el directorio **del fichero**, no desde donde se lanza el
+> comando, y `playwright` está en `frontend/node_modules`. Ejecutado tal y como lo documentaba
+> este mismo apartado, fallaba con `ERR_MODULE_NOT_FOUND` antes de abrir el navegador. Es la
+> tercera vez que el proyecto tropieza con esto —`frontend/e2e/alta-real.mjs` se movió por la
+> misma razón—, y encaja con el punto 6 del [[ADR-0014]]: **la herramienta de verificación
+> estaba rota, no lo verificado.** Comprobado ejecutándolo, no razonándolo.
+
 Las imágenes quedan en `capturas/antes/` y `capturas/despues/`, una por pantalla y anchura.
 **No se versionan** (están en `.gitignore`): se adjuntan al PR, que es donde se revisan.
 

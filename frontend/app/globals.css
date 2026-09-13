@@ -5,10 +5,16 @@
 
 :root { color-scheme: light; }
 html { font-size: 15px; }
-body { @apply bg-papel text-tinta antialiased; }
+body { @apply bg-papel text-tinta antialiased font-texto; }
 
 .cifra { @apply font-cifra tabular-nums tracking-tight; }
 .h-display { @apply font-display; }
+
+/* Campos y controles: el 3:1 de WCAG 1.4.11 no lo cumple el borde decorativo.
+   Ver docs/DESIGN_SYSTEM.md §4. */
+/* El token va aplicado en los componentes (components/ui.tsx): una regla de
+   elemento aquí la pisaría cualquier utilidad de Tailwind, que es justo lo que
+   pasó al intentarlo — la corrección se veía en el documento y no en la pantalla. */
 
 /* foco visible accesible */
 :focus-visible { outline: 2px solid #2e4b8f; outline-offset: 2px; border-radius: 4px; }
@@ -17,5 +23,5 @@ body { @apply bg-papel text-tinta antialiased; }
 }
 
 /* la escalera de precios: elemento firma */
-.escalon { @apply relative flex flex-col justify-end rounded-t-md border border-b-0 border-slate-300 bg-white; }
+.escalon { @apply relative flex flex-col justify-end rounded-t-md border border-b-0 border-borde-control bg-white; }
 .escalon-etiqueta { @apply absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] font-medium text-slate-500; }

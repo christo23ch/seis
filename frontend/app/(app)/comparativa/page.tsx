@@ -63,7 +63,7 @@ export default function Comparativa() {
           {(lista ?? []).map((a) => (
             <button key={a.id} onClick={() => alternar(a.id)}
               className={`rounded-full border px-3 py-1.5 text-[13px] font-medium transition-colors
-                ${sel.includes(a.id) ? "border-primario bg-primario-tenue text-primario" : "border-slate-300 text-slate-600 hover:bg-slate-50"}`}>
+                ${sel.includes(a.id) ? "border-primario bg-primario-tenue text-primario" : "border-borde-control text-slate-600 hover:bg-slate-50"}`}>
               {a.tipologia ?? "activo"} · {a.municipio ?? "—"} · ICO {a.ico}
             </button>
           ))}

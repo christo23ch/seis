@@ -9,7 +9,7 @@ export function Button({ variante = "primario", className, cargando, children, .
   const base = "inline-flex items-center justify-center gap-2 rounded-md px-3.5 py-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none";
   const v = {
     primario: "bg-primario text-white hover:bg-primario-hover",
-    secundario: "bg-white text-tinta border border-slate-300 hover:bg-slate-50",
+    secundario: "bg-white text-tinta border border-borde-control hover:bg-slate-50",
     peligro: "bg-sem-rojo text-white hover:opacity-90",
     fantasma: "text-slate-600 hover:bg-slate-100",
   }[variante];
@@ -22,10 +22,10 @@ export function Button({ variante = "primario", className, cargando, children, .
 }
 
 export const Card = ({ className, ...p }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cx("rounded-lg border border-slate-200 bg-papel-carta shadow-carta", className)} {...p} />
+  <div className={cx("rounded-lg border border-borde-linea bg-papel-carta shadow-carta", className)} {...p} />
 );
 export const CardHeader = ({ className, ...p }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cx("border-b border-slate-100 px-5 py-3.5", className)} {...p} />
+  <div className={cx("border-b border-borde-linea px-5 py-3.5", className)} {...p} />
 );
 export const CardTitle = ({ className, ...p }: React.HTMLAttributes<HTMLHeadingElement>) => (
   <h3 className={cx("text-[13px] font-semibold uppercase tracking-wide text-slate-500", className)} {...p} />
@@ -38,13 +38,13 @@ export const Label = ({ className, ...p }: React.LabelHTMLAttributes<HTMLLabelEl
   <label className={cx("mb-1 block text-[13px] font-medium text-slate-600", className)} {...p} />
 );
 export const Input = ({ className, ...p }: React.InputHTMLAttributes<HTMLInputElement>) => (
-  <input className={cx("w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm placeholder:text-slate-400 focus:border-primario", className)} {...p} />
+  <input className={cx("w-full rounded-md border border-borde-control bg-white px-3 py-2 text-sm placeholder:text-slate-400 focus:border-primario", className)} {...p} />
 );
 export const Select = ({ className, ...p }: React.SelectHTMLAttributes<HTMLSelectElement>) => (
-  <select className={cx("w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm", className)} {...p} />
+  <select className={cx("w-full rounded-md border border-borde-control bg-white px-3 py-2 text-sm", className)} {...p} />
 );
 export const Textarea = ({ className, ...p }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => (
-  <textarea className={cx("w-full rounded-md border border-slate-300 bg-white px-3 py-2 font-cifra text-xs", className)} {...p} />
+  <textarea className={cx("w-full rounded-md border border-borde-control bg-white px-3 py-2 font-cifra text-xs", className)} {...p} />
 );
 // `label` es ReactNode y no string: las casillas de consentimiento (Fase 14)
 // llevan dentro el enlace al texto que se acepta. `items-start` porque esas
@@ -52,7 +52,7 @@ export const Textarea = ({ className, ...p }: React.TextareaHTMLAttributes<HTMLT
 // a media altura del párrafo.
 export const Check = ({ label, className, ...p }: React.InputHTMLAttributes<HTMLInputElement> & { label: React.ReactNode }) => (
   <label className={cx("flex cursor-pointer items-start gap-2 text-sm text-slate-700", className)}>
-    <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 accent-[#2E4B8F]" {...p} />
+    <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 rounded border-borde-control accent-[#2E4B8F]" {...p} />
     <span>{label}</span>
   </label>
 );
@@ -99,7 +99,7 @@ export function Tabs({ defecto, children }: { defecto: string; children: React.R
 export function TabsLista({ items }: { items: { valor: string; etiqueta: string }[] }) {
   const { v, set } = useContext(TabsCtx);
   return (
-    <div className="mb-4 flex flex-wrap gap-1 border-b border-slate-200">
+    <div className="mb-4 flex flex-wrap gap-1 border-b border-borde-linea">
       {items.map((i) => (
         <button key={i.valor} onClick={() => set(i.valor)}
           className={cx("border-b-2 px-3 py-2 text-sm font-medium",

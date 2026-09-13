@@ -75,9 +75,10 @@ PROTOCOLO, SIN EXCEPCIONES
   docs/ESTADO_ACTUAL.md, y escribe un ADR en 30-Decisiones/ADR/ por cada decisión
   discutible, usando 900-Plantillas/Plantilla-ADR.md.
 - Si la fase toca FRONTEND: adjunta capturas del ANTES y el DESPUÉS de cada
-  pantalla afectada, generadas con `node scripts/capturar.mjs antes|despues`
-  (procedimiento en docs/REVISION_VISUAL.md). Sin ellas la revisión de diseño se
-  hace a ciegas y no se acepta el PR. Referencia obligatoria en toda decisión
+  pantalla afectada, generadas desde `frontend/` con
+  `node scripts/capturar.mjs antes|despues` (procedimiento en
+  docs/REVISION_VISUAL.md). Sin ellas la revisión de diseño se hace a ciegas y no
+  se acepta el PR. Referencia obligatoria en toda decisión
   visual: docs/DESIGN_SYSTEM.md.
 - Termina con un RESUMEN DE CAMBIOS POR FICHERO apto para revisar en el móvil:
   una línea por fichero y, aparte, las 3 decisiones más discutibles señaladas.
@@ -337,7 +338,7 @@ una:
   · cómo se comporta en TABLAS DENSAS, con varias filas de números comparables;
   · licencia y peso, porque se sirve al navegador.
 Y acompáñalas de CAPTURAS COMPARATIVAS reales generadas con
-`node scripts/capturar.mjs` (ver docs/REVISION_VISUAL.md): la misma pantalla con
+`node scripts/capturar.mjs`, desde `frontend/` (ver docs/REVISION_VISUAL.md): la misma pantalla con
 cada opción, para poder compararlas mirando y no imaginando. No decidas tú.
 
 Requisitos duros:

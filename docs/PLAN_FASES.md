@@ -527,8 +527,19 @@ significa algo cuando hay captación real.
 - **Tú:** decidir si la app se mueve a `/app` o a un subdominio; escribir el contenido real y el
   `MANUAL_DE_USUARIO.md`, que **no existe** (solo hay `MANUAL_DE_PRUEBAS.md`, que es de
   instalación).
+- **Condición de cierre heredada de la Fase 0', y no es una nota al pie: LA TABLA DENSA NO
+  CABE EN MÓVIL.** Medido con Playwright el 2026-09-11: con la tabla de escenarios (8
+  columnas) la página mide **765-766 px en un móvil de 390 px**, así que el móvil arrastra
+  **toda la pantalla** en horizontal, no solo la tabla. El muestrario tipográfico demostró
+  que **no lo arregla ninguna tipografía** —el número es casi idéntico en las cuatro
+  opciones—: es maquetación. Las salidas posibles (contenedor con desplazamiento propio,
+  columnas plegables por prioridad, o fichas por escenario en móvil) **son decisiones de
+  producto**, y se toman aquí. **Esta ficha no cierra su PR sin resolverlo**, igual que la
+  17-B no cierra sin el puente captación→análisis. Índice: `docs/ESTADO_ACTUAL.md`.
 - **Salida verificable:** Lighthouse ≥ 90 en rendimiento y accesibilidad; un usuario nuevo llega
-  al primer análisis sin ayuda; la landing no rompe el guard de sesión de la app.
+  al primer análisis sin ayuda; la landing no rompe el guard de sesión de la app;
+  **ninguna pantalla desborda horizontalmente a 390 px**, comprobado midiendo
+  `document.documentElement.scrollWidth`, no mirando la captura.
 - **Riesgo específico:** mover el guard de sesión es el cambio con más superficie de regresión de
   toda la fase. Tests de que las rutas privadas siguen exigiendo sesión.
 - **Modelo recomendado:** **Opus 5**, referenciando siempre `docs/DESIGN_SYSTEM.md`.
@@ -559,7 +570,15 @@ necesita el portátil**. El guion de QA sí puede redactarlo el modelo por adela
 
 ---
 
-## 4 · Fase 0 transversal · Sistema de diseño 🟢
+## 4 · Fase 0 transversal · Sistema de diseño 🟢 — ✅ **hecha** (rama `fase-0-sistema-diseno`)
+
+> **Tipografía decidida el 2026-09-11: Source Serif 4 (cabeceras) + Inter (cuerpo)**, elegida
+> sobre cuatro opciones renderizadas y capturadas. Cierra `docs/DESIGN_SYSTEM.md` §2.
+> De los cuatro supuestos que el propio documento declaró, tres se resolvieron dentro de la
+> fase (contraste del semáforo a AAA con prueba automática que lo vigila; bordes de control a
+> 3:1; suelo de 12 px documentado como supuesto abierto con su impacto) y **el cuarto —el
+> desbordamiento en móvil— se traspasó a la Fase 15 con dueño**, por no ser problema de letra.
+
 
 **No es una fase del Plan Maestro: es un prerrequisito que este plan añade.** El motivo está en
 `docs/ESTADO_ACTUAL.md`: el frontend son 3.292 líneas **sin un solo test y sin ESLint**, con toda

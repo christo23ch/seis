@@ -430,7 +430,7 @@ export default function NuevaInversion() {
                     className={`flex w-full items-start gap-2.5 rounded-md px-2.5 py-2 text-left
                       ${estado === "actual" ? "bg-primario-tenue" : i < paso ? "hover:bg-slate-100" : "opacity-50"}`}>
                     <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold
-                      ${estado === "hecho" ? "bg-primario text-white" : estado === "actual" ? "border-2 border-primario text-primario" : "border border-slate-300 text-slate-400"}`}>
+                      ${estado === "hecho" ? "bg-primario text-white" : estado === "actual" ? "border-2 border-primario text-primario" : "border border-borde-control text-slate-400"}`}>
                       {estado === "hecho" ? <CheckIcon className="h-3 w-3" /> : i + 1}
                     </span>
                     <span>
