@@ -10,14 +10,18 @@
 
 ## Frentes abiertos
 
-**Actualizado:** 2026-09-13 · **`main`:** `4d1ff20` · **Suite:** 571 con PostgreSQL, 0 omitidos (en SQLite: 563 + 8 omitidos, los exclusivos de PG) · **E2E:** alta real verde (`e2e/correr.sh`) · **Responsividad:** 19 rutas, 0 desbordan · **Guard:** 12 privadas, 0 fugas
-**Última fase cerrada:** 15 (landing, onboarding, ayuda) — **su cierre está en el PR #24, sin
-fusionar** · **Puerta: ABIERTA**
+**Actualizado:** 2026-09-13 · **Suite:** 571 con PostgreSQL, 0 omitidos (en SQLite: 563 + 8 omitidos, los exclusivos de PG) · **E2E:** alta real verde (`e2e/correr.sh`) · **Responsividad:** 19 rutas, 0 desbordan · **Guard:** 12 privadas, 0 fugas
+**Última fase cerrada:** 15 (landing, onboarding, ayuda) · **Puerta: ABIERTA**
 
-| Rama | PR | Estado | Qué contiene | Siguiente acción |
-|---|---|---|---|---|
-| `fase-15-onboarding` | [#24](https://github.com/christo23ch/seis/pull/24) | 🟢 abierto | Cierre de la Fase 15: checklist de arranque en tabla propia, quinto caso del ADR-0014, `capturar.mjs` con modo de encaje, credenciales fuera de `/login` | **Revisar y fusionar** |
-| `docs/17c-valor-referencia` | [#25](https://github.com/christo23ch/seis/pull/25) | 🟢 abierto · **apilada sobre #24** | Resultado de la primera tarea de la 17-C + el primer paso pendiente para la próxima sesión | **Revisar y fusionar** |
+> **Este encabezado ya no lleva el hash de `main`, y es a propósito.** Un índice no puede
+> describir su propia fusión: la línea que dice «`main` está en X» se escribe *antes* del commit
+> de fusión, así que **siempre nace desfasada en un commit**. Ya pasó: esta tabla llegó a
+> declarar dos PR «sin fusionar» estando ya en `main`. Para saber dónde está `main`,
+> `git log --oneline -1`; este documento responde **qué queda por hacer**, que es la pregunta
+> que una imagen del hash no contesta. Variante del punto 6 del [[ADR-0014]]: cada herramienta
+> a su pregunta.
+
+**Sin ramas ni PR abiertos.** Todo lo trabajado hasta el 2026-09-13 está fusionado en `main`.
 
 Sin frentes abiertos de código.
 
@@ -109,7 +113,7 @@ tres librerías comunitarias independientes que envuelven los servicios libres y
 expone el valor. **Antes de cerrar la fuente por definitiva, la llamada hay que hacerla desde
 una red sin ese bloqueo**: son diez minutos y convierte «muy probable» en «seguro».
 
-**▶️ QUÉ TIENE QUE HACER LA PRÓXIMA SESIÓN QUE RETOME ESTO, antes que nada:** la llamada real
+**▶️ QUÉ TIENE QUE HACER LA PRÓXIMA SESIÓN QUE RETOME LA 17-C, antes que nada:** la llamada real
 desde una red sin el bloqueo de salida. Los cuatro pasos concretos —con la referencia catastral
 del caso de Santiponce ya puesta— están en la ficha de la 17-C. **Hasta tener esa confirmación,
 ninguna de las tres rutas alternativas se descarta ni se explora**, y la fuente recomendada de la
