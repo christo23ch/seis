@@ -29,10 +29,10 @@ import { chromium } from "playwright";
 const EJ = "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
 const BASE = process.env.SEIS_BASE ?? "http://localhost:3000";
 const ANCHO = Number(process.env.SEIS_ANCHO ?? 390);
-const PUBLICAS = ["/login", "/registro", "/recuperar", "/resetear", "/verificar"];
-const PRIVADAS = ["/", "/inversiones", "/nueva", "/alertas", "/subastas",
-                  "/comparativa", "/mapa", "/equipo", "/reglas", "/parametros",
-                  "/configuracion", "/administracion"];
+const PUBLICAS = ["/", "/ayuda", "/login", "/registro", "/recuperar", "/resetear", "/verificar"];
+const PRIVADAS = ["/app", "/app/inversiones", "/app/nueva", "/app/alertas", "/app/subastas",
+                  "/app/comparativa", "/app/mapa", "/app/equipo", "/app/reglas",
+                  "/app/parametros", "/app/configuracion", "/app/administracion"];
 
 const nav = await chromium.launch({ executablePath: EJ });
 const ctx = await nav.newContext({ viewport: { width: ANCHO, height: 844 } });
@@ -45,7 +45,7 @@ let conSesion = false;
     await p.fill('input[type="email"]', process.env.SEIS_EMAIL ?? "admin@seis.local");
     await p.fill('input[type="password"]', process.env.SEIS_PASSWORD ?? "admin");
     await p.click('button[type="submit"]');
-    await p.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 15000 });
+    await p.waitForURL((u) => u.pathname.startsWith("/app"), { timeout: 15000 });
     conSesion = true;
   } catch (e) { console.log("sin sesión:", e.message.split("\n")[0]); }
   await p.close();

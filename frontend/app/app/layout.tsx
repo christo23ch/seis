@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { rutaApp } from "@/lib/rutas";
 import { Spinner } from "@/components/ui";
 import { BarChart3, Bell, FilePlus2, FolderKanban, Gavel, LogOut, Map, Menu, Radar, Scale, Settings2, SlidersHorizontal, Users, UsersRound, X } from "lucide-react";
 import type { Usuario } from "@/lib/types";
@@ -12,27 +13,27 @@ import type { Usuario } from "@/lib/types";
 function construirNav(usuario: Usuario) {
   const grupos: { grupo: string; items: { href: string; etiqueta: string; icono: any }[] }[] = [
     { grupo: "Operaciones", items: [
-      { href: "/", etiqueta: "Dashboard", icono: BarChart3 },
-      { href: "/nueva", etiqueta: "Nueva inversión", icono: FilePlus2 },
-      { href: "/inversiones", etiqueta: "Inversiones", icono: FolderKanban },
-      { href: "/comparativa", etiqueta: "Comparativa", icono: Scale },
-      { href: "/mapa", etiqueta: "Mapa", icono: Map },
+      { href: rutaApp(), etiqueta: "Dashboard", icono: BarChart3 },
+      { href: rutaApp("/nueva"), etiqueta: "Nueva inversión", icono: FilePlus2 },
+      { href: rutaApp("/inversiones"), etiqueta: "Inversiones", icono: FolderKanban },
+      { href: rutaApp("/comparativa"), etiqueta: "Comparativa", icono: Scale },
+      { href: rutaApp("/mapa"), etiqueta: "Mapa", icono: Map },
     ]},
     { grupo: "Captación", items: [
-      { href: "/subastas", etiqueta: "Subastas", icono: Radar },
-      { href: "/alertas", etiqueta: "Alertas", icono: Bell },
+      { href: rutaApp("/subastas"), etiqueta: "Subastas", icono: Radar },
+      { href: rutaApp("/alertas"), etiqueta: "Alertas", icono: Bell },
     ]},
   ];
   if (usuario.es_superadmin) {
     grupos.push({ grupo: "Conocimiento", items: [
-      { href: "/reglas", etiqueta: "Motor de reglas", icono: Gavel },
-      { href: "/parametros", etiqueta: "Parámetros", icono: SlidersHorizontal },
-      { href: "/configuracion", etiqueta: "Perfiles", icono: Settings2 },
+      { href: rutaApp("/reglas"), etiqueta: "Motor de reglas", icono: Gavel },
+      { href: rutaApp("/parametros"), etiqueta: "Parámetros", icono: SlidersHorizontal },
+      { href: rutaApp("/configuracion"), etiqueta: "Perfiles", icono: Settings2 },
     ]});
   }
-  const sistema = [{ href: "/administracion", etiqueta: "Administración", icono: Users }];
+  const sistema = [{ href: rutaApp("/administracion"), etiqueta: "Administración", icono: Users }];
   if (usuario.rol_org === "propietario" || usuario.es_superadmin) {
-    sistema.unshift({ href: "/equipo", etiqueta: "Mi equipo", icono: UsersRound });
+    sistema.unshift({ href: rutaApp("/equipo"), etiqueta: "Mi equipo", icono: UsersRound });
   }
   grupos.push({ grupo: "Sistema", items: sistema });
   return grupos;
@@ -78,9 +79,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           className="-ml-1 rounded-md p-2 text-tinta hover:bg-papel">
           <Menu className="h-5 w-5" />
         </button>
-        <span className="flex items-center gap-2 text-guia font-semibold text-tinta">
+        <Link href={rutaApp()} className="flex items-center gap-2 text-guia font-semibold text-tinta">
           <Gavel className="h-4 w-4 text-primario" /> SEIS
-        </span>
+        </Link>
       </header>
 
       {/* Velo: cierra al tocar fuera, y solo existe cuando el cajón está abierto. */}
@@ -106,7 +107,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <div className="px-2 pb-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-slate-500">{g.grupo}</div>
               <div className="space-y-0.5">
                 {g.items.map((i) => {
-                  const activo = i.href === "/" ? pathname === "/" : pathname.startsWith(i.href);
+                  const activo = i.href === rutaApp() ? pathname === rutaApp() : pathname.startsWith(i.href);
                   const Ico = i.icono;
                   return (
                     <Link key={i.href} href={i.href}

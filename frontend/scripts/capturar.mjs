@@ -21,9 +21,9 @@ const ANCHURAS = [
   { nombre: "movil", width: 390, height: 844 },
 ];
 
-const PUBLICAS = ["/login", "/registro", "/recuperar", "/resetear", "/verificar"];
-const PRIVADAS = ["/", "/inversiones", "/nueva", "/alertas", "/subastas",
-                  "/comparativa", "/mapa", "/equipo", "/reglas", "/parametros"];
+const PUBLICAS = ["/", "/ayuda", "/login", "/registro", "/recuperar", "/resetear", "/verificar"];
+const PRIVADAS = ["/app", "/app/inversiones", "/app/nueva", "/app/alertas", "/app/subastas",
+                  "/app/comparativa", "/app/mapa", "/app/equipo", "/app/reglas", "/app/parametros"];
 
 const etiqueta = process.argv[2];
 if (!["antes", "despues"].includes(etiqueta)) {
@@ -47,7 +47,7 @@ if (process.env.SEIS_EMAIL && process.env.SEIS_PASSWORD) {
     await p.fill('input[type="email"]', process.env.SEIS_EMAIL);
     await p.fill('input[type="password"]', process.env.SEIS_PASSWORD);
     await p.click('button[type="submit"]');
-    await p.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 15000 });
+    await p.waitForURL((u) => u.pathname.startsWith("/app"), { timeout: 15000 });
     conSesion = true;
     console.log("sesión iniciada: se capturan también las rutas privadas");
   } catch {
@@ -69,7 +69,7 @@ for (const ruta of rutas) {
       // `networkidle` se cuelga si hay sondeos periódicos; una espera corta basta
       // para que entren fuentes y estilos.
       await pagina.waitForTimeout(700);
-      const nombre = (ruta === "/" ? "inicio" : ruta.slice(1).replaceAll("/", "-"));
+      const nombre = (ruta === "/" ? "landing" : ruta.slice(1).replaceAll("/", "-"));
       await pagina.screenshot({ path: `${destino}/${nombre}--${v.nombre}.png`, fullPage: true });
       capturadas++;
     } catch (e) {

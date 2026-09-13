@@ -8,6 +8,7 @@ import type { Semaforo } from "@/lib/types";
 import { SemaforoBadge } from "@/components/resultado";
 import { Button, Card, CardContent, ErrorBox, Input, Select, Spinner } from "@/components/ui";
 import { FilePlus2 } from "lucide-react";
+import { rutaApp } from "@/lib/rutas";
 
 export default function Inversiones() {
   const { data, isLoading, error } = useQuery({ queryKey: ["analisis"], queryFn: api.listar });
@@ -34,7 +35,7 @@ export default function Inversiones() {
           <h1 className="h-display text-2xl font-bold">Inversiones</h1>
           <p className="text-sm text-slate-500">{num(lista.length)} análisis en cartera.</p>
         </div>
-        <Link href="/nueva"><Button><FilePlus2 className="h-4 w-4" /> Nueva inversión</Button></Link>
+        <Link href={rutaApp("/nueva")}><Button><FilePlus2 className="h-4 w-4" /> Nueva inversión</Button></Link>
       </header>
 
       <div className="flex flex-wrap gap-3">
@@ -71,7 +72,7 @@ export default function Inversiones() {
               {lista.map((a) => (
                 <tr key={a.id} className="border-b border-slate-50 hover:bg-slate-50/60">
                   <td className="px-5 py-2.5">
-                    <Link href={`/inversiones/${a.id}`} className="font-medium text-primario hover:underline">
+                    <Link href={rutaApp(`/inversiones/${a.id}`)} className="font-medium text-primario hover:underline">
                       {a.tipologia ?? "activo"} · {a.municipio ?? "—"}
                     </Link>
                     <div className="text-[12px] text-slate-400">{a.perfil} · {num(a.superficie_m2 ?? 0)} m²</div>
