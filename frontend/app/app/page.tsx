@@ -8,6 +8,7 @@ import { SEM_COLOR, SemaforoBadge } from "@/components/resultado";
 import { Button, Card, CardContent, CardHeader, CardTitle, ErrorBox, Spinner, Stat } from "@/components/ui";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip, Bar, BarChart, XAxis, YAxis } from "recharts";
 import { FilePlus2 } from "lucide-react";
+import { rutaApp } from "@/lib/rutas";
 
 export default function Dashboard() {
   const { data, isLoading, error } = useQuery({ queryKey: ["analisis"], queryFn: api.listar });
@@ -31,13 +32,13 @@ export default function Dashboard() {
           <h1 className="h-display text-2xl font-bold">Dashboard</h1>
           <p className="text-sm text-slate-500">Cartera de análisis y estado del embudo de decisión.</p>
         </div>
-        <Link href="/nueva"><Button><FilePlus2 className="h-4 w-4" /> Nueva inversión</Button></Link>
+        <Link href={rutaApp("/nueva")}><Button><FilePlus2 className="h-4 w-4" /> Nueva inversión</Button></Link>
       </header>
 
       {lista.length === 0 ? (
         <Card><CardContent className="py-14 text-center">
           <p className="text-slate-500">Aún no hay análisis. Cree el primero con el asistente de 11 pasos.</p>
-          <Link href="/nueva" className="mt-4 inline-block"><Button>Empezar ahora</Button></Link>
+          <Link href={rutaApp("/nueva")} className="mt-4 inline-block"><Button>Empezar ahora</Button></Link>
         </CardContent></Card>
       ) : (
         <>
@@ -107,7 +108,7 @@ export default function Dashboard() {
                   {recientes.map((a) => (
                     <tr key={a.id} className="border-b border-slate-50 hover:bg-slate-50/60">
                       <td className="px-5 py-2.5">
-                        <Link href={`/inversiones/${a.id}`} className="font-medium text-primario hover:underline">
+                        <Link href={rutaApp(`/inversiones/${a.id}`)} className="font-medium text-primario hover:underline">
                           {a.tipologia ?? "activo"} · {a.municipio ?? "—"}
                         </Link>
                         <div className="text-[12px] text-slate-400">{a.perfil} · {num(a.superficie_m2 ?? 0)} m²</div>

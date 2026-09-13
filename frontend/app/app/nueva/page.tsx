@@ -10,6 +10,7 @@ import type { Opciones, Resultado } from "@/lib/types";
 import { Button, Campo, Card, CardContent, CardHeader, CardTitle, Check, ErrorBox, Input, Select, Spinner } from "@/components/ui";
 import { CondicionesVetos, EscaleraPrecios, EscenariosPanel, IcoDesglose, MetricasClave, RiesgosPanel, SemaforoHero } from "@/components/resultado";
 import { Check as CheckIcon, ChevronLeft, ChevronRight, Plus, RefreshCw, Save, Trash2 } from "lucide-react";
+import { rutaApp } from "@/lib/rutas";
 
 /* ── utilidades de formulario ─────────────────────────────────────────── */
 function getError(errors: any, path: string): string | undefined {
@@ -386,7 +387,7 @@ export default function NuevaInversion() {
   const simular = useMutation({ mutationFn: (p: unknown) => api.simular(p), onSuccess: setResultado });
   const guardar = useMutation({
     mutationFn: (p: unknown) => api.crear(p),
-    onSuccess: (r) => router.push(`/inversiones/${r.id}`),
+    onSuccess: (r) => router.push(rutaApp(`/inversiones/${r.id}`)),
   });
 
   async function siguiente() {

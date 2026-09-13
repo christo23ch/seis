@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { api, ApiError } from "@/lib/api";
 import { Button, Campo, Input } from "@/components/ui";
 import { Gavel } from "lucide-react";
+import { rutaApp } from "@/lib/rutas";
 
 export default function LoginPage() {
   const { entrar } = useAuth();
@@ -24,7 +25,7 @@ export default function LoginPage() {
     setError(""); setSinVerificar(false); setReenviado(""); setCargando(true);
     try {
       await entrar(email, password);
-      router.replace("/");
+      router.replace(rutaApp());
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);

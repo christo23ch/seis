@@ -15,7 +15,8 @@
 
 | Rama | PR | Estado | Qué contiene | Siguiente acción |
 |---|---|---|---|---|
-| `fase-0-sistema-diseno` | [#21](https://github.com/christo23ch/seis/pull/21) | 🟢 abierto | Fase 0': tipografía elegida (Source Serif 4 + Inter), tokens, contraste AAA vigilado por prueba | Revisar y fusionar |
+| `docs/adr-0014-cuarto-caso` | [#22](https://github.com/christo23ch/seis/pull/22) | 🟢 abierto | El cuarto caso del ADR-0014 como subclase propia: documento y pantalla desacordados | Revisar y fusionar |
+| `fase-15-landing` | *(pendiente de abrir)* | 🟠 en curso | Fase 15: armazón móvil resuelto; landing/onboarding/ayuda pendientes de la decisión de rutas | Decidir `/app` vs subdominio |
 
 Sin frentes abiertos de código.
 
@@ -60,28 +61,31 @@ puja (`m11_rentabilidad.py:41`). En una subasta —donde el atractivo es pujar p
 valor— **eso subestima el impuesto en todo análisis que se haga hoy**. Sin dueño: pendiente de
 decidir si se corrige por separado y antes.
 
-### 🟡 Frente abierto de MAQUETACIÓN, con dueño: la tabla densa no cabe en móvil
+### ✅ Cerrado: la app privada no tenía maquetación móvil (y el registro anterior era erróneo)
 
-**Medido, no estimado:** con la tabla de escenarios (8 columnas) la página mide
-**765-766 px en un móvil de 390 px**. El móvil no desplaza la tabla: **arrastra
-toda la pantalla en horizontal**, cabecera y semáforo incluidos.
+**Corrección, primero.** Este frente se registró el 2026-09-11 como «la tabla densa no cabe en
+móvil, 765-766 px». **Ese número salía del muestrario tipográfico de la Fase 0', no del
+producto.** Medido el producto real ruta por ruta el 2026-09-13, el hallazgo era otro y peor:
 
-**Por qué no se cierra donde se descubrió.** Salió de paso en la Fase 0' montando
-el muestrario tipográfico, y el propio muestrario demuestra que **no es un problema
-de letra**: el número es prácticamente idéntico en las cuatro opciones
-tipográficas, así que elegir una no lo arregla. Es maquetación.
+**El armazón de la app privada no tenía maquetación móvil, y las DOCE rutas privadas
+desbordaban.** `aside.fixed.w-60` + `main.ml-60`, sin un solo punto de ruptura en ninguno de los
+dos: a 390 px el contenido empezaba en el píxel 272 y la barra lateral nunca se plegaba.
+`/inversiones` medía **889 px de página sobre un móvil de 390**.
 
-**Las salidas posibles son decisiones de producto, no de diseño visual**
-—contenedor con desplazamiento horizontal propio, columnas plegables por
-prioridad, o una vista de fichas por escenario en móvil—, y cada una cambia cómo
-se lee el análisis en el dispositivo en el que más se consulta.
+**Por qué nadie lo había visto:** las capturas de `capturar.mjs` se tomaban con `fullPage`, que
+**ensancha la imagen hasta el contenido** y por tanto esconde exactamente el defecto que habría
+que ver. Una captura ancha parece correcta. Es la misma familia del punto 6 del [[ADR-0014]]:
+la herramienta mirando, pero no a lo que hacía falta.
 
-**Dueña: la ficha de la Fase 15** (`PLAN_FASES.md`), que no cierra su PR sin
-resolverlo. Se le asigna a la 15 y no a la 0' porque la 15 es la primera fase que
-vuelve a tocar maquetación de pantallas, y porque la 0' entrega tokens y reglas,
-no layout.
+**Resuelto** (Fase 15): cajón por debajo de `md` con cabecera y botón —cierra al navegar, con
+Escape y tocando el velo—, la tabla de `/inversiones` desplazándose **dentro de su contenedor**
+en vez de arrastrar la página, y la cabecera de regla de `/reglas` partiendo línea.
+**17 rutas medidas, 0 desbordan.**
 
-Descubierto el 2026-09-11 midiendo con Playwright, no mirando una captura.
+**Guarda permanente:** `frontend/scripts/medir-desborde.mjs` mide `scrollWidth` en el navegador
+y **sale con código 1** si alguna ruta desborda. Demostrado en rojo contra el armazón sin
+arreglar: 12 detectadas. Su alcance —solo 390 px, solo el estado inicial de cada ruta, y
+necesita datos para que las tablas tengan filas— va declarado en su cabecera.
 
 **Fusionados:** [#12](https://github.com/christo23ch/seis/pull/12) Fase 17-A ·
 [#13](https://github.com/christo23ch/seis/pull/13) puerta (a) ·
@@ -94,8 +98,8 @@ Descubierto el 2026-09-11 midiendo con Playwright, no mirando una captura.
 **La puerta está abierta:** (a) test de `init_db.main()` ✅ · (b) PostgreSQL en la CI ✅ ·
 (c) regla de activación de la purga, no una tarea · (d) cerrada.
 
-**Siguiente:** cerrada la Fase 0', va la **Fase 15** (landing), que la tenía como
-prerrequisito y que hereda el frente de la tabla densa en móvil.
+**Siguiente:** Fase 15 en curso. El armazón móvil ya está resuelto; la landing, el onboarding
+y `/ayuda` **esperan una decisión: si la app se mueve a `/app` o a un subdominio.**
 
 ---
 

@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "e2e": "bash ../e2e/correr.sh"
+    "e2e": "bash ../e2e/correr.sh",
+    "desborde": "node scripts/medir-desborde.mjs",
+    "guard": "node scripts/guard-sesion.mjs",
+    "capturar": "node scripts/capturar.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

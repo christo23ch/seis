@@ -527,15 +527,17 @@ significa algo cuando hay captación real.
 - **Tú:** decidir si la app se mueve a `/app` o a un subdominio; escribir el contenido real y el
   `MANUAL_DE_USUARIO.md`, que **no existe** (solo hay `MANUAL_DE_PRUEBAS.md`, que es de
   instalación).
-- **Condición de cierre heredada de la Fase 0', y no es una nota al pie: LA TABLA DENSA NO
-  CABE EN MÓVIL.** Medido con Playwright el 2026-09-11: con la tabla de escenarios (8
-  columnas) la página mide **765-766 px en un móvil de 390 px**, así que el móvil arrastra
-  **toda la pantalla** en horizontal, no solo la tabla. El muestrario tipográfico demostró
-  que **no lo arregla ninguna tipografía** —el número es casi idéntico en las cuatro
-  opciones—: es maquetación. Las salidas posibles (contenedor con desplazamiento propio,
-  columnas plegables por prioridad, o fichas por escenario en móvil) **son decisiones de
-  producto**, y se toman aquí. **Esta ficha no cierra su PR sin resolverlo**, igual que la
-  17-B no cierra sin el puente captación→análisis. Índice: `docs/ESTADO_ACTUAL.md`.
+- **Condición de cierre heredada de la Fase 0' — ✅ RESUELTA el 2026-09-13, y era peor de lo
+  que decía esta ficha.** Corrección del registro: los «765-766 px» que aquí figuraban salían
+  del **muestrario tipográfico**, no del producto. Medida la aplicación real ruta por ruta,
+  el hallazgo fue otro y mayor: **el armazón de la app privada no tenía maquetación móvil y
+  las DOCE rutas privadas desbordaban** —`aside.fixed.w-60` + `main.ml-60` sin un solo punto
+  de ruptura, con `/inversiones` en **889 px de página sobre un móvil de 390**—. No era «la
+  tabla densa»: era que la barra lateral nunca se plegaba. Resuelto con cajón por debajo de
+  `md` + cabecera con botón, la tabla de `/inversiones` desplazándose dentro de su
+  contenedor (regla de `DESIGN_SYSTEM.md` §6) y el envoltorio de `/reglas` partiendo línea.
+  **17 rutas medidas, 0 desbordan.** Guarda permanente: `frontend/scripts/medir-desborde.mjs`,
+  que sale con código 1 y demostrado en rojo contra el armazón sin arreglar (12 detectadas).
 - **Salida verificable:** Lighthouse ≥ 90 en rendimiento y accesibilidad; un usuario nuevo llega
   al primer análisis sin ayuda; la landing no rompe el guard de sesión de la app;
   **ninguna pantalla desborda horizontalmente a 390 px**, comprobado midiendo

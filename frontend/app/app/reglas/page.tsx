@@ -12,7 +12,7 @@ const TONO: Record<string, "rojo" | "amarillo" | "azul" | "neutro"> = { veto: "r
 function Condicion({ c }: { c: any }) {
   const objetivo = "expr" in c ? c.expr : Array.isArray(c.valor) ? `[${c.valor.join(", ")}]` : String(c.valor ?? "");
   return (
-    <code className="rounded bg-slate-100 px-1.5 py-0.5 font-cifra text-[12px] text-slate-700">
+    <code className="break-all rounded bg-slate-100 px-1.5 py-0.5 font-cifra text-[12px] text-slate-700">
       {c.hecho} <b className="text-primario">{c.op ?? "=="}</b> {objetivo}
     </code>
   );
@@ -96,8 +96,8 @@ export default function Reglas() {
             {reglas.filter((r: any) => r.categoria === cat).map((r: any) => (
               <Card key={r.codigo}>
                 <CardContent className="py-3.5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="font-cifra text-sm font-bold">{r.codigo}</span>
                       <Badge tono={TONO[r.categoria] ?? "neutro"}>{r.categoria}</Badge>
                       <span className="text-[11px] text-slate-400">v{r.version} · prio {r.prioridad}</span>
