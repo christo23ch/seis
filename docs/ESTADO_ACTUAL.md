@@ -21,7 +21,12 @@
 > que una imagen del hash no contesta. Variante del punto 6 del [[ADR-0014]]: cada herramienta
 > a su pregunta.
 
-**Sin ramas ni PR abiertos.** Todo lo trabajado hasta el 2026-09-13 está fusionado en `main`.
+**Ningún PR abierto** (comprobado, no supuesto). Todo lo trabajado hasta el 2026-09-13 está
+fusionado en `main`.
+
+> El remoto conserva ~28 ramas de fases ya cerradas. **Son historia, no trabajo pendiente**: un
+> `git branch -r` no distingue una cosa de la otra, así que la lista de arriba es la que manda y
+> una rama que no aparezca aquí está fusionada.
 
 Sin frentes abiertos de código.
 
