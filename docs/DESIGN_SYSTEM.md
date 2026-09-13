@@ -39,10 +39,13 @@ se traspasó con dueño. Queda esto sin verificar:
 **Resueltos en esta fase, y por eso ya no son supuestos:** el contraste del semáforo (§4, ahora
 AAA y con una prueba que lo vigila) y el borde de controles (§4, ahora 3:1).
 
-**Traspasado con dueño:** el desbordamiento horizontal en móvil. Medido —**765-766 px de página
-en un móvil de 390 px**— y demostrado que **no lo arregla ninguna tipografía**, porque el número
-es casi idéntico en las cuatro opciones. Es maquetación, no letra. **Dueña: la Fase 15**, que no
-cierra su PR sin resolverlo (`docs/PLAN_FASES.md`, `docs/ESTADO_ACTUAL.md`).
+**Traspasado con dueño y ya resuelto en la Fase 15, con una corrección por medio:** el
+desbordamiento horizontal en móvil. Los 765-766 px que se midieron aquí eran **del muestrario,
+no del producto**. Medido el producto, el defecto era otro y mayor: **el armazón de la app
+privada no tenía maquetación móvil y las doce rutas privadas desbordaban** (`/inversiones`, 889
+px sobre un móvil de 390). Lo que sí se sostuvo de la conclusión original es lo importante:
+**no lo arregla ninguna tipografía.** Resuelto el 2026-09-13; guarda permanente en
+`frontend/scripts/medir-desborde.mjs`.
 
 ---
 
@@ -268,15 +271,24 @@ feo: era que **no había regla escrita**.
 - **Formularios anclados arriba**, no centrados verticalmente. Un formulario flotando en gris es
   la firma de «demo».
 - **A 390 px ninguna pantalla desborda horizontalmente.** Se comprueba midiendo
-  `document.documentElement.scrollWidth`, no mirando la captura. Hoy **no se cumple** en la vista
-  de análisis: es el frente traspasado a la Fase 15 (§0).
+  `document.documentElement.scrollWidth`, **no mirando la captura** — y esto último no es un
+  matiz: las capturas de `capturar.mjs` usan `fullPage`, que ensancha la imagen hasta el
+  contenido y **esconde justo este defecto**. Una captura ancha parece correcta. Se comprueba
+  con `node scripts/medir-desborde.mjs`, que sale con código 1 si alguna ruta desborda.
+- **Una tabla que no cabe se desplaza dentro de su contenedor**, nunca arrastrando la página.
+  `overflow-x-auto` en el envoltorio y `min-w` en la tabla: la cabecera, el semáforo y los
+  filtros se quedan quietos.
+- **Por debajo de `md` la barra lateral es un cajón**, no una columna fija. Cierra al navegar,
+  con Escape y tocando el velo. `main` lleva `min-w-0`: sin él, un hijo ancho estira el flex y
+  el desbordamiento vuelve por la puerta de atrás.
 
 ---
 
 ## 7 · Preguntas que siguen abiertas
 
 1. **El suelo de 12 px** (§3.1). No se cierra sin usuarios reales.
-2. **El desbordamiento en móvil.** Con dueño: Fase 15.
+2. ~~El desbordamiento en móvil.~~ **Resuelto en la Fase 15** (2026-09-13): 17 rutas medidas,
+   0 desbordan, con guarda permanente.
 3. **shadcn/ui** (`docs/HERRAMIENTAS.md` §2). Sigue abierta, y ahora **se puede decidir bien**:
    la recomendación de aquel documento era adoptarlo —si se adopta— *después* de tener tokens
    propios, y los tokens ya existen. Si se adopta, se adopta entero; media librería en cada sitio

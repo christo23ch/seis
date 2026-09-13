@@ -53,7 +53,12 @@ export default function Inversiones() {
 
       <Card>
         <CardContent className="px-0 py-0">
-          <table className="w-full text-sm">
+          {/* La tabla se desplaza DENTRO de su contenedor. La regla del sistema de
+              diseño es que el cuerpo de la página nunca se mueve en horizontal:
+              una tabla de ocho columnas no cabe en 390 px y no tiene por qué
+              arrastrar la cabecera y el semáforo consigo. */}
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px] text-sm">
             <thead className="text-left text-[11.5px] uppercase tracking-wide text-slate-400">
               <tr className="border-b border-slate-100">
                 <th className="px-5 py-2.5">Activo</th><th className="px-3 py-2.5">Semáforo</th>
@@ -86,6 +91,7 @@ export default function Inversiones() {
               )}
             </tbody>
           </table>
+          </div>
         </CardContent>
       </Card>
     </div>
