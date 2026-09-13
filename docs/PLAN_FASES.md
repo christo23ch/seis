@@ -516,7 +516,13 @@ la mitad.
   error es alto y, por definición, invisible para la suite — que es exactamente tu criterio.
   Aplicar tu regla al pie de la letra: Fable produce el documento, Opus 5 implementa.
 
-### Fase 15 · Landing, onboarding y ayuda 🟢
+### Fase 15 · Landing, onboarding y ayuda 🟢 — ✅ **hecha** (ramas `fase-15-landing`, `fase-15-onboarding`)
+
+> **Cerrado el 2026-09-13.** Decisión de rutas: **la app vive en `/app`** y la landing ocupa la
+> raíz (`frontend/lib/rutas.ts` es el único sitio que lo sabe). Onboarding: **tabla propia**
+> `paso_onboarding`, no columna JSON — razonado en el docstring del modelo. La checklist
+> **deduce de los datos** lo que se puede deducir y solo persiste lo que no deja rastro.
+> Pendiente de contenido humano: el texto comercial real y `MANUAL_DE_USUARIO.md`.
 **Objetivo.** Que un desconocido entienda SEIS en 10 segundos y llegue solo a su primer análisis.
 **Por qué aquí.** Es la primera fase con trabajo visual serio, y **no debe empezar sin
 `docs/DESIGN_SYSTEM.md`** (ver §4). Además su onboarding mide «primera alerta», que solo
@@ -524,9 +530,10 @@ significa algo cuando hay captación real.
 
 - **Modelo:** landing pública en la raíz (hoy `/` está bajo `(app)` y protegida), onboarding con
   checklist persistida, `/ayuda`, correos de ciclo de vida.
-- **Tú:** decidir si la app se mueve a `/app` o a un subdominio; escribir el contenido real y el
-  `MANUAL_DE_USUARIO.md`, que **no existe** (solo hay `MANUAL_DE_PRUEBAS.md`, que es de
-  instalación).
+- **Tú:** ~~decidir si la app se mueve a `/app` o a un subdominio~~ **decidido: `/app`**
+  (un subdominio dependía del dominio, que es H11 y sigue sin decidir). Queda **escribir el
+  contenido real** de la landing y `/ayuda` —hoy es provisional y lo dice en el propio
+  fichero— y el `MANUAL_DE_USUARIO.md`, que **sigue sin existir**.
 - **Condición de cierre heredada de la Fase 0' — ✅ RESUELTA el 2026-09-13, y era peor de lo
   que decía esta ficha.** Corrección del registro: los «765-766 px» que aquí figuraban salían
   del **muestrario tipográfico**, no del producto. Medida la aplicación real ruta por ruta,

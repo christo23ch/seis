@@ -70,7 +70,8 @@ cp .env.example .env            # OBLIGATORIO: rellenar JWT_SECRET y ADMIN_PASSW
                                 # (vienen vacíos; con SEIS_ENV=production el arranque
                                 #  falla si no se definen — ver .env.example)
 docker compose up -d --build    # db + redis + backend + worker + beat + frontend
-# Aplicación: http://localhost:3000   (admin@seis.local + el ADMIN_PASSWORD que definiste)
+# Landing:    http://localhost:3000
+# Aplicación: http://localhost:3000/app   (admin@seis.local + el ADMIN_PASSWORD que definiste)
 # API:        http://localhost:8000/api/v1 · Swagger en /docs
 ```
 

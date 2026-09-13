@@ -10,6 +10,42 @@ revisión a ciegas es la que produjo los nueve tamaños de fuente distintos que 
 
 ---
 
+## 0 · Qué herramienta contesta qué pregunta
+
+**Va primero porque confundir las dos preguntas es exactamente lo que falló aquí**, y estuvo
+fallando desde la Fase 0' sin que nadie lo notara.
+
+| Pregunta | Herramienta | Por qué esa y no la otra |
+|---|---|---|
+| ¿Cómo queda el contenido, la composición, el color, la tipografía, el espaciado? | `npm run capturar` | Es una imagen, y para eso vale una imagen. |
+| **¿Desborda la página en horizontal?** | **`npm run desborde`** | Es una pregunta **numérica**: mide `scrollWidth` en el navegador. Una imagen no la contesta. |
+| ¿Sigue exigiendo sesión cada ruta privada? | `npm run guard` | Navega sin sesión y comprueba la redirección. |
+
+### `fullPage` sirve para revisar contenido, NO para detectar desbordamiento
+
+Y no es un matiz. `fullPage: true` **ensancha la imagen hasta el contenido**. Si una pantalla
+mide 889 px en un móvil de 390, `fullPage` **no** produce una captura de 390 px con la mitad
+cortada: produce una de **889 px que se ve perfectamente bien**. El desbordamiento horizontal es,
+por construcción, **el defecto que `fullPage` vuelve invisible**.
+
+> **Consecuencia retroactiva, y se asume explícitamente.** El armazón de la app privada estuvo
+> sin maquetación móvil, con **las doce rutas privadas desbordando**, revisado fase tras fase con
+> estas capturas — y ninguna lo mostró. Por tanto **toda captura «antes/después» tomada hasta el
+> 2026-09-13 queda como no fiable en cuanto a desbordamiento horizontal.** No por estar mal
+> tomada ni mal archivada: **porque el método no podía ver eso.** Sus conclusiones de contenido,
+> composición y color siguen siendo válidas; las de responsividad hay que volver a medirlas.
+>
+> Es el quinto caso del [[ADR-0014]] §6, y el más grave de los cinco: los otros eran una
+> herramienta de verificación fallando sobre un caso; este era la herramienta de **captura**
+> construida de forma que ocultaba la **clase entera** de defecto que existía para detectar.
+
+`SEIS_ENCAJE=1 npm run capturar -- despues` recorta al viewport en vez de ensanchar, así que el
+recorte **se ve**. Sigue sin ser la comprobación válida —una imagen no responde una pregunta
+numérica— pero al menos no miente. Y el propio guion, aunque capture con `fullPage`, **avisa por
+consola** de cada pantalla que desborde, para que nadie se quede con la imagen tranquilizadora.
+
+---
+
 ## 1 · Uso
 
 ```bash

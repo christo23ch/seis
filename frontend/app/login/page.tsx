@@ -88,7 +88,6 @@ export default function LoginPage() {
             <Link href="/registro" className="text-primario hover:underline">Crear una cuenta</Link>
             <Link href="/recuperar" className="text-primario hover:underline">He olvidado mi contraseña</Link>
           </div>
-          <p className="text-[12px] text-slate-400">Primer arranque: admin@seis.local / admin (cámbiela de inmediato).</p>
         </form>
       </section>
     </main>

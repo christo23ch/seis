@@ -3,6 +3,29 @@
 //
 //   node scripts/capturar.mjs antes|despues
 //   SEIS_EMAIL=… SEIS_PASSWORD=… node scripts/capturar.mjs despues   ← incluye rutas privadas
+//   SEIS_ENCAJE=1 node scripts/capturar.mjs despues                  ← recorta al viewport
+//
+// ═══ QUÉ PREGUNTA CONTESTA ESTE GUION, Y CUÁL NO ═══════════════════════════
+//
+// **Contesta:** ¿cómo queda el contenido, la composición, el color, la
+// tipografía y el espaciado?
+//
+// **NO contesta:** ¿desborda la página en horizontal? Para eso está
+// `npm run desborde`, y la distinción no es un matiz: `fullPage: true`
+// **ensancha la imagen hasta el contenido**. Si la página mide 889 px en un
+// móvil de 390, `fullPage` no da una captura de 390 px con la mitad cortada —
+// da una de 889 px que **se ve perfectamente bien**. El desbordamiento
+// horizontal es, por construcción, el defecto que `fullPage` vuelve invisible.
+//
+// Esto no es teoría: el armazón de la app privada estuvo sin maquetación móvil
+// con las doce rutas desbordando, revisado fase tras fase con estas capturas,
+// y ninguna lo mostró. Es el quinto caso del [[ADR-0014]] §6, y el peor: la
+// herramienta de mirar construida de forma que ocultaba la clase entera de
+// defecto que existía para detectar.
+//
+// `SEIS_ENCAJE=1` recorta al viewport en vez de ensanchar, así que el recorte se
+// VE. Sigue sin ser la comprobación válida —una imagen no responde una pregunta
+// numérica— pero al menos no miente.
 //
 // Requiere el frontend servido en BASE (por defecto http://localhost:3000) y COMPILADO:
 // `npm run start` sirve lo que compiló `npm run build`, no el código fuente.
@@ -15,6 +38,10 @@ import { chromium } from "playwright";
 const EJECUTABLE = process.env.CHROMIUM_PATH
   ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
 const BASE = process.env.SEIS_BASE ?? "http://localhost:3000";
+// Con `SEIS_ENCAJE` la captura se recorta al viewport: el desbordamiento se ve
+// cortado en vez de disimulado. Por defecto sigue siendo `fullPage`, porque para
+// revisar CONTENIDO es lo correcto.
+const ENCAJE = process.env.SEIS_ENCAJE === "1";
 
 const ANCHURAS = [
   { nombre: "escritorio", width: 1440, height: 900 },
@@ -59,6 +86,7 @@ if (process.env.SEIS_EMAIL && process.env.SEIS_PASSWORD) {
 
 const rutas = conSesion ? [...PUBLICAS, ...PRIVADAS] : PUBLICAS;
 let capturadas = 0;
+const desbordan = [];
 
 for (const ruta of rutas) {
   for (const v of ANCHURAS) {
@@ -70,7 +98,15 @@ for (const ruta of rutas) {
       // para que entren fuentes y estilos.
       await pagina.waitForTimeout(700);
       const nombre = (ruta === "/" ? "landing" : ruta.slice(1).replaceAll("/", "-"));
-      await pagina.screenshot({ path: `${destino}/${nombre}--${v.nombre}.png`, fullPage: true });
+      const sufijo = ENCAJE ? "--encaje" : "";
+      await pagina.screenshot({ path: `${destino}/${nombre}--${v.nombre}${sufijo}.png`,
+                                fullPage: !ENCAJE });
+      // Aunque el objetivo sea el contenido, si la página desborda conviene decirlo
+      // en voz alta: una captura `fullPage` no lo va a mostrar.
+      const ancho = await pagina.evaluate(() => document.documentElement.scrollWidth);
+      if (ancho > v.width + 1) {
+        desbordan.push(`${ruta} (${v.nombre}): ${ancho} px en ${v.width}`);
+      }
       capturadas++;
     } catch (e) {
       console.log(`  fallo en ${ruta} (${v.nombre}): ${e.message.split("\n")[0]}`);
@@ -81,4 +117,9 @@ for (const ruta of rutas) {
 }
 
 await navegador.close();
-console.log(`${capturadas} capturas en ${destino}/`);
+console.log(`${capturadas} capturas en ${destino}/${ENCAJE ? " (recortadas al viewport)" : ""}`);
+if (desbordan.length) {
+  console.log(`\n⚠️  ${desbordan.length} pantalla(s) DESBORDAN en horizontal, y estas capturas`);
+  console.log("   no lo muestran si se tomaron con fullPage. Comprueba con `npm run desborde`:");
+  for (const d of desbordan) console.log(`     · ${d}`);
+}

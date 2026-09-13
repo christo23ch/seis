@@ -114,4 +114,28 @@ export const api = {
   historialRegla: (codigo: string) => req<any[]>(`/reglas/${codigo}/historial`),
   nuevaRegla: (definicion: any, justificacion: string) =>
     req<{ codigo: string; version: string }>("/reglas", { method: "POST", body: JSON.stringify({ definicion, justificacion }) }),
+
+  // Fase 15 — checklist de arranque. Ninguna de las dos lleva usuario_id: el
+  // backend actúa sobre la sesión y no ofrece forma de pedir la de otro.
+  onboarding: () => req<EstadoOnboarding>("/cuenta/onboarding"),
+  marcarPasoOnboarding: (clave: string) =>
+    req<EstadoOnboarding>(`/cuenta/onboarding/${clave}`, { method: "POST" }),
+};
+
+export type PasoOnboarding = {
+  clave: string;
+  titulo: string;
+  descripcion: string;
+  accion: string | null;
+  completado: boolean;
+  /** `datos` ⇒ el backend lo deduce y no se puede marcar a mano. */
+  origen: "datos" | "declarado";
+  completado_en: string | null;
+};
+
+export type EstadoOnboarding = {
+  pasos: PasoOnboarding[];
+  completados: number;
+  total: number;
+  terminado: boolean;
 };

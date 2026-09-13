@@ -73,8 +73,11 @@ Espera ~2-4 minutos la primera vez (compila el frontend). Después:
 | API + Swagger interactivo | http://localhost:8000/docs |
 | Salud del backend | http://localhost:8000/api/v1/health |
 
-Entra en http://localhost:3000 → **Iniciar sesión** con `admin@seis.local` y el
-`ADMIN_PASSWORD` que definiste en `.env` (no hay contraseña por defecto).
+En http://localhost:3000 está la **landing pública**; la aplicación vive en
+http://localhost:3000/app y exige sesión (Fase 15). Entra por **Iniciar sesión** con
+`admin@seis.local` y el `ADMIN_PASSWORD` que definiste en `.env` — **no hay contraseña
+por defecto, y la pantalla de acceso ya no imprime ninguna credencial**: con la raíz
+pública, eso era información de instalación expuesta a cualquiera.
 
 Comandos útiles:
 ```bash

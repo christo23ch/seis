@@ -49,6 +49,7 @@ TABLAS_HIJAS_DE_USUARIO = (
     models.CodigoTelegram,
     models.PreferenciasNotificacion,
     models.Consentimiento,
+    models.PasoOnboarding,          # Fase 15
 )
 
 PREFIJO_ANONIMO = "anonimizado:"

@@ -166,10 +166,12 @@ def test_la_purga_no_deja_filas_huerfanas_con_claves_foraneas_activas(db):
 
     db.add(models.Consentimiento(id=str(uuid.uuid4()), usuario_id=u.id,
                                  tipo="terminos", version="1", otorgado=True))
+    db.add(models.PasoOnboarding(id=str(uuid.uuid4()), usuario_id=u.id,
+                                 clave="como_funciona"))
     db.commit()
 
     sembradas = {"preferencias_notificacion", "codigo_telegram", "alerta",
-                 "notificacion", "consentimiento"}
+                 "notificacion", "consentimiento", "paso_onboarding"}
     sin_cubrir = _tablas_hija_de_usuario() - sembradas
     assert not sin_cubrir, (
         f"Hay tablas con clave foránea a `usuario.id` que este test no siembra: "
