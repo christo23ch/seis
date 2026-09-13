@@ -101,7 +101,7 @@ Esta regla es un complemento de aquella, no un sustituto. Si hubiera que quedars
 
 ### 6. La propia herramienta de verificación comete el fallo que persigue
 
-Añadido el 2026-09-11, después de la corrección de la base imponible del ITP ([[ADR-0015]]), porque **ya van dos veces que el defecto aparece dentro del mecanismo de prueba y no en el código probado**:
+Añadido el 2026-09-11 y ampliado el 2026-09-13, porque **ya van cuatro veces que el defecto aparece en el mecanismo que debía avisar y no en lo que ese mecanismo vigilaba**. Los tres primeros son de la misma subclase; el cuarto es una subclase distinta y va explicada aparte:
 
 1. **Fase 16.** El test de caducidad de la caché de sondas **leía su valor esperado de la propia constante que estaba probando**. Pasaba con cualquier valor de esa constante, incluido uno roto.
 2. **ADR-0015.** Una de las nueve mutaciones —«el informe deja de avisar de que el impuesto es un mínimo»— **sobrevivió porque la mutación era falsa**: sustituía el texto del aviso por otro texto que seguía conteniendo el aviso. Lo que sobrevivió no fue el código: fue una mutación que no mutaba nada.
@@ -109,11 +109,21 @@ Añadido el 2026-09-11, después de la corrección de la base imponible del ITP 
 
 Los tres tienen **la misma forma, y conviene nombrarla**: *la herramienta de verificación se rompe —o pasa en vacío— antes de verificar nada, y su silencio es indistinguible de un resultado correcto.* En el caso 1 el test pasaba con cualquier valor; en el 2 la mutación no mutaba; en el 3 el script ni siquiera arrancaba. En los tres, la consola decía exactamente lo mismo que habría dicho si todo estuviera bien.
 
-Esto no es una anécdota de descuidos sueltos. Es la misma clase de defecto un nivel más adentro: **un mecanismo funcionando correctamente dentro de un alcance que nunca declaró**, salvo que aquí el mecanismo es el que se usa para detectar precisamente eso. Y tiene una consecuencia incómoda: la mutación, que es la práctica en la que más confía este proyecto, **no se audita a sí misma**. Una mutación que sobrevive puede significar que falta un test, o puede significar que la mutación no rompía nada — y los dos casos se ven exactamente igual en la consola.
+#### El cuarto caso es de otra subclase, y por eso no va en la lista de arriba
 
-Lo único que ha funcionado contra esto es barato y no es una regla nueva: **antes de creerse un verde, comprobar que la herramienta llegó a hacer su trabajo.** Ante una mutación que sobrevive, mirar el diff aplicado antes que la lista de tests; ante una herramienta que se estrena, ejecutarla y ver su salida en vez de razonar que debería funcionar. En los tres casos citados eso lo habría dicho a la primera, y en el tercero bastaba con lanzar el comando que el propio documento mandaba lanzar.
+4. **Fase 0', tipografía.** `docs/DESIGN_SYSTEM.md` §2 decidía **Source Serif 4 en cabeceras**. El token se escribió `["var(--fuente-display)", "Source Serif 4", "Georgia", "serif"]`, y Tailwind lo emitió **sin comillas**: CSS lee entonces el `4` como un identificador suelto, y ningún identificador puede empezar por dígito. Eso **invalida la declaración `font-family` entera** —no la última entrada: la declaración completa—, el navegador la descarta **sin emitir nada** y el titular cae a la fuente heredada. El documento decía serif; la pantalla mostraba Inter.
 
-No se convierte en cuarta regla porque no se puede exigir mecánicamente (punto 3), y una regla que solo produce la frase no vale nada. Queda escrito para que quien lea esto dentro de unos meses vea el patrón **nombrado**, no solo corregido en dos sitios distintos.
+**La diferencia con los tres anteriores, y es la que importa:** allí **la herramienta falló al verificar**. Aquí ninguna herramienta falló, porque **ninguna estaba mirando**. La fuente de verdad —el documento y el token— y la pantalla **se desacordaron, y no existía nada que mirase las dos a la vez.** El test de tokens habría leído el token y dicho que es correcto; la captura habría mostrado la pantalla y parecido plausible; y el desacuerdo entre ambos vive precisamente en el hueco que ninguno de los dos cubre.
+
+Es la primera vez que el fallo aparece **en la propia declaración de estilo**, y no en un test ni en un script de verificación. Lo que lo encontró fue medir `getComputedStyle` en el navegador — es decir, **preguntar a la pantalla qué cree que está pintando** en vez de preguntarle al fuente qué cree que pidió. Esa es la única comprobación de las cuatro que compara los dos lados.
+
+De ahí una consecuencia práctica que sí es nueva: **en el frontend, la comprobación válida es la que interroga al resultado renderizado.** Un token bien escrito no prueba que llegue a la pantalla, y una captura bonita no prueba que sea la fuente que se decidió. Los dos ejemplos de esta misma fase lo dicen dos veces: la fuente invalidada, y el borde de control que se corrigió en `globals.css` y **no llegó a ningún campo** porque cualquier utilidad de Tailwind lo pisaba.
+
+Esto no es una anécdota de descuidos sueltos. Es la misma clase de defecto un nivel más adentro: **un mecanismo funcionando correctamente dentro de un alcance que nunca declaró**, salvo que aquí el mecanismo es el que se usa para detectar precisamente eso. El cuarto caso lo lleva un paso más allá: el alcance no declarado **no era de ningún mecanismo, era el espacio entre dos** —lo que dice el documento y lo que pinta el navegador—, y ese hueco no aparece en el alcance de nadie. Y tiene una consecuencia incómoda: la mutación, que es la práctica en la que más confía este proyecto, **no se audita a sí misma**. Una mutación que sobrevive puede significar que falta un test, o puede significar que la mutación no rompía nada — y los dos casos se ven exactamente igual en la consola.
+
+Lo único que ha funcionado contra esto es barato y no es una regla nueva: **antes de creerse un verde, comprobar que la herramienta llegó a hacer su trabajo.** Ante una mutación que sobrevive, mirar el diff aplicado antes que la lista de tests; ante una herramienta que se estrena, ejecutarla y ver su salida en vez de razonar que debería funcionar; **y ante una decisión de estilo, preguntarle al navegador qué está pintando en vez de al fichero qué pidió.** En los tres primeros casos eso lo habría dicho a la primera —y en el tercero bastaba con lanzar el comando que el propio documento mandaba lanzar—; en el cuarto, la única forma de verlo era comparar los dos lados.
+
+No se convierte en cuarta regla porque no se puede exigir mecánicamente (punto 3), y una regla que solo produce la frase no vale nada. Queda escrito para que quien lea esto dentro de unos meses vea el patrón **nombrado** —y sus dos subclases distinguidas—, no solo corregido en cuatro sitios distintos.
 
 ## Alternativas consideradas
 
@@ -154,4 +164,5 @@ inexistente) y `test_esquemas.py` (menos esquemas de los esperados).
 - Fase: [[Fase-16-auditoria-seguridad]] · `docs/AUDITORIA_SEGURIDAD.md` §1
 - [[ADR-0012-un-solo-camino-de-borrado-de-personas]] y [[ADR-0013-la-purga-anonimiza-la-auditoria]] — los dos mecanismos cuyo alcance motivó el caso 4
 - [[ADR-0015-base-imponible-del-itp-sobre-el-mayor-valor]] — donde apareció la mutación falsa del punto 6
+- `docs/DESIGN_SYSTEM.md` §2 y §4.2 — donde apareció el cuarto caso: documento y pantalla desacordados
 - `docs/PROMPTS_FASES.md` — bloque de contexto, donde la regla se hace exigible
