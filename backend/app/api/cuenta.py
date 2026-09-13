@@ -20,7 +20,7 @@ from app import models
 from app.api.deps import get_current_user
 from app.core.db import get_db
 from app.legal import textos
-from app.services import cuenta_service
+from app.services import cuenta_service, onboarding_service
 
 router = APIRouter(prefix="/cuenta", tags=["cuenta"])
 
@@ -121,3 +121,33 @@ def mis_consentimientos(user: models.Usuario = Depends(get_current_user),
              "vigente": c.version == textos.VERSION_VIGENTE}
             for c in filas],
     }
+
+
+# ─────────────────────────── Onboarding (Fase 15) ───────────────────────────
+@router.get("/onboarding")
+def onboarding(user: models.Usuario = Depends(get_current_user),
+               db: Session = Depends(get_db)) -> dict:
+    """Checklist de arranque del usuario de la sesión.
+
+    Sin `{usuario_id}` en la ruta, igual que el resto de este router: se actúa
+    sobre la sesión y no hay forma de pedir la checklist de otra persona.
+    """
+    return onboarding_service.estado(db, user)
+
+
+@router.post("/onboarding/{clave}")
+def marcar_paso(clave: str, user: models.Usuario = Depends(get_current_user),
+                db: Session = Depends(get_db)) -> dict:
+    """Marca un paso MANUAL como hecho. Idempotente.
+
+    Un paso deducido de los datos devuelve 400: su verdad está en la base, y
+    aceptar la marca sería dejar que alguien declare un hecho comprobable.
+    """
+    if not onboarding_service.marcar(db, user.id, clave):
+        raise HTTPException(
+            status_code=400,
+            detail=("Ese paso no se marca a mano: se deduce de los datos"
+                    if clave in onboarding_service.CLAVES
+                    else "Paso de onboarding desconocido"))
+    db.commit()
+    return onboarding_service.estado(db, user)

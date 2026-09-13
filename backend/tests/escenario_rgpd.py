@@ -89,6 +89,8 @@ def sembrar_titular(db: Session, *, email: str, con_analisis: bool = False
         expira_en=datetime.now(timezone.utc) + timedelta(minutes=10)))
     db.add(models.Consentimiento(id=str(uuid.uuid4()), usuario_id=u.id,
                                  tipo="terminos", version="1", otorgado=True))
+    db.add(models.PasoOnboarding(id=str(uuid.uuid4()), usuario_id=u.id,
+                                 clave="como_funciona"))
     alerta = models.Alerta(id=str(uuid.uuid4()), usuario_id=u.id, nombre="mía",
                            criterios={"fuente": "judicial_boe"}, activa=True)
     db.add(alerta)
@@ -150,5 +152,5 @@ def cobertura_de_tablas_hijas(metadata) -> set[str]:
     podría estar dejándola atrás sin que nadie se entere.
     """
     sembradas = {"preferencias_notificacion", "codigo_telegram", "alerta",
-                 "notificacion", "consentimiento"}
+                 "notificacion", "consentimiento", "paso_onboarding"}
     return tablas_hijas_de(metadata, "usuario") - sembradas

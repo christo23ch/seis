@@ -10,13 +10,12 @@
 
 ## Frentes abiertos
 
-**Actualizado:** 2026-09-10 · **`main`:** `5f14119` · **Suite:** 518 con PostgreSQL, 0 omitidos (en SQLite: 510 + 8 omitidos, los exclusivos de PG) · **E2E:** alta real verde (`e2e/correr.sh`)
-**Última fase cerrada:** 16 (seguridad) · **Puerta: ABIERTA**
+**Actualizado:** 2026-09-13 · **`main`:** `4d1ff20` · **Suite:** 571 con PostgreSQL, 0 omitidos (en SQLite: 563 + 8 omitidos, los exclusivos de PG) · **E2E:** alta real verde (`e2e/correr.sh`) · **Responsividad:** 19 rutas, 0 desbordan · **Guard:** 12 privadas, 0 fugas
+**Última fase cerrada:** 15 (landing, onboarding, ayuda) · **Puerta: ABIERTA**
 
 | Rama | PR | Estado | Qué contiene | Siguiente acción |
 |---|---|---|---|---|
-| `docs/adr-0014-cuarto-caso` | [#22](https://github.com/christo23ch/seis/pull/22) | 🟢 abierto | El cuarto caso del ADR-0014 como subclase propia: documento y pantalla desacordados | Revisar y fusionar |
-| `fase-15-landing` | *(pendiente de abrir)* | 🟠 en curso | Fase 15: armazón móvil resuelto; landing/onboarding/ayuda pendientes de la decisión de rutas | Decidir `/app` vs subdominio |
+| `fase-15-onboarding` | *(pendiente de abrir)* | 🟢 lista | Cierre de la Fase 15: checklist de arranque en tabla propia, quinto caso del ADR-0014, `capturar.mjs` con modo de encaje, credenciales fuera de `/login` | Abrir PR |
 
 Sin frentes abiertos de código.
 
@@ -98,8 +97,23 @@ necesita datos para que las tablas tengan filas— va declarado en su cabecera.
 **La puerta está abierta:** (a) test de `init_db.main()` ✅ · (b) PostgreSQL en la CI ✅ ·
 (c) regla de activación de la purga, no una tarea · (d) cerrada.
 
-**Siguiente:** Fase 15 en curso. El armazón móvil ya está resuelto; la landing, el onboarding
-y `/ayuda` **esperan una decisión: si la app se mueve a `/app` o a un subdominio.**
+**Siguiente:** cerrada la Fase 15, **el trabajo 🟢 que no necesita paneles externos se ha
+agotado.** Lo que queda pide, en este orden:
+
+1. **Figura fiscal** (autónomo o sociedad) → desbloquea la **Fase 13 (Stripe)**, que es la única
+   que convierte el producto en negocio. Es trámite humano, no código.
+2. **Dominio y hosting** (H11 + DA-3 Vercel sin ratificar) → desbloquea la **Fase 11-B
+   (despliegue)**, y con ella todo lo que solo se puede comprobar en producción: HTTPS sirviendo,
+   backup restaurado con tiempo medido, alarma recibida, correo llegado a una bandeja real.
+3. **HTML real del BOE** → desbloquea la **17-B**, que no cierra sin el puente captación→análisis
+   ni sin decidir el modo de notificación por defecto.
+4. **Contenido humano**: el texto comercial de la landing y `/ayuda` —hoy provisional y dicho en
+   el propio fichero— y el `MANUAL_DE_USUARIO.md`, que sigue sin existir.
+5. **Textos legales del abogado**, que la Fase 14 dejó con marcador de pendiente.
+
+Lo que sí se puede hacer sin nada de lo anterior: la **Fase 19 (analítica)** necesita alta en
+Plausible, y la **17-C (comparables)** puede arrancar por su primera tarea —comprobar si el valor
+de referencia del Catastro tiene servicio web libre—, que es investigación y no requiere paneles.
 
 ---
 

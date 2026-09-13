@@ -9,6 +9,7 @@ import { Button, Card, CardContent, CardHeader, CardTitle, ErrorBox, Spinner, St
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip, Bar, BarChart, XAxis, YAxis } from "recharts";
 import { FilePlus2 } from "lucide-react";
 import { rutaApp } from "@/lib/rutas";
+import { Onboarding } from "@/components/onboarding";
 
 export default function Dashboard() {
   const { data, isLoading, error } = useQuery({ queryKey: ["analisis"], queryFn: api.listar });
@@ -34,6 +35,9 @@ export default function Dashboard() {
         </div>
         <Link href={rutaApp("/nueva")}><Button><FilePlus2 className="h-4 w-4" /> Nueva inversión</Button></Link>
       </header>
+
+      {/* Se pinta arriba y desaparece sola al completarse (ver components/onboarding.tsx). */}
+      <Onboarding />
 
       {lista.length === 0 ? (
         <Card><CardContent className="py-14 text-center">

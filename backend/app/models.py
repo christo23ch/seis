@@ -352,6 +352,44 @@ class Consentimiento(Base):
     otorgado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
+class PasoOnboarding(Base):
+    """Fase 15: constancia de que un paso del arranque se completó.
+
+    **Tabla propia y no una columna JSON en `usuario`**, decidido antes de
+    escribirlo. Tres razones, y la tercera es la del proyecto:
+
+    1. Es una entidad que va a crecer —pasos nuevos, recordatorios, quizá quién
+       los marcó en una cuenta compartida— y cada crecimiento en un JSON es una
+       migración de datos a mano sin esquema que la valide.
+    2. El borrado de personas enumera tablas hijas
+       (`borrado_service.TABLAS_HIJAS_DE_USUARIO`). Una tabla se enchufa ahí con
+       cero conceptos nuevos; un JSON dentro de `usuario` desaparecería «solo»,
+       que suena cómodo hasta que la exportación del RGPD necesita tratarlo
+       aparte y el invariante de un solo camino de borrado deja de estar
+       comprobado por la lista.
+    3. Un JSON es **dato ligado por valor**, que es exactamente el defecto que
+       mordió en `auditoria` ([[ADR-0013]]): sin columnas no hay tipos, no hay
+       índices, no hay longitudes, y **SQLite se lo traga todo en silencio**
+       mientras PostgreSQL puede no hacerlo.
+
+    **Solo se guardan las FINALIZACIONES, no el catálogo.** Los pasos viven en
+    `app/services/onboarding_service.py` porque son código versionable; la base
+    solo dice cuáles se completaron y cuándo. Añadir un paso no exige tocar
+    ninguna fila existente.
+
+    Y los pasos que se pueden DEDUCIR de los datos no se guardan aquí: que haya
+    un análisis en cartera se pregunta a la tabla de análisis. Un visto que el
+    usuario se pone a sí mismo no demuestra nada, y guardarlo invitaría a que el
+    sistema afirmara algo que no sabe.
+    """
+    __tablename__ = "paso_onboarding"
+    __table_args__ = (UniqueConstraint("usuario_id", "clave", name="uq_paso_onboarding_usuario_clave"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    usuario_id: Mapped[str] = mapped_column(ForeignKey("usuario.id"), index=True)
+    clave: Mapped[str] = mapped_column(String(32))          # ver onboarding_service.PASOS
+    completado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
 class Auditoria(Base):
     __tablename__ = "auditoria"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
