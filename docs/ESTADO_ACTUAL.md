@@ -97,34 +97,33 @@ y **sale con código 1** si alguna ruta desborda. Demostrado en rojo contra el a
 arreglar: 12 detectadas. Su alcance —solo 390 px, solo el estado inicial de cada ruta, y
 necesita datos para que las tablas tengan filas— va declarado en su cabecera.
 
-### 🔴 DECISIÓN ABIERTA, esperando al responsable: la fuente recomendada de la 17-C se cae
+### 🔴 DECISIÓN ABIERTA, esperando al responsable: la fuente recomendada de la 17-C se cae (ahora confirmado con certeza)
 
-**Primera tarea de la 17-C ejecutada el 2026-09-13. Resultado: no existe servicio web libre
-para el valor de referencia del Catastro.** Es gratuito y público —cualquiera puede consultar
-el de cualquier inmueble, no solo su titular— pero **exige una credencial PERSONAL en cada
-consulta** (Cl@ve, DNIe o certificado) a través de un servicio interactivo de la Sede. *Público*
-no es *anónimo*, y para un SaaS que analiza subastas de muchos clientes **eso no automatiza**.
+**Confirmado el 2026-09-14: no existe servicio web libre para el valor de referencia del
+Catastro.** El 2026-09-13 esto quedaba en «muy probable» porque la red de aquella sesión
+bloqueaba los dominios del Catastro. Esta sesión **sí tuvo salida** y ejecutó la prueba
+decisiva: llamada real al servicio libre (200, sin bloqueo, datos del caso de Santiponce, cero
+campos de valor) **más** lectura íntegra del catálogo oficial vigente (`Webservices_Libres.pdf`
+v2.6): 10 métodos en total, todos descriptivos o de localización, ninguno de valor — ni
+siquiera la etiqueta del esquema llamada literalmente «datos económicos del inmueble» lleva un
+importe. `SECAccvr.aspx`, visitado sin identificarse, exige Cl@ve/DNIe/certificado antes de
+cualquier campo. Es gratuito y público —cualquiera puede consultarlo, no solo su titular— pero
+**exige una credencial PERSONAL en cada consulta**. *Público* no es *anónimo*, y para un SaaS
+que analiza subastas de muchos clientes **eso no automatiza**.
 
 **Por qué importa:** la 17-C se planificó con el valor de referencia como fuente recomendada
 precisamente por ser gratis, oficial y ligada a la referencia catastral que el anuncio ya trae.
 Esa premisa se sostiene en todo menos en lo que hacía falta: **no se puede llamar sin una
-persona detrás.** Con eso sobre la mesa, la fuente recomendada de la fase puede cambiar, y
-**la decisión es del responsable del producto, no de la sesión** (así se pidió).
+persona detrás.** Con eso confirmado, **la decisión de qué fuente alternativa usar es del
+responsable del producto, no de la sesión** (así se pidió).
 
-**⚠️ Y la comprobación tiene un límite grande, declarado:** no se pudo ejecutar la prueba
-decisiva. La política de salida del entorno **bloquea todos los dominios del Catastro**, `boe.es`
-y `datos.gob.es`. Lo que hay es evidencia documental triangulada **más** la ausencia medida en
-tres librerías comunitarias independientes que envuelven los servicios libres y **ninguna**
-expone el valor. **Antes de cerrar la fuente por definitiva, la llamada hay que hacerla desde
-una red sin ese bloqueo**: son diez minutos y convierte «muy probable» en «seguro».
-
-**▶️ QUÉ TIENE QUE HACER LA PRÓXIMA SESIÓN QUE RETOME LA 17-C, antes que nada:** la llamada real
-desde una red sin el bloqueo de salida. Los cuatro pasos concretos —con la referencia catastral
-del caso de Santiponce ya puesta— están en la ficha de la 17-C. **Hasta tener esa confirmación,
-ninguna de las tres rutas alternativas se descarta ni se explora**, y la fuente recomendada de la
-fase sigue sin decidir.
-
-Detalle completo en la ficha de la Fase 17-C (`docs/PLAN_FASES.md`).
+**▶️ QUÉ TIENE QUE DECIDIR EL RESPONSABLE AHORA:** con la duda técnica cerrada, la pregunta ya no
+es «¿hay API?» sino «¿qué ruta alternativa?» — descarga masiva alfanumérica del Catastro
+(identificación + licencia), consulta masiva por fichero de la Sede, o dato como **entrada del
+usuario** (ya soportado por el ADR-0015, campo opcional + carencia declarada, pero con una
+pista incómoda: si nadie va a teclear comparables subasta por subasta, un valor de referencia
+que hay que teclear cae en el mismo problema). Detalle y evidencia completa en la ficha de la
+Fase 17-C (`docs/PLAN_FASES.md`).
 
 **Fusionados:** [#12](https://github.com/christo23ch/seis/pull/12) Fase 17-A ·
 [#13](https://github.com/christo23ch/seis/pull/13) puerta (a) ·

@@ -335,68 +335,48 @@ Investigado antes de proponer. **Lo que no se pudo confirmar está marcado como 
   **Es un hallazgo aparte de esta ficha y hay que decidir si se corrige antes** (ver §Riesgos).
 - **Coste:** gratuito.
 - **Viabilidad legal:** la más limpia de todas. Dato público de una administración.
-- **🔴 PRIMERA TAREA DE LA FASE, EJECUTADA EL 2026-09-13: NO hay servicio web libre para el
-  valor de referencia.** El resultado cambia la premisa de esta fuente y **la decisión de
-  alcance queda abierta al responsable del producto** — no se redefine aquí.
+- **🔴 CONFIRMADO CON CERTEZA EL 2026-09-14 (cierra la limitación del 2026-09-13): NO hay
+  servicio web libre para el valor de referencia.** La sesión anterior solo pudo triangular
+  documentación porque su red bloqueaba los dominios del Catastro; esta sesión **sí tuvo
+  salida** y ejecutó las tres comprobaciones que quedaban pendientes. El resultado es el mismo
+  que predecía la evidencia documental, ahora medido, no inferido. **La decisión de alcance
+  sigue abierta al responsable del producto** — no se redefine aquí, ver más abajo.
 
-  **Lo que se comprobó mecánicamente** (es lo único que se pudo ejecutar, ver la limitación
-  abajo): tres librerías comunitarias independientes que envuelven los servicios libres del
-  Catastro —`catastro-lib-python`, `Python-Catastro`, `go-catastro`— exponen **únicamente**
-  métodos descriptivos y de localización (`Consulta_DNPRC`, callejero, coordenadas,
-  provincias/municipios). **Ninguna** expone valor de referencia ni valor catastral. Que las
-  tres coincidan en la ausencia es señal, no casualidad.
+  **1 · Llamada real al servicio libre, ejecutada.** `GET
+  https://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/Consulta_DNPRC?RC=1282034TG3418S0001UL`
+  respondió **200**, sin bloqueo (`<cudnp>1</cudnp>`, consulta correcta), con los datos reales
+  del caso de Santiponce: dirección "CL FERIA (LA) 15 41970 SANTIPONCE (SEVILLA)", 44 m²,
+  residencial, año 1940. **Cero campos de valor.** Solo datos descriptivos, exactamente como
+  predecía la documentación.
+  2 · Catálogo oficial completo, leído. `Webservices_Libres.pdf` v2.6 (`catastro.hacienda.gob.es/ws/`,
+  la versión vigente) se descargó y se leyó entero, no solo el índice. Define **10 métodos en
+  total**, todos descriptivos o de localización: `ConsultaProvincia`, `ConsultaMunicipio`,
+  `ConsultaVia`, `ConsultaNumero`, `Consulta_DNPLOC`, `Consulta_DNPRC`, `Consulta_DNPPP` (+ sus
+  variantes `_Codigos`), `Consulta_RCCOOR`, `Consulta_RCCOOR_Distancia`, `Consulta_CPMRC`.
+  **Ninguno devuelve valor.** El dato es más concluyente de lo esperado: el propio esquema de
+  salida de `Consulta_DNPRC` (§2.1.5-2.1.6) trae una etiqueta literalmente llamada `<debi>`
+  *"DATOS ECONÓMICOS DEL INMUEBLE"*, y su contenido es `<luso>` (uso), `<sfc>` (superficie),
+  `<cpt>` (coeficiente de participación) y `<ant>` (antigüedad) — ni un solo campo de importe.
+  Ni siquiera la etiqueta pensada para "lo económico" lleva valor.
+  3 · `SECAccvr.aspx`, visitado sin identificarse. Confirma exigir autenticación de entrada
+  —selector "Certificado electrónico de identificación o DNI electrónico" / "Cl@ve PIN - Cl@ve
+  permanente"— antes de dejar consultar nada. No aparece ninguna ruta anónima.
 
-  **Lo que dice la documentación** (triangulado en varias fuentes, sin poder abrir la original):
-  los servicios libres se acotan por definición a *«datos catastrales NO protegidos, es decir,
-  los que no se refieren al titular ni al valor»*; la consulta del valor de referencia vive en
-  un servicio **interactivo** de la Sede (`SECAccvr.aspx`) que exige **Cl@ve, DNIe o certificado
-  electrónico**.
+  **Lo que queda sin ejecutar, y por qué no hace falta.** El cuarto paso (inspeccionar la
+  petición que hace el propio formulario de la Sede, por si hay un JSON sin sesión detrás) no
+  se ejecutó: exige un navegador con inspección de red, herramienta que esta sesión no tiene. Se
+  descarta como necesario porque los pasos 1-3 ya dan **prueba positiva y prueba negativa
+  independientes**: el catálogo libre (fuente primaria, íntegra) no contiene el método, y el
+  único punto de entrada humano exige credencial antes del primer campo. Dos fuentes
+  independientes coincidiendo es más que un cuarto indicio circunstancial.
 
-  **El matiz que importa y que casi se cuela:** el valor de referencia **sí es público** —lo
-  puede consultar cualquiera, no solo el titular, y es gratis—, a diferencia del valor
-  catastral. Pero *público* **no es lo mismo que *anónimo***: es gratuito y universal, y aun así
-  pide una credencial **personal** en cada consulta. Para un SaaS que analiza subastas de muchos
-  clientes, eso **no automatiza**, y automatizarlo con un certificado propio significaría actuar
-  con la identidad personal de alguien — problema legal, no solo técnico.
-
-  **⚠️ LIMITACIÓN DE ESTA COMPROBACIÓN, Y ES GRANDE: no se pudo ejecutar la prueba decisiva.**
-  La política de salida del entorno donde se investigó **bloquea todos los dominios del
-  Catastro** (`catastro.hacienda.gob.es`, `ovc.catastro.meh.es`, `sedecatastro.gob.es`), y
-  también `boe.es` y `datos.gob.es` — 403 en el CONNECT del proxy. Así que **no se llamó a
-  ningún endpoint ni se abrió ninguna fuente primaria**: lo de arriba es evidencia documental
-  triangulada más la ausencia medida en tres librerías. **Antes de cerrar esta fuente por
-  definitiva, la llamada hay que hacerla desde una red sin ese bloqueo** — son diez minutos y
-  responde con certeza lo que aquí queda en «muy probable».
-
-  **▶️ PRIMER PASO PENDIENTE DE ESTA FASE, y va antes que cualquier otra cosa (decisión del
-  responsable, 2026-09-13): hacer la llamada real desde una red sin el bloqueo de salida.** Diez
-  minutos, y cierra la duda de verdad en vez de dejarla en «muy probable». Concretamente:
-
-  1. `GET https://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejeroCodigos.asmx/Consulta_DNPRC_Codigos`
-     con una referencia catastral real —vale la del caso de Santiponce,
-     `1282034TG3418S0001UL`— y **mirar si en la respuesta aparece algún valor**. Debería
-     devolver solo datos descriptivos; si apareciera un valor, todo lo de arriba cae.
-  2. Abrir `Webservices_Libres.pdf` (v2.6 o posterior) y **leer el catálogo completo**, que es
-     la fuente primaria que aquí no se pudo abrir.
-  3. Entrar en `SECAccvr.aspx` **sin identificarse** y comprobar si hay alguna ruta de consulta
-     que no exija Cl@ve, DNIe ni certificado — es el punto exacto donde «público» podría no
-     significar «identificado».
-  4. Mirar la petición que hace el propio formulario de la Sede (red del navegador): si hay un
-     endpoint JSON detrás, ahí se ve, y con él si acepta llamadas sin sesión.
-
-  **Hasta tener esa confirmación, NINGUNA de las tres rutas alternativas se descarta ni se
-  explora** (decisión del responsable): la descarga masiva alfanumérica del Catastro (requiere
-  identificación y aceptar licencia), la consulta masiva por fichero de la Sede, y el dato como
-  **entrada del usuario** — que es lo que el [[ADR-0015]] ya soporta con campo opcional y
-  carencia declarada.
-
-  **Si la llamada real confirma que no hay API**, entonces se evalúan las tres **con el mismo
-  rigor de fuentes que el resto de esta ficha**: coste, viabilidad legal, y —encargo explícito—
-  **si «dato como entrada del usuario» no es reintroducir el problema original por otra
-  puerta.** Esa pregunta ya tiene una pista incómoda registrada: la 17-C existe porque *nadie va
-  a teclear seis comparables por subasta cuando el conector traiga doscientas al mes*, y un
-  valor de referencia que hay que teclear subasta por subasta cae bajo exactamente el mismo
-  argumento. Que se responda con evidencia, no con la intuición de quien lo implemente.
+  **Conclusión: el valor de referencia del Catastro queda descartado como fuente automatizable
+  sin negociación ni identificación personal.** Con esto, las tres rutas alternativas —
+  descarga masiva alfanumérica (identificación + licencia), consulta masiva por fichero de la
+  Sede, y dato como **entrada del usuario** (ya soportado por el [[ADR-0015]], campo opcional +
+  carencia declarada) — dejan de estar bloqueadas para explorarse. **Su evaluación, y en
+  particular si «dato como entrada del usuario» reintroduce el problema original por otra
+  puerta, sigue siendo decisión del responsable del producto**, no de la sesión.
 
 **2 · idealista/data (API comercial) — VIABLE PERO DE PAGO Y A NEGOCIAR**
 
