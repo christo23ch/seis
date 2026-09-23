@@ -434,3 +434,23 @@ def parametros_simulables(analisis_id: str, db: Session = Depends(get_db),
     """
     a = _analisis_propio(db, analisis_id, user)
     return parametros_simulables_service.obtener_parametros_simulables(db, a)
+
+
+# ───────────────────── Comparación original / simulación (Fase 5F.7.3) ─────────────────────
+
+@router.get("/analisis/{analisis_id}/simulaciones/{simulacion_id}/comparacion")
+def comparar_simulacion(analisis_id: str, simulacion_id: str, db: Session = Depends(get_db),
+                        user: models.Usuario = Depends(get_current_user)) -> dict:
+    """Parámetros y resultado clave del original frente a la simulación. Toda la
+    comparación la decide el backend; solo lectura: no ejecuta el motor ni audita.
+
+    Mismo aislamiento en dos capas que el detalle de simulación: análisis ajeno o
+    inexistente da 404, y una simulación de otro análisis da el mismo 404 que una
+    inexistente.
+    """
+    a = _analisis_propio(db, analisis_id, user)
+    try:
+        sim = simulacion_service.obtener_simulacion(db, analisis_id, simulacion_id)
+    except simulacion_service.SimulacionError as exc:
+        raise _error_simulacion(exc)
+    return parametros_simulables_service.comparar_simulacion(a, sim)

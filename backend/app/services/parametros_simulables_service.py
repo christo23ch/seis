@@ -102,17 +102,30 @@ def _editable(clave: str, meta, plantilla: dict | None, vigentes: Parametros,
     }
 
 
+def _claves_editables(arbol: Parametros):
+    """`(clave, metadatos, resuelto | None)` de cada editable: los fijos del
+    catálogo y las instancias de plantilla resueltas contra `arbol`. Única
+    enumeración de editables de este módulo, para que catálogo y comparación
+    no puedan listar conjuntos distintos."""
+    for p in catalogo.obtener_parametros_editables():
+        yield p.clave, p, None
+    for r in catalogo.resolver_plantillas(arbol):
+        yield r.clave, r.plantilla, r
+
+
+def _arbol(datos: dict | None) -> Parametros | None:
+    return Parametros(datos) if datos is not None else None
+
+
 def obtener_parametros_simulables(db: Session, analisis: models.Analisis) -> dict:
     """Catálogo simulable de `analisis`. El llamador ya ha comprobado que el
     análisis pertenece a su organización (`_analisis_propio`)."""
     vigentes, _, _ = conocimiento_service.cargar_conocimiento(db)
-    originales = (Parametros(analisis.parametros_aplicados)
-                  if analisis.parametros_aplicados is not None else None)
+    originales = _arbol(analisis.parametros_aplicados)
 
-    editables = [_editable(p.clave, p, None, vigentes, originales)
-                 for p in catalogo.obtener_parametros_editables()]
-    editables += [_editable(r.clave, r.plantilla, _plantilla(r, analisis), vigentes, originales)
-                  for r in catalogo.resolver_plantillas(vigentes)]
+    editables = [_editable(clave, meta, _plantilla(r, analisis) if r else None,
+                           vigentes, originales)
+                 for clave, meta, r in _claves_editables(vigentes)]
     editables.sort(key=lambda e: (e["modulo"], e["clave"]))
 
     no_editables = sorted(
@@ -129,3 +142,137 @@ def obtener_parametros_simulables(db: Session, analisis: models.Analisis) -> dic
             "version_parametros_vigente": vigentes.version,
             "tiene_parametros_originales": originales is not None,
             "editables": editables, "no_editables": no_editables, "derivados": derivados}
+
+
+# ─────────────────────── comparación original / simulación (Fase 5F.7.3) ───────────────────────
+#
+# Toda la comparación se decide aquí; el frontend solo pinta. Lee exclusivamente
+# snapshots ya persistidos (`Analisis.parametros_aplicados`/`resultado` y los de
+# la `Simulacion`): no carga el conocimiento vigente ni ejecuta el motor.
+
+# Campos del resultado que se ponen lado a lado. Todos existen en `decision` del
+# `AnalisisResult` persistido (verificado en el Paso 0 de 5F.7.3); ninguno se calcula.
+_RESUMEN_RESULTADO: dict[str, tuple[str, ...]] = {
+    "semaforo": ("decision", "semaforo"),
+    "ico": ("decision", "ico"),
+    "ra": ("decision", "ra"),
+    "ici": ("decision", "ici"),
+    "icu": ("decision", "icu"),
+    "p_ideal": ("decision", "precios", "p_ideal"),
+    "p_objetivo": ("decision", "precios", "p_objetivo"),
+    "p_max": ("decision", "precios", "p_max"),
+    "p_limite": ("decision", "precios", "p_limite"),
+    "rvc": ("decision", "rvc"),
+    "p_adj_esperado": ("decision", "p_adj_esperado"),
+    "margen_seguridad_valor": ("decision", "margen_seguridad_valor"),
+}
+
+
+def _resumen_resultado(resultado: object) -> dict:
+    return {campo: _dato(resultado, ruta) for campo, ruta in _RESUMEN_RESULTADO.items()}
+
+
+def _hojas(nodo: object, prefijo: str = "") -> dict[str, object]:
+    """Árbol → `{ruta con puntos: valor}`. Un objeto no vacío se recorre; una
+    lista entera, un escalar o un objeto vacío es UNA hoja."""
+    if isinstance(nodo, dict) and nodo:
+        hojas: dict[str, object] = {}
+        for k, v in nodo.items():
+            hojas.update(_hojas(v, f"{prefijo}.{k}" if prefijo else str(k)))
+        return hojas
+    return {prefijo: nodo}
+
+
+def _cubierta(ruta: str, editables: set[str]) -> bool:
+    """¿La hoja es una clave editable o está DENTRO de una (subclave de una
+    estructura, que se compara completa en su propia fila)?"""
+    partes = ruta.split(".")
+    return any(".".join(partes[:i]) in editables for i in range(1, len(partes) + 1))
+
+
+def _fila(clave: str, meta, sim: models.Simulacion, hay_original: bool,
+          valor_original: object, valor_aplicado: object) -> dict:
+    tiene_override = clave in sim.overrides
+    if hay_original:
+        modificado = valor_aplicado != valor_original
+        causa = (("override" if tiene_override else "conocimiento_vigente")
+                 if modificado else None)
+    else:
+        # Sin árbol original no hay contra qué comparar: solo consta lo que el
+        # usuario sobrescribió. El original nunca se rellena con otro valor.
+        modificado = tiene_override
+        causa = "override" if tiene_override else None
+    return {"clave": clave,
+            "nombre_legible": meta.nombre_legible if meta else None,
+            "unidad": meta.unidad if meta else None,
+            "editable": meta is not None,
+            "valor_original": valor_original if hay_original else None,
+            "override": sim.overrides.get(clave), "tiene_override": tiene_override,
+            "valor_aplicado": valor_aplicado,
+            "modificado": modificado, "causa": causa}
+
+
+def comparar_simulacion(analisis: models.Analisis, sim: models.Simulacion) -> dict:
+    """Original frente a simulación. El llamador ya ha comprobado organización
+    (`_analisis_propio`) y pertenencia de la simulación (`obtener_simulacion`).
+
+    Filas de `parametros`:
+      a) las claves editables, siempre (instancias de plantilla resueltas contra
+         el árbol de la SIMULACIÓN, que es el que usó el motor);
+      b) toda hoja que difiera entre los dos árboles completos y no esté cubierta
+         por (a), como no editable. Sin árbol original, (b) queda vacío.
+    `modificado`/`causa` los decide este servicio; orden: modificadas primero,
+    luego por clave.
+    """
+    aplicados = Parametros(sim.parametros_aplicados)
+    originales = _arbol(analisis.parametros_aplicados)
+    hay_original = originales is not None
+
+    filas, editables = [], set()
+    for clave, meta, _ in _claves_editables(aplicados):
+        editables.add(clave)
+        original = originales.get(clave, _AUSENTE) if hay_original else _AUSENTE
+        aplicado = aplicados.get(clave, _AUSENTE)
+        filas.append(_fila(clave, meta, sim, hay_original,
+                           None if original is _AUSENTE else original,
+                           None if aplicado is _AUSENTE else aplicado))
+
+    if hay_original:
+        hojas_original = _hojas(analisis.parametros_aplicados)
+        hojas_aplicadas = _hojas(sim.parametros_aplicados)
+        for ruta in sorted(hojas_original.keys() | hojas_aplicadas.keys()):
+            if _cubierta(ruta, editables):
+                continue
+            original = hojas_original.get(ruta, _AUSENTE)
+            aplicado = hojas_aplicadas.get(ruta, _AUSENTE)
+            if original is not _AUSENTE and aplicado is not _AUSENTE and original == aplicado:
+                continue
+            filas.append(_fila(ruta, None, sim, True,
+                               None if original is _AUSENTE else original,
+                               None if aplicado is _AUSENTE else aplicado))
+
+    filas.sort(key=lambda f: (not f["modificado"], f["clave"]))
+
+    return {
+        "analisis_id": analisis.id,
+        "simulacion": {
+            "id": sim.id, "estado": sim.estado,
+            "creado_en": sim.creado_en.isoformat() if sim.creado_en else None,
+            "fecha_validacion": (sim.fecha_validacion.isoformat()
+                                 if sim.fecha_validacion else None),
+            "version_parametros_base": sim.version_parametros_base,
+            "version_reglas": sim.version_reglas,
+            # Mismo criterio que el listado (`_resumen_simulacion`): el puntero
+            # tal cual, para que ambos endpoints no puedan contradecirse.
+            "es_configuracion_actual": sim.id == analisis.simulacion_validada_id,
+        },
+        "original": {
+            "creado_en": analisis.creado_en.isoformat() if analisis.creado_en else None,
+            "version_parametros": analisis.version_parametros,
+            "version_reglas": analisis.version_reglas,
+            "parametros_disponibles": hay_original,
+        },
+        "parametros": filas,
+        "resultado": {"original": _resumen_resultado(analisis.resultado),
+                      "simulacion": _resumen_resultado(sim.resultado)},
+    }
