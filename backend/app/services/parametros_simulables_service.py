@@ -168,6 +168,11 @@ _RESUMEN_RESULTADO: dict[str, tuple[str, ...]] = {
 }
 
 
+# Hoja raíz del árbol que NO es un parámetro (ver docstring de `comparar_simulacion`).
+# Solo la clave exacta en la raíz: una `version` anidada seguiría comparándose.
+_HOJA_VERSION = "version"
+
+
 def _resumen_resultado(resultado: object) -> dict:
     return {campo: _dato(resultado, ruta) for campo, ruta in _RESUMEN_RESULTADO.items()}
 
@@ -221,6 +226,11 @@ def comparar_simulacion(analisis: models.Analisis, sim: models.Simulacion) -> di
          el árbol de la SIMULACIÓN, que es el que usó el motor);
       b) toda hoja que difiera entre los dos árboles completos y no esté cubierta
          por (a), como no editable. Sin árbol original, (b) queda vacío.
+         Única exclusión: la hoja RAÍZ `version`. Es la versión del árbol, un
+         metadato y no un parámetro (cambia a `…+Nov` en cuanto hay un override
+         global), y la respuesta ya la da en `simulacion.version_parametros_base`
+         y `original.version_parametros`. Como fila solo duplicaría ese dato
+         disfrazado de parámetro modificado.
     `modificado`/`causa` los decide este servicio; orden: modificadas primero,
     luego por clave.
     """
@@ -241,7 +251,7 @@ def comparar_simulacion(analisis: models.Analisis, sim: models.Simulacion) -> di
         hojas_original = _hojas(analisis.parametros_aplicados)
         hojas_aplicadas = _hojas(sim.parametros_aplicados)
         for ruta in sorted(hojas_original.keys() | hojas_aplicadas.keys()):
-            if _cubierta(ruta, editables):
+            if ruta == _HOJA_VERSION or _cubierta(ruta, editables):
                 continue
             original = hojas_original.get(ruta, _AUSENTE)
             aplicado = hojas_aplicadas.get(ruta, _AUSENTE)

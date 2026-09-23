@@ -230,10 +230,28 @@ def test_deriva_del_conocimiento_vigente(api, orgs):
     assert f["valor_original"] == original
     assert f["valor_aplicado"] == pytest.approx(original + 0.01)
     assert f["modificado"] is True and f["causa"] == "conocimiento_vigente"
-    # La versión del árbol también es una hoja y también difiere (2026.07 → 2026.07+1ov):
-    # por la regla (b) aparece como fila no editable, sin interpretarla.
-    v = filas["version"]
-    assert v["editable"] is False and v["causa"] == "conocimiento_vigente"
+    # La hoja raíz `version` también difiere aquí (2026.07 → 2026.07+1ov), pero es
+    # un metadato, no un parámetro: no sale como fila (ajuste de 5F.7.3).
+    assert "version" not in filas
+
+
+def test_la_hoja_version_no_aparece_nunca_aunque_difiera(api, orgs):
+    """`version` es la versión del árbol, ya expuesta en
+    `simulacion.version_parametros_base` y `original.version_parametros`."""
+    h = orgs["a_h"]
+    aid = _analisis(api, h)
+    sim = _crear(api, h, aid)
+
+    def otra_version(arbol):
+        arbol["version"] = "version-distinta-de-la-original"
+        return arbol
+    _editar_arbol(models.Simulacion, sim["id"], "parametros_aplicados", otra_version)
+
+    cmp = _comparar(api, h, aid, sim["id"])
+
+    assert "version" not in _filas(cmp)
+    assert len(cmp["parametros"]) == N_EDITABLES      # ninguna otra hoja difiere
+    assert not any(f["modificado"] for f in cmp["parametros"])
 
 
 def test_hoja_no_editable_que_difiere_aparece_como_no_editable(api, orgs):
