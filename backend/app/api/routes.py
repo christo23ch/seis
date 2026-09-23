@@ -14,8 +14,8 @@ from app.api.deps import ROLES_ESCRITURA, get_current_user, require_rol
 from app.core.config import get_settings
 from app.core.db import get_db
 from app.engine.contracts import AnalisisInput
-from app.services import (analisis_service, informe_service, pdf_service,
-                          simulacion_service)
+from app.services import (analisis_service, informe_service, parametros_simulables_service,
+                          pdf_service, simulacion_service)
 
 router = APIRouter(tags=["analisis"])
 
@@ -419,3 +419,18 @@ def volver_a_configuracion_original(
     except simulacion_service.SimulacionError as exc:
         raise _error_simulacion(exc)
     return detalle(analisis_id, db=db, user=user)
+
+
+# ───────────────────── Catálogo simulable (Fase 5F.7.2) ─────────────────────
+
+@router.get("/analisis/{analisis_id}/parametros-simulables")
+def parametros_simulables(analisis_id: str, db: Session = Depends(get_db),
+                          user: models.Usuario = Depends(get_current_user)) -> dict:
+    """Qué parámetros puede sobrescribir una simulación de este análisis, con
+    su valor vigente (base de la simulación) y el original del análisis.
+
+    Solo lectura: no ejecuta el motor ni audita. Cuelga de `/analisis/{id}` y
+    no de `/simulaciones/` para no chocar con `GET /simulaciones/{simulacion_id}`.
+    """
+    a = _analisis_propio(db, analisis_id, user)
+    return parametros_simulables_service.obtener_parametros_simulables(db, a)
