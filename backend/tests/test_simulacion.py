@@ -12,6 +12,8 @@ from __future__ import annotations
 import time
 from unittest.mock import patch
 
+import pytest
+
 from app import models
 from app.core.db import SessionLocal
 from app.engine.params.store import cargar_defaults
@@ -485,5 +487,73 @@ def test_no_hay_carga_de_conocimiento_redundante_y_es_razonablemente_rapida(api)
 
         assert espia.call_count == 1, "crear_simulacion no debe cargar conocimiento más de una vez"
         assert duracion < 2.0, f"una simulación no debería tardar {duracion:.3f}s"
+    finally:
+        db.close()
+
+
+# ─────────────────────── 23. Forma de los valores de override (Fase 5F.7.1) ───────────────────────
+#
+# La clave ya se validaba (5D); el VALOR no, y uno de forma incorrecta llegaba al
+# motor y reventaba con `TypeError` (HTTP 500, medido en la auditoría 5F.7). Solo
+# se comprueba la FORMA contra el valor de referencia del mismo árbol: ningún
+# rango, suma, orden ni regla de negocio.
+
+_FORMA_INVALIDA = [
+    ("semaforo.verde.ico_min", "abc"),                    # texto donde va número
+    ("semaforo.verde.ico_min", None),                     # nulo donde va número
+    ("semaforo.verde.ico_min", [1, 2]),                   # lista donde va número
+    ("semaforo.verde.ico_min", {"x": 1}),                 # objeto donde va número
+    ("semaforo.verde.ico_min", True),                     # bool NO es número aquí
+    ("capital.coste_capital_anual", float("nan")),        # número no finito
+    ("capital.coste_capital_anual", float("inf")),        # número no finito
+    ("riesgos.bandas_ra", 5),                             # número donde va lista
+    ("riesgos.bandas_ra", [{"max": "x", "banda": "bajo"}]),     # elemento mal formado
+    ("adjudicacion.ratios.aeat", {"otra": 0.5}),          # claves distintas
+    ("adjudicacion.ratios.aeat", {"default": 0.5, "otra": 1}),  # clave de más
+    ("adjudicacion.ratios.judicial_boe",                  # estructura anidada rota
+     {"vivienda": 0.4, "default": 0.5}),
+]
+
+
+@pytest.mark.parametrize("clave,valor", _FORMA_INVALIDA)
+def test_override_con_forma_invalida_se_rechaza_sin_crear_fila(api, clave, valor):
+    db = SessionLocal()
+    try:
+        analisis_id = _crear_analisis(db)
+        with patch("app.services.simulacion_service.ejecutar_analisis") as motor:
+            with pytest.raises(simulacion_service.OverrideInvalidoError) as exc:
+                simulacion_service.crear_simulacion(db, analisis_id, {clave: valor})
+        assert exc.value.clave == clave
+        assert motor.call_count == 0, "un valor mal formado no debe llegar al motor"
+        assert db.query(models.Simulacion).filter_by(analisis_id=analisis_id).count() == 0
+    finally:
+        db.close()
+
+
+def test_forma_invalida_anidada_indica_la_ruta_interna(api):
+    db = SessionLocal()
+    try:
+        analisis_id = _crear_analisis(db)
+        with pytest.raises(simulacion_service.OverrideInvalidoError) as exc:
+            simulacion_service.crear_simulacion(
+                db, analisis_id, {"riesgos.bandas_ra": [{"max": "x", "banda": "bajo"}]})
+        assert "[0].max" in exc.value.motivo
+    finally:
+        db.close()
+
+
+@pytest.mark.parametrize("clave,valor", [
+    ("capital.coste_capital_anual", 1),                   # int donde la referencia es float
+    ("semaforo.verde.ico_min", 90.5),                     # float donde la referencia es int
+    ("adjudicacion.ratios.aeat", {"default": 0.6}),       # estructura con su forma exacta
+    ("riesgos.bandas_ra", [{"max": 30, "banda": "bajo"}, {"max": 100, "banda": "alto"}]),
+])
+def test_override_con_forma_valida_se_acepta(api, clave, valor):
+    db = SessionLocal()
+    try:
+        analisis_id = _crear_analisis(db)
+        sim = simulacion_service.crear_simulacion(db, analisis_id, {clave: valor})
+        assert sim.estado == "pendiente"
+        assert sim.overrides == {clave: valor}
     finally:
         db.close()

@@ -254,6 +254,68 @@ def test_body_mal_formado_422(api, orgs):
     assert _contar(models.Simulacion, analisis_id=aid) == 0
 
 
+# ─────────────── C.1 Forma de los valores de override (Fase 5F.7.1) ───────────────
+
+@pytest.mark.parametrize("clave,valor", [
+    ("semaforo.verde.ico_min", "abc"),
+    ("semaforo.verde.ico_min", None),
+    ("semaforo.verde.ico_min", [1, 2]),
+    ("semaforo.verde.ico_min", {"x": 1}),
+    ("semaforo.verde.ico_min", True),
+    ("riesgos.bandas_ra", 5),
+    ("riesgos.bandas_ra", [{"max": "x", "banda": "bajo"}]),
+    ("adjudicacion.ratios.aeat", {}),
+    ("adjudicacion.ratios.aeat", {"default": 0.5, "otra": 1}),
+])
+def test_valor_con_forma_invalida_422_sin_filas_ni_auditoria(api, orgs, clave, valor):
+    """Antes de 5F.7.1 todos estos llegaban al motor y respondían 500."""
+    h = orgs["a_h"]
+    aid = _analisis(api, h)
+    auditorias_antes = _contar(models.Auditoria)
+
+    r = api.post(_url(aid), json={"overrides": {clave: valor}}, headers=h)
+
+    assert r.status_code == 422, r.text
+    assert clave in r.json()["detail"]
+    assert _contar(models.Simulacion, analisis_id=aid) == 0
+    assert _contar(models.Auditoria) == auditorias_antes
+
+
+def test_nan_en_cuerpo_crudo_422(api, orgs):
+    """El parser JSON de Python acepta el literal `NaN`; el valor no es finito."""
+    h = orgs["a_h"]
+    aid = _analisis(api, h)
+    auditorias_antes = _contar(models.Auditoria)
+
+    r = api.post(_url(aid), content='{"overrides":{"capital.coste_capital_anual":NaN}}',
+                 headers={**h, "Content-Type": "application/json"})
+
+    assert r.status_code == 422, r.text
+    assert _contar(models.Simulacion, analisis_id=aid) == 0
+    assert _contar(models.Auditoria) == auditorias_antes
+
+
+def test_campo_desconocido_en_el_cuerpo_422(api, orgs):
+    """`override` (singular) no es `overrides`: antes se ignoraba y se creaba
+    una simulación con `{}` sin avisar."""
+    h = orgs["a_h"]
+    aid = _analisis(api, h)
+    r = api.post(_url(aid), json={"override": {"capital.coste_capital_anual": 0.03}},
+                 headers=h)
+    assert r.status_code == 422, r.text
+    assert _contar(models.Simulacion, analisis_id=aid) == 0
+
+
+@pytest.mark.parametrize("overrides", [
+    {"capital.coste_capital_anual": 1},                # int donde la referencia es float
+    {"adjudicacion.ratios.aeat": {"default": 0.6}},    # estructura con su forma exacta
+])
+def test_valor_con_forma_valida_201(api, orgs, overrides):
+    sim = _crear(api, orgs["a_h"], _analisis(api, orgs["a_h"]), overrides)
+    assert sim["overrides"] == overrides
+    assert sim["estado"] == "pendiente"
+
+
 def test_crear_no_modifica_el_analisis_original(api, orgs):
     h = orgs["a_h"]
     aid = _analisis(api, h)

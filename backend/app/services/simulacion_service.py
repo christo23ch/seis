@@ -26,6 +26,7 @@ cambia de dónde sale `resultado` (M01-M14 no se re-ejecuta al seleccionar).
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
@@ -122,22 +123,106 @@ def _validar_overrides(overrides: dict[str, object], params_base) -> None:
     los datos de entrada (TIPO 4, nunca catalogados), las claves inexistentes
     y los patrones sin resolver ('perfiles.{perfil}.rvc_veto' literal, que no
     coincide con ninguna instancia real).
+
+    Fase 5F.7.1: aceptada la clave, se comprueba además la FORMA del valor
+    contra el valor de referencia del mismo árbol (`_discrepancia_de_forma`).
+    Sin esto, un valor mal formado llegaba al motor y reventaba con
+    `TypeError` (HTTP 500) o se aceptaba en silencio.
     """
     hardcodes = {p.clave for p in catalogo.CONSTANTES_HARDCODE}
     editables_fijos = {p.clave for p in catalogo.obtener_parametros_editables()}
     resueltos = {r.clave for r in catalogo.resolver_plantillas(params_base)}
 
-    for clave in overrides:
+    for clave, valor in overrides.items():
         if clave in hardcodes:
             raise OverrideInvalidoError(
                 clave, "es una constante hardcodeada (TIPO 2, catalogo.py), no editable")
-        if clave in editables_fijos or clave in resueltos:
-            continue
-        raise OverrideInvalidoError(
-            clave,
-            "no está catalogado como parámetro T3 editable — no existe, es un "
-            "cálculo derivado, un dato de entrada, o un patrón de plantilla "
-            "sin resolver contra una instancia real")
+        if clave not in editables_fijos and clave not in resueltos:
+            raise OverrideInvalidoError(
+                clave,
+                "no está catalogado como parámetro T3 editable — no existe, es un "
+                "cálculo derivado, un dato de entrada, o un patrón de plantilla "
+                "sin resolver contra una instancia real")
+        motivo = _discrepancia_de_forma(valor, params_base.get(clave))
+        if motivo is not None:
+            raise OverrideInvalidoError(clave, motivo)
+
+
+def _es_numero(v: object) -> bool:
+    # `bool` es subclase de `int` en Python: sin excluirlo, `true` pasaría por número.
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
+def _nombre_forma(v: object) -> str:
+    if v is None:
+        return "nulo"
+    if isinstance(v, bool):
+        return "un booleano"
+    if _es_numero(v):
+        return "un número"
+    if isinstance(v, str):
+        return "un texto"
+    if isinstance(v, list):
+        return "una lista"
+    if isinstance(v, dict):
+        return "un objeto"
+    return type(v).__name__
+
+
+def _discrepancia_de_forma(valor: object, referencia: object, ruta: str = "") -> str | None:
+    """`None` si `valor` tiene la misma FORMA que `referencia`; si no, el motivo.
+
+    Solo forma, nunca validez de negocio: ni rangos, ni sumas, ni orden de
+    tramos, ni longitud de listas, ni coherencia entre parámetros. Un `int`
+    vale donde la referencia es `float` y viceversa; un número debe ser finito
+    (el parser JSON de Python acepta `NaN` e `Infinity`). Una lista se compara
+    elemento a elemento con la forma de `referencia[0]` (cualquier lista si la
+    referencia está vacía); un objeto, con EXACTAMENTE las mismas claves.
+    `ruta` localiza el fallo dentro de una estructura, p. ej. `[0].max`.
+    """
+    donde = f"en '{ruta}': " if ruta else ""
+
+    if isinstance(referencia, list):
+        if not isinstance(valor, list):
+            return f"{donde}se esperaba una lista y se recibió {_nombre_forma(valor)}"
+        if referencia:
+            for i, elemento in enumerate(valor):
+                motivo = _discrepancia_de_forma(elemento, referencia[0], f"{ruta}[{i}]")
+                if motivo is not None:
+                    return motivo
+        return None
+
+    if isinstance(referencia, dict):
+        if not isinstance(valor, dict):
+            return f"{donde}se esperaba un objeto y se recibió {_nombre_forma(valor)}"
+        faltan = sorted(str(k) for k in referencia.keys() - valor.keys())
+        sobran = sorted(str(k) for k in valor.keys() - referencia.keys())
+        if faltan or sobran:
+            return (f"{donde}el objeto debe tener exactamente las claves "
+                    f"{sorted(str(k) for k in referencia)} (faltan {faltan}, sobran {sobran})")
+        for k, sub_referencia in referencia.items():
+            motivo = _discrepancia_de_forma(valor[k], sub_referencia,
+                                            f"{ruta}.{k}" if ruta else str(k))
+            if motivo is not None:
+                return motivo
+        return None
+
+    if _es_numero(referencia):
+        if not _es_numero(valor):
+            return f"{donde}se esperaba un número y se recibió {_nombre_forma(valor)}"
+        if not math.isfinite(valor):
+            return f"{donde}el número debe ser finito y se recibió {valor!r}"
+        return None
+
+    if isinstance(referencia, bool):
+        coincide = isinstance(valor, bool)
+    elif referencia is None:
+        coincide = valor is None
+    else:
+        coincide = isinstance(valor, type(referencia))
+    if coincide:
+        return None
+    return f"{donde}se esperaba {_nombre_forma(referencia)} y se recibió {_nombre_forma(valor)}"
 
 
 # ─────────────────────────── API del servicio (Paso 11) ───────────────────────────

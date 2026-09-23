@@ -6,7 +6,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.responses import PlainTextResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from app import models
@@ -275,6 +275,10 @@ def informe_oficial_pdf(analisis_id: str, informe_id: str, db: Session = Depends
 # organización. Ajena e inexistente responden igual para no confirmar nada.
 
 class SimulacionNueva(BaseModel):
+    # Fase 5F.7.1: un campo desconocido (p. ej. `override` en singular) da 422
+    # en vez de ignorarse y crear en silencio una simulación sin overrides.
+    model_config = ConfigDict(extra="forbid")
+
     overrides: dict[str, Any] = {}
 
 
