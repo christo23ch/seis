@@ -18,7 +18,8 @@ def _eur(x: float | None) -> str:
 
 
 # ───────────────────────────── CHECKLIST (§13) ─────────────────────────────
-def construir_checklist(inp: AnalisisInput, dec: DecisionFinal, hechos: dict) -> list[ChecklistItem]:
+def construir_checklist(inp: AnalisisInput, dec: DecisionFinal, hechos: dict, *,
+                        metodo_valoracion: str = "comparables_ajustados") -> list[ChecklistItem]:
     d = inp.documentos
     items: list[ChecklistItem] = []
     n = [0]
@@ -79,8 +80,19 @@ def construir_checklist(inp: AnalisisInput, dec: DecisionFinal, hechos: dict) ->
     add("D. Económico", "Depósito disponible y transferido en plazo", True, "pendiente", _eur(deposito))
     add("D. Económico", "Plan de pago del remate cubierto sin condición suspensiva de financiación", True,
         "ok" if inp.financiacion.tipo == "cash" or inp.financiacion.preaprobada else "pendiente")
-    add("D. Económico", "Escalera de precios cargada en la interfaz de puja", True, "ok",
-        f"Objetivo {_eur(dec.precios.p_objetivo)} · Máx {_eur(dec.precios.p_max)} · Límite {_eur(dec.precios.p_limite)}")
+    # Cierre de Fase 2: sin comparables no hay ancla de mercado independiente
+    # (M03 §6.3), así que la escalera interna NO es una escalera utilizable —
+    # aunque calcular_escalera() la siga calculando para el resto del DAG
+    # (M11/M13). Este ítem es el único lugar del sistema que AFIRMA "está
+    # cargada en la interfaz de puja"; dejarlo en "ok" prometería una
+    # recomendación de puja que no existe.
+    if metodo_valoracion == "sin_comparables":
+        add("D. Económico", "Escalera de precios cargada en la interfaz de puja", True, "pendiente",
+            "No determinable sin comparables de mercado independientes: no hay "
+            "escalera utilizable para pujar (§6.3).")
+    else:
+        add("D. Económico", "Escalera de precios cargada en la interfaz de puja", True, "ok",
+            f"Objetivo {_eur(dec.precios.p_objetivo)} · Máx {_eur(dec.precios.p_max)} · Límite {_eur(dec.precios.p_limite)}")
     add("D. Económico", "Capital para C_F (reforma, posesión, tenencia) comprometido por calendario", False, "pendiente")
     add("D. Económico", "Coste de depósitos de otras subastas simultáneas contemplado (cartera §11.3)", False, "pendiente")
 
@@ -132,6 +144,27 @@ def construir_informe(inp: AnalisisInput, res_parciales: dict, dec: DecisionFina
                        "Supuesto no verificado, no dato confirmado.")
     bloq = [c for c in checklist if c.bloqueante and c.estado == "pendiente"]
     filas_bloq = "\n".join(f"- [ ] **[B]** {c.texto}" + (f" — _{c.detalle}_" if c.detalle else "") for c in bloq) or "- (ninguno)"
+    # Fase 2: sin comparables no hay ancla de mercado independiente (M03 §6.3,
+    # metodo="sin_comparables") y VM/VS son el propio valor de subasta degradado
+    # a confianza 0 — no una valoración. No se presentan como cifra central; el
+    # valor de subasta, si aparece, queda etiquetado como tal y no como valoración.
+    if val.metodo == "sin_comparables":
+        seccion_valoracion = (
+            "**NO DETERMINABLE: sin comparables de mercado.** M03 no dispone de "
+            "ningún comparable independiente (§6.3): no hay ancla de mercado con "
+            f"la que contrastar el precio. El **valor de subasta** declarado es "
+            f"{_eur(inp.subasta.valor_subasta)} — es el dato de la fuente, **no una "
+            "valoración de mercado**, y no debe leerse como tal ni usarse para "
+            "decidir una puja."
+        )
+    else:
+        seccion_valoracion = (
+            f"Método {val.metodo} con {val.n_comparables} comparables "
+            f"(CV {val.dispersion_cv:.1%}, confianza {val.confianza:.0%}). "
+            f"VM actual {_eur(val.vm)} · VS de salida {_eur(val.vs)} ({_eur(val.vs_m2)}/m²) · "
+            f"δ_v aplicado {res_parciales['delta_v']:.1%} ⇒ "
+            f"**VS prudente {_eur(res_parciales['vs_p'])}**."
+        )
     condiciones = "\n".join(f"- {c}" for c in dec.condiciones) or "- (ninguna)"
     vetos = "\n".join(f"- **{v.codigo}**: {v.motivo}" + (f" · Subsanable con: {v.subsanable_con}" if v.subsanable_con else "")
                       for v in dec.vetos) or "- (ninguno)"
@@ -171,7 +204,7 @@ def construir_informe(inp: AnalisisInput, res_parciales: dict, dec: DecisionFina
 {a.tipologia.capitalize()} de {a.superficie_m2:.0f} m² en {a.municipio or "—"} ({a.provincia or "—"}), estado {a.estado_conservacion}. Subasta {inp.subasta.fuente}, valor de subasta {_eur(inp.subasta.valor_subasta)}, depósito {inp.subasta.deposito_pct:.0%}. Ocupación declarada: {inp.ocupacion.estado}.
 
 ## 3 · Valoración
-Método {val.metodo} con {val.n_comparables} comparables (CV {val.dispersion_cv:.1%}, confianza {val.confianza:.0%}). VM actual {_eur(val.vm)} · VS de salida {_eur(val.vs)} ({_eur(val.vs_m2)}/m²) · δ_v aplicado {res_parciales["delta_v"]:.1%} ⇒ **VS prudente {_eur(res_parciales["vs_p"])}**.
+{seccion_valoracion}
 
 ## 4 · Mercado y ubicación
 ICU {icu.icu} (macro {icu.macro_score:.0f} · micro {icu.micro_score:.0f}). Tendencia {icu.tendencia_5a_pct:+.1f} %/a · DOM venta {icu.dom_venta_dias:.0f} d · DOM alquiler {icu.dom_alquiler_dias:.0f} d · Potencial de revalorización {icu.potencial_revalorizacion}/100.

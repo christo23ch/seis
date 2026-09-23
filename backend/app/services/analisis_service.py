@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app import models
 from app.engine.contracts import AnalisisInput, AnalisisResult
+from app.engine.params.store import Parametros
 from app.engine.pipeline import ejecutar_analisis
 from app.services import conocimiento_service
 
@@ -15,25 +16,73 @@ def _json(obj) -> dict:
     return json.loads(obj.model_dump_json())
 
 
+def _ejecutar_con_contexto(db: Session, inp: AnalisisInput) -> tuple[AnalisisResult, Parametros]:
+    """Resuelve el conocimiento vigente y ejecuta el motor — única implementación
+    de este flujo dentro de este módulo (Fase 5F.1A: antes, `simular()` era el
+    único punto que lo hacía; `crear_analisis()` necesitaba además el objeto
+    `Parametros` ya resuelto —para congelar `Analisis.parametros_aplicados`—
+    y no solo el `AnalisisResult`, así que esa parte común se extrae aquí en
+    vez de resolver conocimiento una segunda vez).
+
+    No persiste nada: sin `db.add`, sin `db.commit`. No modifica `inp` ni el
+    `Parametros` devuelto — el motor (M01-M14, verificado por inspección) solo
+    lee de él.
+    """
+    params, reglas, version_reglas = conocimiento_service.cargar_conocimiento(db)
+    resultado = ejecutar_analisis(inp, params=params, reglas=reglas, version_reglas=version_reglas)
+    return resultado, params
+
+
 def simular(db: Session, inp: AnalisisInput) -> AnalisisResult:
     """Motor con el conocimiento vigente de BD, sin persistencia."""
-    params, reglas, version_reglas = conocimiento_service.cargar_conocimiento(db)
-    return ejecutar_analisis(inp, params=params, reglas=reglas, version_reglas=version_reglas)
+    resultado, _ = _ejecutar_con_contexto(db, inp)
+    return resultado
 
 
 def crear_analisis(db: Session, inp: AnalisisInput, quien: str | None = None,
-                   organizacion_id: str | None = None) -> tuple[str, AnalisisResult]:
-    resultado = simular(db, inp)
+                   organizacion_id: str | None = None,
+                   subasta_id: str | None = None) -> tuple[str, AnalisisResult] | None:
+    """Ejecuta el motor y persiste el snapshot inmutable (P1, T4).
 
-    subasta = models.Subasta(
-        fuente_codigo=inp.subasta.fuente,
-        identificador_externo=inp.subasta.identificador_externo, url=inp.subasta.url,
-        valor_subasta=inp.subasta.valor_subasta, puja_minima=inp.subasta.puja_minima,
-        tramo=inp.subasta.tramo, deposito_pct=inp.subasta.deposito_pct,
-        subastas_desiertas_previas=inp.subasta.subastas_desiertas_previas,
-    )
-    db.add(subasta)
-    db.flush()
+    `subasta_id` (Fase 1 — puente captación → análisis): si se pasa, el `Activo`
+    cuelga de la `Subasta` YA CAPTADA con ese id (`app/services/ingesta_service.py`)
+    en vez de crear una fila nueva. Antes de esta fase, cada análisis creaba su
+    propia `Subasta` sin relación con las que la Fase 17-A ya persiste, de modo
+    que una subasta captada no se podía analizar sin re-teclearla entera
+    (`docs/ESTADO_ACTUAL.md`, «Frente abierto de PRODUCTO»).
+
+    Fail-closed, mismo contrato que `obtener_analisis`: si `subasta_id` no
+    existe, se devuelve `None` **antes** de tocar la sesión — no se crea ni
+    Subasta, ni Activo, ni Analisis. El llamador traduce `None` a 404.
+
+    Si `subasta_id` es `None` (el caso de siempre, alta manual), el
+    comportamiento es IDÉNTICO al anterior: una `Subasta` nueva por análisis.
+    """
+    subasta: models.Subasta | None = None
+    if subasta_id is not None:
+        subasta = db.get(models.Subasta, subasta_id)
+        if subasta is None:
+            return None
+
+    # Fase 5F.1: `params` es el mismo objeto que recibió ejecutar_analisis —
+    # una única resolución de conocimiento, sin volver a llamar
+    # cargar_conocimiento() después. `params.raw()` congela el árbol T3
+    # efectivo exacto (incluida la fusión de PerfilInversion) tal y como lo
+    # usó el motor, para reconstrucción histórica futura sin depender de
+    # `version_parametros` (insuficiente, ver auditoría PRE-5D) ni de
+    # volver a ejecutar M01-M14.
+    resultado, params = _ejecutar_con_contexto(db, inp)
+
+    if subasta is None:
+        subasta = models.Subasta(
+            fuente_codigo=inp.subasta.fuente,
+            identificador_externo=inp.subasta.identificador_externo, url=inp.subasta.url,
+            valor_subasta=inp.subasta.valor_subasta, puja_minima=inp.subasta.puja_minima,
+            tramo=inp.subasta.tramo, deposito_pct=inp.subasta.deposito_pct,
+            subastas_desiertas_previas=inp.subasta.subastas_desiertas_previas,
+        )
+        db.add(subasta)
+        db.flush()
 
     activo = models.Activo(
         subasta_id=subasta.id, tipologia=inp.activo.tipologia,
@@ -58,6 +107,7 @@ def crear_analisis(db: Session, inp: AnalisisInput, quien: str | None = None,
         activo_id=activo.id, perfil_codigo=inp.perfil,
         version_reglas=dec.version_reglas, version_parametros=dec.version_parametros,
         entrada=_json(inp), hechos={}, resultado=_json(resultado),
+        parametros_aplicados=params.raw(),
         ici=dec.ici, icu=dec.icu, ra=dec.ra, ico=dec.ico,
     )
     db.add(analisis)
@@ -82,6 +132,42 @@ def crear_analisis(db: Session, inp: AnalisisInput, quien: str | None = None,
         db.add(models.ReglaDisparada(analisis_id=analisis.id, regla_codigo=rd.codigo,
                                      regla_version=rd.version, efecto=rd.efecto,
                                      evidencias=rd.evidencias, orden=i))
+    # Fase 3: snapshot de los comparables exactos que M03 recibió — la lista
+    # completa de `inp.comparables`, en su orden original, sin filtrar ni
+    # deduplicar (M03 usa el 100 % de lo recibido; ver m03_valoracion.py). El
+    # objeto `inp` original no se toca, solo se lee.
+    comparables_usados: list[models.ComparableUsado] = []
+    for i, c in enumerate(inp.comparables):
+        cu = models.ComparableUsado(analisis_id=analisis.id, precio_m2=c.precio_m2,
+                                    estado=c.estado, origen=c.origen,
+                                    meses_antiguedad=c.meses_antiguedad,
+                                    superficie_m2=c.superficie_m2, orden=i)
+        db.add(cu)
+        comparables_usados.append(cu)
+    if comparables_usados:
+        db.flush()   # asigna id a cada ComparableUsado antes de enlazar el detalle (Fase 4)
+
+    # Fase 4: intermedios de M03 por comparable — 1:1 con cada ComparableUsado
+    # recién creado, mismo orden. `resultado.valoracion.detalle_comparables`
+    # es la lista que M03 ya construyó en su propio bucle (m03_valoracion.py);
+    # aquí solo se persiste, no se recalcula nada.
+    for cu, det in zip(comparables_usados, resultado.valoracion.detalle_comparables):
+        db.add(models.ComparableValorado(analisis_id=analisis.id, comparable_usado_id=cu.id,
+                                         precio_ajustado_m2=det.precio_ajustado_m2,
+                                         normalizado_m2=det.normalizado_m2, peso=det.peso))
+
+    # Fase 4: agregados de valoración sin columna propia hoy (factor de estado
+    # aplicado, ratio de sanidad, VS desplazado por capitalización). Solo
+    # existen si M03 llegó a valorar (no en el caso sin_comparables, donde
+    # k_estado_activo es None — ver m03_valoracion.py).
+    val = resultado.valoracion
+    if val.k_estado_activo is not None:
+        db.add(models.ValoracionAjustes(
+            analisis_id=analisis.id, k_estado_activo=val.k_estado_activo,
+            ratio_sanidad=val.ratio_sanidad,
+            vs_antes_de_capitalizacion=val.vs_antes_de_capitalizacion,
+            vs_capitalizacion=val.vs_capitalizacion))
+
     db.add(models.Auditoria(quien=quien, entidad="analisis", entidad_id=analisis.id,
                             accion="crear", delta={"semaforo": dec.semaforo, "ico": dec.ico}))
     db.commit()

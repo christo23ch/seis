@@ -130,15 +130,37 @@ class Analisis(Base):
     entrada: Mapped[dict] = mapped_column(PortableJSON)             # AnalisisInput serializado
     hechos: Mapped[dict] = mapped_column(PortableJSON)              # pizarra final serializada
     resultado: Mapped[dict] = mapped_column(PortableJSON)           # AnalisisResult completo
+    # Fase 5F.1: árbol T3 efectivo exacto (Parametros.raw(), incluida la
+    # fusión de PerfilInversion) tal y como lo recibió el motor al crear
+    # este análisis. `NULL` en los análisis anteriores a esta fase —
+    # deliberado, no reconstruible (auditoría 5F.0): nunca se rellena por
+    # backfill ni se sustituye por parámetros actuales. `version_parametros`
+    # sigue siendo solo contexto; este campo es la fuente histórica.
+    parametros_aplicados: Mapped[dict | None] = mapped_column(PortableJSON)
     ici: Mapped[int | None] = mapped_column(SmallInteger)
     icu: Mapped[int | None] = mapped_column(SmallInteger)
     ra: Mapped[int | None] = mapped_column(SmallInteger)
     ico: Mapped[int | None] = mapped_column(SmallInteger)
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
+    # Fase 5E: configuración actualmente seleccionada. NULL = configuración
+    # original (entrada/resultado de esta misma fila); UUID = la Simulacion
+    # cuyo `resultado` se usa en su lugar. No sustituye ni modifica `entrada`
+    # ni `resultado` de esta fila (siguen siendo el snapshot original e
+    # inmutable, P1) — ver `simulacion_service.obtener_configuracion_actual`.
+    # `ondelete="SET NULL"`: si en una fase futura se permite borrar
+    # físicamente una Simulacion actualmente seleccionada, el análisis debe
+    # volver automáticamente a su configuración original en vez de quedar
+    # con una referencia inválida. El borrado en sí NO se implementa aquí.
+    simulacion_validada_id: Mapped[str | None] = mapped_column(
+        ForeignKey("simulacion.id", ondelete="SET NULL", use_alter=True,
+                  name="fk_analisis_simulacion_validada_id"), index=True)
     riesgos: Mapped[list["RiesgoEvaluado"]] = relationship(back_populates="analisis")
     escenarios: Mapped[list["Escenario"]] = relationship(back_populates="analisis")
     decision: Mapped["Decision"] = relationship(back_populates="analisis", uselist=False)
     reglas_disparadas: Mapped[list["ReglaDisparada"]] = relationship(back_populates="analisis")
+    comparables_usados: Mapped[list["ComparableUsado"]] = relationship(back_populates="analisis")
+    comparables_valorados: Mapped[list["ComparableValorado"]] = relationship(back_populates="analisis")
+    ajustes_valoracion: Mapped["ValoracionAjustes"] = relationship(back_populates="analisis", uselist=False)
 
 
 class RiesgoEvaluado(Base):
@@ -194,6 +216,152 @@ class ReglaDisparada(Base):
     evidencias: Mapped[list] = mapped_column(PortableJSON, default=list)
     orden: Mapped[int] = mapped_column(SmallInteger, default=0)
     analisis: Mapped[Analisis] = relationship(back_populates="reglas_disparadas")
+
+
+class ComparableUsado(Base):
+    """Fase 3: snapshot inmutable de un comparable tal y como lo recibió M03.
+
+    No referencia `Comparable` (huérfana, sin FK a ningún análisis, pensada
+    como catálogo mutable — `activo_flag`) ni ningún id externo: hoy no existe
+    ninguna identidad de comparable estable a la que apuntar, y una referencia
+    a algo que puede mutar violaría P1 (snapshot inmutable) igual que ya
+    evitó Fase 9.5 al congelar `version_reglas`/`version_parametros` por valor.
+    Por eso es un snapshot, no una referencia — una fila por cada elemento de
+    `AnalisisInput.comparables`, en el mismo orden, sin selección ni dedupe:
+    M03 usa el 100 % de lo recibido (`m03_valoracion.py`).
+    """
+    __tablename__ = "comparable_usado"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    analisis_id: Mapped[str] = mapped_column(ForeignKey("analisis.id"), index=True)
+    precio_m2: Mapped[float] = mapped_column(Numeric(10, 2))
+    estado: Mapped[str] = mapped_column(String(16))
+    origen: Mapped[str] = mapped_column(String(24))
+    meses_antiguedad: Mapped[float] = mapped_column(Numeric(5, 1))
+    superficie_m2: Mapped[float | None] = mapped_column(Numeric(10, 2))
+    orden: Mapped[int] = mapped_column(SmallInteger, default=0)
+    analisis: Mapped[Analisis] = relationship(back_populates="comparables_usados")
+
+
+class ComparableValorado(Base):
+    """Fase 4: intermedios de M03 para un comparable — snapshot 1:1 con el
+    `ComparableUsado` que los originó, no una entidad nueva. `ComparableUsado`
+    guarda el dato crudo que entró; esta tabla guarda lo que M03 calculó a
+    partir de él y hoy se pierde (`precio`/`normalizados[i]`/`pesos[i]` en
+    `m03_valoracion.py`, variables locales que nunca salían de la función).
+    No se toca `ComparableUsado` para conservarla — es el snapshot de Fase 3.
+    """
+    __tablename__ = "comparable_valorado"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    analisis_id: Mapped[str] = mapped_column(ForeignKey("analisis.id"), index=True)
+    comparable_usado_id: Mapped[str] = mapped_column(ForeignKey("comparable_usado.id"), index=True)
+    precio_ajustado_m2: Mapped[float] = mapped_column(Numeric(10, 2))
+    normalizado_m2: Mapped[float] = mapped_column(Numeric(10, 2))
+    peso: Mapped[float] = mapped_column(Numeric(6, 4))
+    analisis: Mapped[Analisis] = relationship(back_populates="comparables_valorados")
+
+
+class ValoracionAjustes(Base):
+    """Fase 4: agregados de M03 que no tienen columna propia hoy — el factor de
+    estado aplicado al activo, el ratio de sanidad VT/VM, y el VS de
+    comparables desplazado por el contraste de capitalización (rentista), que
+    hoy solo deja una bandera de texto en `ValoracionResultado.hechos` sin el
+    valor que sustituyó ni el que fue sustituido. 1:1 con `Analisis`, mismo
+    patrón que `Decision`: no existe si M03 no llegó a producir una valoración
+    (`metodo == "sin_comparables"`).
+    """
+    __tablename__ = "valoracion_ajustes"
+    analisis_id: Mapped[str] = mapped_column(ForeignKey("analisis.id"), primary_key=True)
+    k_estado_activo: Mapped[float] = mapped_column(Numeric(4, 2))
+    ratio_sanidad: Mapped[float] = mapped_column(Numeric(6, 4))
+    vs_antes_de_capitalizacion: Mapped[float | None] = mapped_column(Numeric(14, 2))
+    vs_capitalizacion: Mapped[float | None] = mapped_column(Numeric(14, 2))
+    analisis: Mapped[Analisis] = relationship(back_populates="ajustes_valoracion")
+
+
+class Simulacion(Base):
+    """Fase 5D: configuración alternativa de parámetros aplicada a un
+    `Analisis` ya existente, sin sobrescribirlo (P1) — arquitectura aprobada
+    en la Fase 5 (Opción D). `Analisis` 1:N `Simulacion`; no se declara
+    `relationship`/`back_populates` aquí para no tocar la clase `Analisis`
+    (fuera de alcance de esta fase), el FK basta para la integridad.
+
+    `overrides`: solo lo que cambió el usuario. `parametros_aplicados`: el
+    árbol COMPLETO (`Parametros.raw()`) que el motor recibió realmente, tras
+    fusionar TODAS las capas de `conocimiento_service.cargar_conocimiento()`
+    (Parametro + PerfilInversion) y aplicar `overrides` — la auditoría PRE-5D
+    demostró que `version_parametros` por sí solo NO basta para reconstruir
+    históricamente qué valores se usaron (no refleja los overrides de
+    `PerfilInversion`), así que ese string queda solo como contexto.
+
+    `resultado`: el `AnalisisResult` íntegro (mismo contrato que
+    `Analisis.resultado`), producido por el pipeline completo M01–M14 sin
+    recálculo parcial. `estado`: pendiente | descartada | validada, mismo
+    patrón sin Enum de BD que `Notificacion.estado`; transiciones válidas
+    únicamente pendiente→descartada y pendiente→validada, exigidas por
+    `simulacion_service`, no por el esquema. Selección de "la vigente"
+    (`Analisis.simulacion_validada_id`) es Fase 5E, deliberadamente ausente.
+    """
+    __tablename__ = "simulacion"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    analisis_id: Mapped[str] = mapped_column(ForeignKey("analisis.id"), index=True)
+    estado: Mapped[str] = mapped_column(String(12), default="pendiente", index=True)
+    overrides: Mapped[dict] = mapped_column(PortableJSON, default=dict)
+    parametros_aplicados: Mapped[dict] = mapped_column(PortableJSON)
+    resultado: Mapped[dict] = mapped_column(PortableJSON)
+    version_parametros_base: Mapped[str | None] = mapped_column(String(16))
+    version_reglas: Mapped[str | None] = mapped_column(String(16))
+    usuario: Mapped[str | None] = mapped_column(String(120))
+    creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
+    fecha_validacion: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Informe(Base):
+    """Fase 5F.3: informe OFICIAL — snapshot histórico e inmutable de la
+    configuración que el usuario decidió convertir en documento entregable.
+
+    Nace terminado: no tiene `estado`, ni ciclo de vida, ni mutador. Un
+    `Analisis` puede tener 0..N informes, todos coexistiendo; no existe
+    «informe vigente» (ni `Informe.vigente` ni `Analisis.informe_oficial_id`),
+    porque un informe ya emitido no deja de ser oficial porque se emita otro
+    después: ambos lo fueron, en su fecha.
+
+    AUTOSUFICIENCIA. El contenido se copia POR VALOR y no depende en lectura
+    de `Analisis`, `Simulacion` ni `obtener_configuracion_actual`, que son
+    mutables. `resultado` es el `AnalisisResult` íntegro e incluye ya el
+    `informe_markdown` que M14 produjo: por eso NO hay columna propia para el
+    Markdown (duplicarlo invitaría a que las dos copias divergieran) y por eso
+    el servicio NUNCA vuelve a ejecutar M14 — si M14 cambiara mañana, un
+    informe histórico no debe cambiar de texto.
+
+    PROCEDENCIA. `analisis_id` es FK con RESTRICT (nunca CASCADE: borrar un
+    análisis no puede destruir documentos oficiales en silencio) y es además
+    el eslabón por el que se hereda el aislamiento por organización.
+    `simulacion_id` es deliberadamente un identificador POR VALOR, sin FK,
+    mismo patrón que `Auditoria.entidad_id`: con `ondelete="SET NULL"` el
+    borrado futuro de una simulación no dejaría el dato ausente, lo reescribiría
+    en una afirmación histórica FALSA, porque `NULL` ya significa «generado
+    desde la configuración original».
+
+    `parametros_aplicados` es nullable con un significado estrecho, idéntico al
+    de `Analisis.parametros_aplicados`: `NULL` = «el análisis de origen es
+    anterior a la migración 0014 y no tiene snapshot de parámetros» (auditoría
+    5F.0, no reconstruible). Jamás se rellena con los parámetros actuales.
+
+    `generado_por` guarda el id técnico del usuario, NO su correo: el documento
+    es inmutable y el derecho de supresión no debe obligar a mutarlo. El actor
+    legible se registra en `Auditoria.quien`, que sí se seudonimiza.
+    """
+    __tablename__ = "informe"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    analisis_id: Mapped[str] = mapped_column(
+        ForeignKey("analisis.id", ondelete="RESTRICT"), index=True)
+    simulacion_id: Mapped[str | None] = mapped_column(String(36), index=True)
+    entrada_snapshot: Mapped[dict] = mapped_column(PortableJSON)
+    parametros_aplicados: Mapped[dict | None] = mapped_column(PortableJSON)
+    overrides: Mapped[dict] = mapped_column(PortableJSON, default=dict)
+    resultado: Mapped[dict] = mapped_column(PortableJSON)
+    generado_por: Mapped[str | None] = mapped_column(String(36))
+    generado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
 
 
 class Regla(Base):

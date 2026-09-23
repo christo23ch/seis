@@ -105,7 +105,8 @@ def ejecutar_analisis(inp: AnalisisInput, params: Parametros | None = None,
                                                   ici.ici, escalera, costes.plazo_meses_p50)
     semaforo, razones = m12_decision.decidir_semaforo(
         params, ico, ra_res, rentabilidad, ms_valor, puja.rvc, ici.ici,
-        ici.techo_semaforo, escalera, vetos, techos, inp)
+        ici.techo_semaforo, escalera, vetos, techos, inp,
+        metodo_valoracion=valoracion.metodo)
 
     decision = DecisionFinal(
         semaforo=semaforo, ico=ico, ico_desglose=ico_desglose, ra=ra_res.ra, ici=ici.ici,
@@ -121,7 +122,8 @@ def ejecutar_analisis(inp: AnalisisInput, params: Parametros | None = None,
     parciales = {"valoracion": valoracion, "icu": icu, "reforma": reforma, "costes": costes,
                  "riesgos": ra_res, "rentabilidad": rentabilidad, "puja": puja, "ici": ici,
                  "delta_v": delta_v, "vs_p": vs_p, "reglas": reglas_out}
-    checklist = m14_informe.construir_checklist(inp, decision, hechos)
+    checklist = m14_informe.construir_checklist(inp, decision, hechos,
+                                                metodo_valoracion=valoracion.metodo)
     informe = m14_informe.construir_informe(inp, parciales, decision, checklist)
 
     return AnalisisResult(

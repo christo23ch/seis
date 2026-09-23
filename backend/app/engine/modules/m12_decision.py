@@ -221,8 +221,20 @@ def procesar_disparos(disparos: list[Disparo]) -> tuple[list[VetoOut], list[str]
 def decidir_semaforo(params, ico: int, ra_res: RAResultado, rent: RentabilidadResultado,
                      ms_valor: float, rvc: float, ici: int, ici_techo: str | None,
                      escalera: EscaleraPrecios, vetos: list[VetoOut], techos: list[str],
-                     inp: AnalisisInput) -> tuple[str, list[str]]:
+                     inp: AnalisisInput, *,
+                     metodo_valoracion: str = "comparables_ajustados") -> tuple[str, list[str]]:
     razones: list[str] = []
+    # Fase 2 (puente captación → análisis, corte de valoración): sin comparables,
+    # M03 no tiene ancla de mercado independiente — VM=VS=VT degenerado,
+    # confianza 0.0 (m03_valoracion.py, rama n==0). Presentar una escalera de
+    # precios calculada sobre esa base sería dar apariencia de valoración a una
+    # cifra sin respaldo. Mismo patrón que un veto: corta ANTES de evaluar
+    # ICO/RVC/riesgos, así que nunca puede llegar a verde, amarillo ni naranja.
+    if metodo_valoracion == "sin_comparables":
+        return "rojo", ["Sin ancla de mercado independiente: no se han aportado "
+                        "comparables de mercado (M03 §6.3); la valoración no es "
+                        "determinable y el semáforo no puede ser verde, amarillo "
+                        "ni naranja hasta que existan"]
     if vetos:
         return "rojo", [f"Veto {v.codigo}: {v.motivo}" for v in vetos]
     if escalera.degenerada:

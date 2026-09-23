@@ -205,6 +205,15 @@ class ICIResultado(BaseModel):
     techo_semaforo: Semaforo | None
 
 
+class ComparableValoradoOut(BaseModel):
+    """Fase 4: intermedios de M03 para un comparable — expone, sin recalcular,
+    lo que el bucle de `m03_valoracion.ejecutar` ya produce y hoy descarta.
+    En el mismo orden que `AnalisisInput.comparables` (posición i ⇔ comparables[i])."""
+    precio_ajustado_m2: float   # variable `precio` tras los ajustes de origen/temporal
+    normalizado_m2: float       # `normalizados[i]` = precio_ajustado_m2 / k_estado[estado]
+    peso: float                 # `pesos[i]`, peso de frescura usado en la mediana ponderada
+
+
 class ValoracionResultado(BaseModel):
     vm: float
     vm_rango: tuple[float, float]
@@ -216,6 +225,13 @@ class ValoracionResultado(BaseModel):
     dispersion_cv: float
     confianza: float
     hechos: list[str] = Field(default_factory=list)
+    # Fase 4 — trazabilidad de valoración: expone intermedios que M03 ya calcula
+    # y hoy descarta. No participan en ningún cálculo; solo se leen al final.
+    detalle_comparables: list[ComparableValoradoOut] = Field(default_factory=list)
+    k_estado_activo: float | None = None          # k_estado[activo.estado_conservacion]
+    ratio_sanidad: float | None = None             # variable `ratio` (VT/VM)
+    vs_antes_de_capitalizacion: float | None = None  # `vs` justo antes del override rentista
+    vs_capitalizacion: float | None = None           # `vs_cap` que lo sustituyó
 
 
 class ICUResultado(BaseModel):

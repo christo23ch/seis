@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import math
 
-from app.engine.contracts import AnalisisInput, ValoracionResultado
+from app.engine.contracts import AnalisisInput, ComparableValoradoOut, ValoracionResultado
 
 
 def _mediana_ponderada(valores: list[float], pesos: list[float]) -> float:
@@ -42,6 +42,7 @@ def ejecutar(inp: AnalisisInput, params, hechos: dict) -> ValoracionResultado:
 
     normalizados: list[float] = []
     pesos: list[float] = []
+    detalle_comparables: list[ComparableValoradoOut] = []
     for c in inp.comparables:
         precio = c.precio_m2
         if c.origen == "portal_oferta":
@@ -49,8 +50,15 @@ def ejecutar(inp: AnalisisInput, params, hechos: dict) -> ValoracionResultado:
         # Ajuste temporal asimétrico (P5): solo a la baja
         if tendencia < 0 and c.meses_antiguedad > 0:
             precio *= (1 + tendencia) ** (c.meses_antiguedad / 12.0)
-        normalizados.append(precio / k_estado[c.estado])
-        pesos.append(1.0 / (1.0 + c.meses_antiguedad / 6.0))       # frescura
+        normalizado = precio / k_estado[c.estado]
+        peso = 1.0 / (1.0 + c.meses_antiguedad / 6.0)               # frescura
+        normalizados.append(normalizado)
+        pesos.append(peso)
+        # Fase 4: snapshot de los intermedios de este comparable — no altera
+        # `normalizados`/`pesos`, que siguen siendo lo único que usa el cálculo.
+        detalle_comparables.append(ComparableValoradoOut(
+            precio_ajustado_m2=round(precio, 2), normalizado_m2=round(normalizado, 2),
+            peso=round(peso, 4)))
 
     n = len(normalizados)
     if n == 0:
@@ -63,7 +71,7 @@ def ejecutar(inp: AnalisisInput, params, hechos: dict) -> ValoracionResultado:
                                    vs_rango=(vt * 0.7, vt * 1.3), vs_m2=vt / m2,
                                    metodo="sin_comparables", n_comparables=0,
                                    dispersion_cv=1.0, confianza=0.0,
-                                   hechos=["sin_comparables"])
+                                   hechos=["sin_comparables"], detalle_comparables=[])
 
     vs_m2 = _mediana_ponderada(normalizados, pesos)
     media = sum(normalizados) / n
@@ -71,9 +79,15 @@ def ejecutar(inp: AnalisisInput, params, hechos: dict) -> ValoracionResultado:
     cv = (math.sqrt(var) / media) if media > 0 else 1.0
 
     vs = vs_m2 * m2                                                # salida en estado reformado
-    vm = vs_m2 * k_estado[inp.activo.estado_conservacion] * m2     # estado actual
+    k_estado_activo = k_estado[inp.activo.estado_conservacion]     # Fase 4: nombrado, mismo valor
+    vm = vs_m2 * k_estado_activo * m2                               # estado actual
     p25 = _percentil(normalizados, 0.25) * m2
     p75 = _percentil(normalizados, 0.75) * m2
+
+    # Fase 4: snapshots para trazabilidad, poblados solo si el override aplica —
+    # el cálculo de vs/vs_cap no cambia, solo se conserva lo que antes se perdía.
+    vs_antes_de_capitalizacion: float | None = None
+    vs_capitalizacion: float | None = None
 
     # Rentista: contraste por capitalización (§6.3.4) — prudente: el menor de ambos
     perfil_tipo = params.get(f"perfiles.{inp.perfil}.tipo", "venta")
@@ -82,6 +96,8 @@ def ejecutar(inp: AnalisisInput, params, hechos: dict) -> ValoracionResultado:
         rna_bruta = r.renta_mensual_estimada * 12 * (1 - r.vacancia_pct / 100)
         vs_cap = rna_bruta / max(inp.zona.macro.y_zona_pct / 100.0, 0.01)
         if vs_cap < vs:
+            vs_antes_de_capitalizacion = round(vs, 2)
+            vs_capitalizacion = round(vs_cap, 2)
             vs = vs_cap
             hechos_out.append("vs_por_capitalizacion")
 
@@ -101,9 +117,12 @@ def ejecutar(inp: AnalisisInput, params, hechos: dict) -> ValoracionResultado:
     hechos["vs_m2"] = vs_m2
 
     return ValoracionResultado(
-        vm=round(vm, 2), vm_rango=(round(p25 * k_estado[inp.activo.estado_conservacion], 2),
-                                   round(p75 * k_estado[inp.activo.estado_conservacion], 2)),
+        vm=round(vm, 2), vm_rango=(round(p25 * k_estado_activo, 2),
+                                   round(p75 * k_estado_activo, 2)),
         vs=round(vs, 2), vs_rango=(round(p25, 2), round(p75, 2)), vs_m2=round(vs_m2, 2),
         metodo="comparables_ajustados", n_comparables=n, dispersion_cv=round(cv, 4),
         confianza=round(confianza, 3), hechos=hechos_out,
+        detalle_comparables=detalle_comparables, k_estado_activo=round(k_estado_activo, 2),
+        ratio_sanidad=round(ratio, 4), vs_antes_de_capitalizacion=vs_antes_de_capitalizacion,
+        vs_capitalizacion=vs_capitalizacion,
     )

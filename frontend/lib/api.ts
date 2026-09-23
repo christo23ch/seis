@@ -83,7 +83,13 @@ export const api = {
     return r.blob();
   },
   simular: (payload: unknown) => req<Resultado>("/analisis/simular", { method: "POST", body: JSON.stringify(payload) }),
-  crear: (payload: unknown) => req<{ id: string; resultado: Resultado }>("/analisis", { method: "POST", body: JSON.stringify(payload) }),
+  // `subastaId` (Fase 1 — puente captación → análisis): si se pasa, el backend
+  // reutiliza esa Subasta ya captada en vez de crear una nueva.
+  crear: (payload: unknown, subastaId?: string) =>
+    req<{ id: string; resultado: Resultado }>(
+      `/analisis${subastaId ? `?subasta_id=${encodeURIComponent(subastaId)}` : ""}`,
+      { method: "POST", body: JSON.stringify(payload) },
+    ),
 
   opciones: () => req<Opciones>("/opciones"),
   perfiles: () => req<Record<string, any>>("/perfiles"),
