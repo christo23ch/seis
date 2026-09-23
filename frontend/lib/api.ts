@@ -1,4 +1,8 @@
-import type { Alerta, CodigoTelegram, Detalle, ListItem, Miembro, Opciones, Organizacion, PreferenciasNotificacion, RespuestaSimple, Resultado, SubastaCaptada, Usuario } from "./types";
+import type {
+  Alerta, CodigoTelegram, ComparacionSimulacion, Detalle, InformeOficialDetalle, InformeOficialResumen,
+  ListItem, Miembro, Opciones, Organizacion, Overrides, ParametrosSimulables, PreferenciasNotificacion,
+  RespuestaSimple, Resultado, SimulacionDetalle, SimulacionResumen, SubastaCaptada, Usuario,
+} from "./types";
 
 const BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") + "/api/v1";
 
@@ -13,24 +17,61 @@ export const setToken = (t: string | null) => {
   else localStorage.removeItem("seis_token");
 };
 
+/** Texto legible de un error del backend. `detail` es un string en los errores
+ * propios; en un 422 de validación de FastAPI es una lista de `{loc, msg}`, que se
+ * resume en vez de volcar el JSON crudo al usuario. */
+function textoDeDetalle(detail: unknown, status: number): string {
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    const partes = detail.map((e) => {
+      const loc = Array.isArray(e?.loc) ? e.loc.filter((p: unknown) => p !== "body").join(".") : "";
+      const msg = typeof e?.msg === "string" ? e.msg : "valor no válido";
+      return loc ? `${loc}: ${msg}` : msg;
+    });
+    return `Petición no válida — ${partes.join("; ")}`;
+  }
+  return `Error ${status}`;
+}
+
+async function fallo(r: Response, path: string): Promise<ApiError> {
+  if (r.status === 401 && typeof window !== "undefined" && !path.startsWith("/auth")) {
+    setToken(null);
+    window.location.href = "/login";
+  }
+  let detail: unknown;
+  try { detail = (await r.json()).detail; } catch {}
+  return new ApiError(r.status, textoDeDetalle(detail, r.status));
+}
+
 async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = { ...(init.headers as Record<string, string>) };
   if (init.body && !(init.body instanceof URLSearchParams)) headers["Content-Type"] = "application/json";
   const t = getToken();
   if (t) headers["Authorization"] = `Bearer ${t}`;
   const r = await fetch(BASE + path, { ...init, headers });
-  if (r.status === 401 && typeof window !== "undefined" && !path.startsWith("/auth")) {
-    setToken(null);
-    window.location.href = "/login";
-  }
-  if (!r.ok) {
-    let detalle = `Error ${r.status}`;
-    try { const j = await r.json(); detalle = typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail ?? j); } catch {}
-    throw new ApiError(r.status, detalle);
-  }
+  if (!r.ok) throw await fallo(r, path);
   const ct = r.headers.get("content-type") ?? "";
   return (ct.includes("application/json") ? r.json() : (r.text() as unknown)) as Promise<T>;
 }
+
+/** Descarga autenticada de un binario: mismo patrón que tenía el PDF del
+ * detalle (fetch con Bearer → blob), pero con el tratamiento de errores y de
+ * 401 de `req`. El guardado lo hace `guardarBlob`, en el navegador. */
+async function blobAutenticado(path: string): Promise<Blob> {
+  const t = getToken();
+  const r = await fetch(BASE + path, { headers: t ? { Authorization: `Bearer ${t}` } : {} });
+  if (!r.ok) throw await fallo(r, path);
+  return r.blob();
+}
+
+export function guardarBlob(blob: Blob, nombre: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = nombre; a.click();
+  URL.revokeObjectURL(url);
+}
+
+const enc = encodeURIComponent;
 
 export const api = {
   login: (email: string, password: string) =>
@@ -76,11 +117,43 @@ export const api = {
   detalle: (id: string) => req<Detalle>(`/analisis/${id}`),
   checklist: (id: string) => req<Detalle["resultado"]["checklist"]>(`/analisis/${id}/checklist`),
   informe: (id: string) => req<string>(`/analisis/${id}/informe`),
-  pdf: async (id: string) => {
-    const t = getToken();
-    const r = await fetch(`${BASE}/analisis/${id}/informe.pdf`, { headers: t ? { Authorization: `Bearer ${t}` } : {} });
-    if (!r.ok) throw new ApiError(r.status, "No se pudo generar el PDF");
-    return r.blob();
+  // Fase 5F.7.4: la UI ya no ofrece `/informe.pdf` (PDF de la configuración actual,
+  // indistinguible impreso de uno oficial). El endpoint sigue en el backend; los
+  // únicos PDF descargables desde la UI son los de `informes.descargarPdf`.
+
+  // Fase 5F.6 — simulaciones de un análisis. Autorización y transiciones las decide el backend.
+  simulaciones: {
+    listar: (analisisId: string) =>
+      req<SimulacionResumen[]>(`/analisis/${enc(analisisId)}/simulaciones`),
+    obtener: (analisisId: string, simulacionId: string) =>
+      req<SimulacionDetalle>(`/analisis/${enc(analisisId)}/simulaciones/${enc(simulacionId)}`),
+    crear: (analisisId: string, overrides: Overrides) =>
+      req<SimulacionDetalle>(`/analisis/${enc(analisisId)}/simulaciones`,
+        { method: "POST", body: JSON.stringify({ overrides }) }),
+    validar: (analisisId: string, simulacionId: string) =>
+      req<SimulacionDetalle>(`/analisis/${enc(analisisId)}/simulaciones/${enc(simulacionId)}/validar`, { method: "POST" }),
+    descartar: (analisisId: string, simulacionId: string) =>
+      req<SimulacionDetalle>(`/analisis/${enc(analisisId)}/simulaciones/${enc(simulacionId)}/descartar`, { method: "POST" }),
+    seleccionar: (analisisId: string, simulacionId: string) =>
+      req<SimulacionDetalle>(`/analisis/${enc(analisisId)}/simulaciones/${enc(simulacionId)}/seleccionar`, { method: "POST" }),
+    volverAOriginal: (analisisId: string) =>
+      req<Detalle>(`/analisis/${enc(analisisId)}/configuracion/original`, { method: "POST" }),
+  },
+  // Fase 5F.7.2 / 5F.7.3 — catálogo simulable y comparación (solo lectura).
+  parametrosSimulables: (analisisId: string) =>
+    req<ParametrosSimulables>(`/analisis/${enc(analisisId)}/parametros-simulables`),
+  compararSimulacion: (analisisId: string, simulacionId: string) =>
+    req<ComparacionSimulacion>(`/analisis/${enc(analisisId)}/simulaciones/${enc(simulacionId)}/comparacion`),
+  // Fase 5F.4 — informes oficiales: snapshots congelados, nunca se regeneran.
+  informes: {
+    emitir: (analisisId: string) =>
+      req<InformeOficialDetalle>(`/analisis/${enc(analisisId)}/informes`, { method: "POST" }),
+    listar: (analisisId: string) =>
+      req<InformeOficialResumen[]>(`/analisis/${enc(analisisId)}/informes`),
+    obtener: (analisisId: string, informeId: string) =>
+      req<InformeOficialDetalle>(`/analisis/${enc(analisisId)}/informes/${enc(informeId)}`),
+    descargarPdf: (analisisId: string, informeId: string) =>
+      blobAutenticado(`/analisis/${enc(analisisId)}/informes/${enc(informeId)}/pdf`),
   },
   simular: (payload: unknown) => req<Resultado>("/analisis/simular", { method: "POST", body: JSON.stringify(payload) }),
   // `subastaId` (Fase 1 — puente captación → análisis): si se pasa, el backend
