@@ -5,10 +5,13 @@ import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { eur, fecha } from "@/lib/format";
 import { puedeEscribir } from "@/lib/permisos";
-import type { ComparacionSimulacion, Detalle, EstadoSimulacion, Semaforo, SimulacionResumen } from "@/lib/types";
+import type {
+  ComparacionSimulacion, Detalle, EstadoSimulacion, Overrides, Semaforo, SimulacionDetalle, SimulacionResumen,
+} from "@/lib/types";
 import { SemaforoBadge } from "@/components/resultado";
 import { Button, Card, CardContent, CardHeader, CardTitle, ErrorBox, Spinner } from "@/components/ui";
 import { idCorto, invalidarConfiguracion } from "./aviso-configuracion";
+import { EditorSimulacion } from "./editor";
 
 type Accion = "validar" | "descartar" | "seleccionar" | "original";
 type Peticion = { accion: Accion; id: string | null };
@@ -89,7 +92,26 @@ export function ListaSimulaciones({ detalle }: { detalle: Detalle }) {
       if (estado === 409 || estado === 404) invalidarConfiguracion(qc, analisisId);
     },
   });
-  const ocupado = accion.isPending;
+  // Fase 5F.7.6 — crear. No cambia la configuración en uso: la nueva simulación
+  // queda pendiente en la lista y solo se resume lo que devolvió el backend.
+  const [editorAbierto, setEditorAbierto] = useState(false);
+  const [creada, setCreada] = useState<SimulacionDetalle | null>(null);
+  const [errorCrear, setErrorCrear] = useState<string | null>(null);
+  const crear = useMutation({
+    mutationFn: (overrides: Overrides) => api.simulaciones.crear(analisisId, overrides),
+    onMutate: () => { setErrorCrear(null); setCreada(null); },
+    onSuccess: (sim) => {
+      invalidarConfiguracion(qc, analisisId);
+      setCreada(sim);
+      setEditorAbierto(false);                 // al desmontarse, el editor descarta sus cambios
+    },
+    onError: (e: Error) => {
+      const estado = e instanceof ApiError ? e.status : null;
+      setErrorCrear(estado === 404 ? "El análisis no existe o no pertenece a su organización." : e.message);
+    },
+  });
+
+  const ocupado = accion.isPending || crear.isPending;
 
   function pedir(p: Peticion) {
     if (CONFIRMACION[p.accion]) setConfirmar(p);
@@ -104,14 +126,28 @@ export function ListaSimulaciones({ detalle }: { detalle: Detalle }) {
 
   return (
     <Card>
-      <CardHeader className="flex flex-wrap items-baseline justify-between gap-2">
+      <CardHeader className="flex flex-wrap items-center justify-between gap-2">
         <CardTitle>Configuraciones del análisis</CardTitle>
-        <span className="text-[12px] text-slate-500">
-          {lista.data.length} {lista.data.length === 1 ? "simulación" : "simulaciones"}
-          {!escribe && " · solo lectura"}
-        </span>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-[12px] text-slate-500">
+            {lista.data.length} {lista.data.length === 1 ? "simulación" : "simulaciones"}
+            {!escribe && " · solo lectura"}
+          </span>
+          {escribe && !editorAbierto && (
+            <Button className="!px-2.5 !py-1.5" disabled={ocupado} aria-disabled={ocupado}
+              onClick={() => { setCreada(null); setErrorCrear(null); setEditorAbierto(true); }}>
+              Nueva simulación
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-3">
+        {escribe && editorAbierto && (
+          <EditorSimulacion analisisId={analisisId} creando={crear.isPending} bloqueado={ocupado}
+            error={errorCrear} onCrear={(o) => crear.mutate(o)}
+            onCerrar={() => { setEditorAbierto(false); setErrorCrear(null); }} />
+        )}
+        {creada && <SimulacionCreada sim={creada} onCerrar={() => setCreada(null)} />}
         {error && <ErrorBox mensaje={error} />}
         {lista.data.length === 0 && (
           <p className="text-sm text-slate-500">Este análisis todavía no tiene simulaciones.</p>
@@ -233,6 +269,29 @@ function filaSimulacion(s: SimulacionResumen, escribe: boolean): Fila {
 }
 
 // ─────────────────────────── piezas ───────────────────────────
+
+/** Resumen de la simulación recién creada, tomado de la respuesta del backend. */
+function SimulacionCreada({ sim, onCerrar }: { sim: SimulacionDetalle; onCerrar: () => void }) {
+  const d = sim.resultado.decision;
+  const n = Object.keys(sim.overrides).length;
+  return (
+    <div role="status" aria-label="Simulación creada"
+      className="flex flex-col gap-2 rounded-md border border-primario/30 bg-primario-tenue/40 px-3.5 py-2.5 text-[13px] sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="font-semibold text-tinta">Simulación <span className="cifra">{idCorto(sim.id)}</span> creada</span>
+        <span className="inline-flex items-center rounded-full border border-dashed border-borde-control bg-white px-2.5 py-0.5 text-[12px] font-semibold text-tinta">
+          {sim.estado}
+        </span>
+        <SemaforoBadge s={d.semaforo} />
+        <span>ICO <span className="cifra font-semibold">{d.ico}</span></span>
+        <span>P. obj. <span className="cifra font-semibold">{eur(d.precios.p_objetivo)}</span></span>
+        <span>P. máx. <span className="cifra font-semibold">{eur(d.precios.p_max)}</span></span>
+        <span className="text-slate-500">{n} {n === 1 ? "override" : "overrides"} · no está en uso</span>
+      </div>
+      <Button variante="fantasma" className="shrink-0 !px-2 !py-1 text-[12px]" onClick={onCerrar}>Cerrar aviso</Button>
+    </div>
+  );
+}
 
 function Estado({ f }: { f: Fila }) {
   const e = ESTILO_ESTADO[f.estado];
