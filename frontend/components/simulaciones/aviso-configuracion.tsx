@@ -1,5 +1,5 @@
 "use client";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { fecha } from "@/lib/format";
@@ -11,7 +11,17 @@ const ESTADO: Record<EstadoSimulacion, string> = {
   pendiente: "pendiente de revisión", validada: "validada", descartada: "descartada",
 };
 
-const idCorto = (id: string) => id.slice(0, 8);
+export const idCorto = (id: string) => id.slice(0, 8);
+
+/** Todo lo que depende de la configuración seleccionada o del estado de las
+ * simulaciones. Única lista de claves: la usan el aviso y la pestaña
+ * Simulaciones, para que ninguna escritura deje una vista desactualizada.
+ * La vista previa y el resto de pestañas leen de `["detalle", id]`. */
+export function invalidarConfiguracion(qc: QueryClient, analisisId: string) {
+  for (const clave of ["detalle", "simulaciones", "simulacion", "comparacion"]) {
+    qc.invalidateQueries({ queryKey: [clave, analisisId] });
+  }
+}
 
 /** Dice SIEMPRE qué configuración está pintando el detalle: la original del
  * análisis o una simulación seleccionada. Sin colores del semáforo; el estado
@@ -38,11 +48,7 @@ export function AvisoConfiguracion({ analisisId, simulacionValidadaId }: {
 
   const volver = useMutation({
     mutationFn: () => api.simulaciones.volverAOriginal(analisisId),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["detalle", analisisId] });
-      qc.invalidateQueries({ queryKey: ["simulaciones", analisisId] });
-      qc.invalidateQueries({ queryKey: ["simulacion", analisisId] });
-    },
+    onSuccess: () => invalidarConfiguracion(qc, analisisId),
   });
 
   if (simulacionValidadaId == null || (lista.isSuccess && !fila)) {

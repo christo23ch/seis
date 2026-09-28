@@ -10,6 +10,7 @@ import {
 } from "@/components/resultado";
 import MapaLeaflet from "@/components/mapa-leaflet";
 import { AvisoConfiguracion } from "@/components/simulaciones/aviso-configuracion";
+import { ListaSimulaciones } from "@/components/simulaciones/lista";
 import { Card, CardContent, CardHeader, CardTitle, ErrorBox, Spinner, TabPanel, Tabs, TabsLista } from "@/components/ui";
 
 export default function DetalleInversion() {
@@ -50,6 +51,7 @@ export default function DetalleInversion() {
           { valor: "riesgos", etiqueta: "Riesgos" },
           { valor: "puja", etiqueta: "Estrategia de puja" },
           { valor: "checklist", etiqueta: "Checklist" },
+          { valor: "simulaciones", etiqueta: "Simulaciones" },
           { valor: "informe", etiqueta: "Vista previa (no oficial)" },
           { valor: "datos", etiqueta: "Datos de entrada" },
         ]} />
@@ -128,6 +130,8 @@ export default function DetalleInversion() {
         <TabPanel valor="checklist">
           <Card><CardContent><ChecklistLista items={res.checklist} /></CardContent></Card>
         </TabPanel>
+
+        <TabPanel valor="simulaciones"><ListaSimulaciones detalle={data} /></TabPanel>
 
         <TabPanel valor="informe">
           <Card><CardContent>
