@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { type UseQueryResult, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -11,6 +11,7 @@ import type {
 import { SemaforoBadge } from "@/components/resultado";
 import { Button, Card, CardContent, CardHeader, CardTitle, ErrorBox, Spinner } from "@/components/ui";
 import { idCorto, invalidarConfiguracion } from "./aviso-configuracion";
+import { PanelComparacion } from "./comparacion";
 import { EditorSimulacion } from "./editor";
 
 type Accion = "validar" | "descartar" | "seleccionar" | "original";
@@ -113,6 +114,14 @@ export function ListaSimulaciones({ detalle }: { detalle: Detalle }) {
 
   const ocupado = accion.isPending || crear.isPending;
 
+  // Fase 5F.7.7 — una sola comparación abierta a la vez.
+  const [comparando, setComparando] = useState<string | null>(null);
+  const comparacionNoExiste = useCallback(() => {
+    setComparando(null);
+    setError("La simulación no existe o no pertenece a este análisis.");
+    invalidarConfiguracion(qc, analisisId);
+  }, [qc, analisisId]);
+
   function pedir(p: Peticion) {
     if (CONFIRMACION[p.accion]) setConfirmar(p);
     else accion.mutate(p);
@@ -147,8 +156,14 @@ export function ListaSimulaciones({ detalle }: { detalle: Detalle }) {
             error={errorCrear} onCrear={(o) => crear.mutate(o)}
             onCerrar={() => { setEditorAbierto(false); setErrorCrear(null); }} />
         )}
-        {creada && <SimulacionCreada sim={creada} onCerrar={() => setCreada(null)} />}
+        {creada && (
+          <SimulacionCreada sim={creada} onCerrar={() => setCreada(null)} onComparar={() => setComparando(creada.id)} />
+        )}
         {error && <ErrorBox mensaje={error} />}
+        {comparando && (
+          <PanelComparacion key={comparando} analisisId={analisisId} simulacionId={comparando}
+            onCerrar={() => setComparando(null)} onNoExiste={comparacionNoExiste} />
+        )}
         {lista.data.length === 0 && (
           <p className="text-sm text-slate-500">Este análisis todavía no tiene simulaciones.</p>
         )}
@@ -185,7 +200,7 @@ export function ListaSimulaciones({ detalle }: { detalle: Detalle }) {
                   <td className="cifra px-3.5 py-1.5 text-right">{eur(f.p_objetivo)}</td>
                   <td className="cifra px-3.5 py-1.5 text-right">{eur(f.p_max)}</td>
                   <td className="px-3.5 py-1.5">
-                    <Acciones f={f} ocupado={ocupado} pedir={pedir} clase="justify-end" />
+                    <Acciones f={f} ocupado={ocupado} pedir={pedir} comparar={setComparando} clase="justify-end" />
                   </td>
                 </tr>
               ))}
@@ -213,7 +228,7 @@ export function ListaSimulaciones({ detalle }: { detalle: Detalle }) {
                 {f.nOverrides != null && ` · ${f.nOverrides} ${f.nOverrides === 1 ? "override" : "overrides"}`}
                 {" · P. obj. "}<span className="cifra">{eur(f.p_objetivo)}</span>
               </p>
-              <Acciones f={f} ocupado={ocupado} pedir={pedir} clase="mt-2.5" />
+              <Acciones f={f} ocupado={ocupado} pedir={pedir} comparar={setComparando} clase="mt-2.5" />
             </li>
           ))}
         </ul>
@@ -271,7 +286,9 @@ function filaSimulacion(s: SimulacionResumen, escribe: boolean): Fila {
 // ─────────────────────────── piezas ───────────────────────────
 
 /** Resumen de la simulación recién creada, tomado de la respuesta del backend. */
-function SimulacionCreada({ sim, onCerrar }: { sim: SimulacionDetalle; onCerrar: () => void }) {
+function SimulacionCreada({ sim, onCerrar, onComparar }: {
+  sim: SimulacionDetalle; onCerrar: () => void; onComparar: () => void;
+}) {
   const d = sim.resultado.decision;
   const n = Object.keys(sim.overrides).length;
   return (
@@ -288,7 +305,10 @@ function SimulacionCreada({ sim, onCerrar }: { sim: SimulacionDetalle; onCerrar:
         <span>P. máx. <span className="cifra font-semibold">{eur(d.precios.p_max)}</span></span>
         <span className="text-slate-500">{n} {n === 1 ? "override" : "overrides"} · no está en uso</span>
       </div>
-      <Button variante="fantasma" className="shrink-0 !px-2 !py-1 text-[12px]" onClick={onCerrar}>Cerrar aviso</Button>
+      <div className="flex shrink-0 flex-wrap gap-2">
+        <Button variante="secundario" className="!px-2.5 !py-1.5 text-[12px]" onClick={onComparar}>Comparar con original</Button>
+        <Button variante="fantasma" className="!px-2 !py-1 text-[12px]" onClick={onCerrar}>Cerrar aviso</Button>
+      </div>
     </div>
   );
 }
@@ -305,13 +325,20 @@ function Estado({ f }: { f: Fila }) {
   );
 }
 
-function Acciones({ f, ocupado, pedir, clase = "" }: {
-  f: Fila; ocupado: boolean; pedir: (p: Peticion) => void; clase?: string;
+function Acciones({ f, ocupado, pedir, comparar, clase = "" }: {
+  f: Fila; ocupado: boolean; pedir: (p: Peticion) => void; comparar: (id: string) => void; clase?: string;
 }) {
-  if (f.acciones.length === 0) return null;
   const id = f.clave === "original" ? null : f.clave;
+  // «Comparar» es lectura: en todas las simulaciones (también descartadas) y para
+  // cualquier rol; no se desactiva mientras hay una escritura en curso.
+  if (f.acciones.length === 0 && id === null) return null;
   return (
     <div className={`flex flex-wrap gap-2 ${clase}`}>
+      {id !== null && (
+        <Button variante="fantasma" className="!px-2.5 !py-1.5" onClick={() => comparar(id)}>
+          Comparar con original
+        </Button>
+      )}
       {f.acciones.map((a) => (
         <Button key={a.accion} variante={a.peligro ? "peligro" : "secundario"}
           className="!px-2.5 !py-1.5" disabled={ocupado} aria-disabled={ocupado}
