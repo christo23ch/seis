@@ -320,6 +320,13 @@ def test_pdf_procede_del_markdown_congelado_y_no_ejecuta_m14(api, headers):
     # configuración actual, que ahora es otra.
     espia.assert_called_once()
     assert espia.call_args[0][0] == markdown_congelado
+    # Fase 5G.1: la identificación es la de ESE informe —su id y su procedencia
+    # congelada (original)—, no la de la configuración actual, que es otra.
+    ident = espia.call_args.kwargs["identificacion"]
+    assert informe["id"] in ident.pie
+    assert f"Id: {informe['id']}" in ident.bloque
+    assert "Procedencia: Configuración original" in ident.bloque
+    assert "Configuración original" in ident.pie
 
     db = SessionLocal()
     try:

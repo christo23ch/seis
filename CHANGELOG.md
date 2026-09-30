@@ -19,6 +19,42 @@ convertirse en un SaaS. Lo anterior está en el historial de git.
 
 ---
 
+## [Fase 5G.1] — Identificación del informe oficial en el PDF — 2026-09-30
+
+Resuelve la deuda D5: impreso, un informe oficial no decía qué informe era.
+
+### Añadido
+
+- **PDF oficial identificado** (`GET /analisis/{id}/informes/{iid}/pdf`): cabecera en
+  cada página («Informe oficial · {id corto} · emitido … UTC»), un bloque inicial en la
+  primera (id, fecha y hora de emisión en UTC, procedencia —«Configuración original» o
+  «Simulación {id corto}» con el id completo—, versión de parámetros, versión de reglas,
+  overrides aplicados y, si falta, «Sin snapshot de parámetros») y un pie con el id
+  completo y la procedencia en cada página.
+- Todo sale **solo de la fila `Informe`** (`id`, `generado_en`, `simulacion_id`,
+  `overrides`, `parametros_aplicados`, `resultado.decision.version_*`); lo que no consta se
+  imprime como «no consta». La fecha de creación del PDF es la de emisión: **dos descargas
+  del mismo informe son idénticas byte a byte**.
+- **Vista previa marcada** (`GET /analisis/{id}/informe.pdf`): «VISTA PREVIA — NO OFICIAL»
+  en la cabecera de cada página y en un bloque inicial.
+- `pdf_service`: `Identificacion`, `identificacion_oficial`, `identificacion_vista_previa` y
+  el parámetro `identificacion=` de `informe_a_pdf`. Sin él, el PDF sale como antes. El pie
+  reduce el cuerpo (8 → 6 pt) si no cupiera en una línea; con los ids reales cabe a 8 pt en
+  Helvetica y en DejaVu.
+
+### Sin cambios
+
+El Markdown congelado (base y `GET /informes/{iid}`), M14, `informe_service`, los modelos y
+las migraciones. Sin migración nueva.
+
+### Pruebas
+
+`tests/test_pdf_identificacion.py`: 9 casos, cada uno con Helvetica y con DejaVu (la
+variante DejaVu se omite fuera de CI si la fuente no está instalada y falla en CI si falta).
+El texto se lee con `pypdf==6.19.0`, nueva dependencia **solo de tests** en
+`requirements-dev.txt`. `test_informe_api.py` comprueba además que la identificación que
+recibe el PDF es la de ese informe. Suite: 837 passed, 17 skipped, 0 failed.
+
 ## [Fase 5F.7] — Simulaciones e informes oficiales en la interfaz — 2026-09-24 a 2026-09-30
 
 Rama `checkpoint/5f6-simulaciones-informes`. Una subfase, un commit (fechas de

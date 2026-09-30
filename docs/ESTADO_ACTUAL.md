@@ -10,8 +10,8 @@
 
 ## Frentes abiertos
 
-**Actualizado:** 2026-09-30 · **Rama de trabajo:** `checkpoint/5f6-simulaciones-informes` · **Suite (SQLite):** 828 passed, 9 skipped, 0 failed · **E2E simulaciones:** verde (`e2e/correr_simulaciones.sh`)
-**Última fase cerrada:** 5F.7 (simulaciones e informes oficiales en la interfaz) · **Puerta: ABIERTA**
+**Actualizado:** 2026-09-30 · **Rama de trabajo:** `checkpoint/5f6-simulaciones-informes` · **Suite (SQLite):** 837 passed, 17 skipped, 0 failed (los 8 omitidos nuevos son la variante DejaVu de 5G.1, que sí corre en CI) · **E2E simulaciones:** verde (`e2e/correr_simulaciones.sh`)
+**Última fase cerrada:** 5G.1 (identificación del informe oficial en el PDF) · **Puerta: ABIERTA**
 
 ### Estado a 2026-09-30
 
@@ -316,6 +316,9 @@ Los **nueve** endpoints que devuelven o crean datos de análisis filtran por
   otra escritura en curso~~ → `4df5de8`.
 - ~~Herramientas de revisión visual inservibles en Windows~~ → `medir-desborde.mjs` acepta
   `CHROMIUM_PATH` (5F.7.9).
+- ~~El PDF oficial no lleva su id, fecha ni procedencia (deuda D5)~~ → 5G.1: cabecera, bloque
+  inicial y pie con la identificación leída de la fila `Informe`; la vista previa de
+  `/informe.pdf` lleva «VISTA PREVIA — NO OFICIAL».
 
 ### Abierta — lista consolidada
 
@@ -337,9 +340,7 @@ Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VER
    `semaforo.verde.ico_min = 150`, listas vacías o ratios negativos se aceptan y cambian el
    resultado sin aviso (docstring de `_discrepancia_de_forma`: «ni tramos, ni longitud de
    listas, ni coherencia entre parámetros»).
-5. **El PDF oficial no lleva su id, fecha ni procedencia en el contenido.**
-   `routes.py:258` pasa solo `informe_markdown` a `informe_a_pdf`. El nombre del fichero sí los
-   identifica.
+5. *(Resuelta en 5G.1: ver arriba. Se conserva el número para no renumerar.)*
 6. **El listado de simulaciones no trae `version_parametros_base`**, y el aviso pide el
    detalle completo (con el `resultado` entero) solo para ese campo.
 7. **Los 3 parámetros fijos `perfiles.rentista.*`** (`catalogo.py:652`…) no llevan marca de

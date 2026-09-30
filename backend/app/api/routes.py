@@ -143,7 +143,9 @@ def informe_pdf(analisis_id: str, db: Session = Depends(get_db),
     if not a:
         raise HTTPException(404, "Análisis no encontrado")
     config = simulacion_service.obtener_configuracion_actual(db, analisis_id)
-    pdf = pdf_service.informe_a_pdf(config.resultado.get("informe_markdown", ""))
+    # Fase 5G.1: vista previa de la configuración en uso, marcada como NO oficial.
+    pdf = pdf_service.informe_a_pdf(config.resultado.get("informe_markdown", ""),
+                                    identificacion=pdf_service.identificacion_vista_previa())
     return Response(content=pdf, media_type="application/pdf",
                     headers={"Content-Disposition":
                              f'attachment; filename="SEIS_informe_{analisis_id[:8]}.pdf"'})
@@ -255,7 +257,9 @@ def informe_oficial_pdf(analisis_id: str, informe_id: str, db: Session = Depends
         informe = informe_service.obtener_informe(db, analisis_id, informe_id)
     except informe_service.InformeNoEncontradoError:
         raise HTTPException(404, "Informe no encontrado")
-    pdf = pdf_service.informe_a_pdf(informe.resultado.get("informe_markdown", ""))
+    # Fase 5G.1: la identificación sale de la fila `Informe`, como el Markdown.
+    pdf = pdf_service.informe_a_pdf(informe.resultado.get("informe_markdown", ""),
+                                    identificacion=pdf_service.identificacion_oficial(informe))
     return Response(content=pdf, media_type="application/pdf",
                     headers={"Content-Disposition":
                              f'attachment; filename="SEIS_informe_{informe_id[:8]}.pdf"'})
