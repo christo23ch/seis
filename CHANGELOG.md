@@ -12,6 +12,152 @@ Las fases 1-8 construyeron el motor experto y el producto de un solo tenant.
 Este registro arranca en la Fase 9, que es cuando el proyecto empieza a
 convertirse en un SaaS. Lo anterior está en el historial de git.
 
+> **Dos numeraciones distintas.** Las entradas «Línea de producto · Fase 1-4» y
+> «Fase 5C-5F.7» de abajo **no son** las fases 1-8 del Plan Maestro: son una
+> línea de trabajo posterior (trazabilidad del análisis y simulaciones) que se
+> numeró por su cuenta. Así aparecen en el código (`Fase 3:`, `Fase 5D —`…).
+
+---
+
+## [Fase 5F.7] — Simulaciones e informes oficiales en la interfaz — 2026-09-24 a 2026-09-30
+
+Rama `checkpoint/5f6-simulaciones-informes`. Una subfase, un commit (fechas de
+`git log`).
+
+### Añadido
+
+- **5F.7.1** (`9db8e70`) — `_validar_overrides` comprueba también la **forma**
+  del valor contra el de referencia del mismo árbol (número con número, `bool`
+  no cuenta como número, listas y diccionarios recursivos). Un valor de tipo
+  incorrecto da **422** en vez de 500. `SimulacionNueva` lleva
+  `extra="forbid"`: un campo desconocido da 422 en vez de crear una simulación
+  vacía.
+- **5F.7.2** (`a517299`) — `GET /analisis/{id}/parametros-simulables`:
+  editables, no editables y derivados, con `coincide_con_analisis`.
+  `app/services/parametros_simulables_service.py`.
+- **5F.7.3** (`a6835e8`) — `GET /analisis/{id}/simulaciones/{sid}/comparacion`:
+  qué parámetros cambian (causa `override` o `conocimiento_vigente`) y 12
+  campos del resultado a cada lado. No ejecuta el motor ni audita.
+- **5F.7.4** (`c957fc0`) — base del frontend: tipos, cliente de API
+  (`simulaciones.*`, `informes.*`, `guardarBlob`), `lib/permisos.ts`. **La UI
+  deja de ofrecer el PDF de `/informe.pdf`**; la pestaña «Informe» pasa a ser
+  «Vista previa (no oficial)».
+- **5F.7.5** (`b435688`) — pestaña **Simulaciones**: lista, validar,
+  descartar, usar esta configuración, y el aviso de qué configuración se
+  muestra (`aviso-configuracion.tsx`).
+- **5F.7.6** (`f244d6c`) — editor de parámetros por grupos y creación de
+  simulaciones (`editor.tsx`).
+- **5F.7.7** (`8b03870`) — comparación original / simulación en la interfaz
+  (`comparacion.tsx`), con «Mostrar todos».
+- **5F.7.8** (`9d6e411`) — pestaña **Informes oficiales**: emitir con
+  confirmación, histórico, detalle y descarga del PDF oficial
+  (`informes-oficiales.tsx`).
+- **5F.7.9** (`a589fbd`) — e2e versionada del flujo:
+  `e2e/correr_simulaciones.sh` + `frontend/e2e/simulaciones.mjs` +
+  `e2e/comprobar_simulaciones.py`. Puertos propios (8010/3010), base en un
+  temporal fuera del repo, compila su propio frontend.
+  `frontend/scripts/medir-desborde.mjs` acepta `CHROMIUM_PATH`.
+- **5F.7.10 A** (`4df5de8`) — `Confirmacion` compartida en
+  `components/ui.tsx` (antes duplicada en `lista.tsx` e
+  `informes-oficiales.tsx`); todas las escrituras de simulaciones comparten
+  `mutationKey` y el botón «Volver a la configuración original» se desactiva
+  mientras hay otra en curso.
+
+### Corregido
+
+- `de3498f` — la hoja `version` del árbol de parámetros ya no aparece como
+  parámetro no editable cambiado en la comparación (`_HOJA_VERSION`).
+
+### Verificado al cierre
+
+`pytest`: **828 passed, 9 skipped, 0 failed**. `tsc --noEmit`: sin errores.
+`correr_simulaciones.sh`: EXIT=0.
+
+## [Pruebas] — La suite deja de usar la base de desarrollo — 2026-09-28
+
+Commit `9db44b3`. No es una fase.
+
+### Corregido
+
+- **`pytest` borraba `seis_dev.db`.** `conftest.py` no fijaba `DATABASE_URL`,
+  así que la suite usaba la base por defecto (`sqlite:///./seis_dev.db`), la
+  misma del `uvicorn` de desarrollo, y la fixture `api` hacía `drop_all` y
+  `os.remove("seis_dev.db")` al terminar cada módulo. Ahora `conftest.py` fija
+  `DATABASE_URL` a una base en un directorio temporal (`SEIS_PYTEST_DIR_BD`)
+  **antes** de importar la aplicación, y aborta la sesión (`pytest.exit`) si
+  detecta que apunta a otra (`problema_de_aislamiento`).
+  `tests/test_aislamiento_bd.py`.
+
+## [Fases 5C-5F.6] — Catálogo, simulaciones, configuración validada, informes oficiales y API — 2026-09-23
+
+Todo en **un solo commit**, `4a6f61d` («feat: simulaciones, configuracion
+validada e informes oficiales»). Las subfases se reconstruyen por las marcas
+`Fase 5X` del código, no por commits propios. La fecha es la del commit.
+
+[VERIFICAR: las subfases **5B**, **5F.2** y **5F.5** no dejan marca en el código ni commit
+propio; no se documentan aquí. Tampoco consta la fecha de cierre de cada subfase, solo la
+del commit.]
+
+### Añadido
+
+- **5C / 5C.1** — `app/parametros/catalogo.py`: catálogo técnico de metadatos
+  de los parámetros T3 de M12/M13, con disciplina «no inventar». 5C.1 cierra
+  las tres claves físicas de `perfiles.rentista` y las de M12/M13 que faltaban.
+  `tests/test_catalogo_parametros.py`.
+- **5D** — tabla `simulacion` (migración `0012`) y
+  `app/services/simulacion_service.py`: una configuración alternativa de
+  parámetros sobre un análisis existente. Estados `pendiente` → `validada` o
+  `descartada`. `tests/test_simulacion.py`.
+- **5E / 5E.1** — `Analisis.simulacion_validada_id` (migración `0013`): qué
+  configuración se muestra hoy (NULL = la original). 5E.1 permite volver a
+  seleccionar una simulación ya validada. `tests/test_configuracion_validada.py`.
+- **5F.1 / 5F.1A** — `Analisis.parametros_aplicados` (migración `0014`): el
+  árbol T3 efectivo congelado en el análisis.
+  `tests/test_analisis_parametros_aplicados.py`.
+- **5F.3 / 5F.3.1** — tabla `informe` (migración `0015`): informe **oficial**,
+  snapshot histórico e inmutable. 5F.3.1: el informe y su evento de auditoría
+  van en la misma transacción (defecto B-1). `app/services/informe_service.py`,
+  `tests/test_informe.py`.
+- **5F.4** — API de informes oficiales: `POST/GET /analisis/{id}/informes`,
+  `GET …/informes/{iid}` y `GET …/informes/{iid}/pdf`. Recurso de otra
+  organización = 404. `tests/test_informe_api.py`.
+- **5F.6** — API de simulaciones: crear, listar, obtener, validar, descartar,
+  seleccionar y `POST /analisis/{id}/configuracion/original`. Cada escritura
+  audita en la **misma transacción**, con `rollback` si algo falla.
+  `tests/test_simulacion_api.py`.
+
+### Migraciones
+
+`0012_simulacion`, `0013_simulacion_validada`,
+`0014_analisis_parametros_aplicados`, `0015_informe`.
+
+## [Línea de producto · Fases 1-4] — Puente captación → análisis y trazabilidad de la valoración — 2026-09-23
+
+También dentro de `4a6f61d`; sin commits propios.
+
+### Añadido
+
+- **Fase 1 · Puente captación → análisis.** `POST /analisis?subasta_id=…`
+  reutiliza la `Subasta` captada en vez de crear otra
+  (`analisis_service.crear_analisis`, fail-closed si no existe o no es
+  visible). En la interfaz: botón «Analizar» en `/subastas` y
+  `nueva?subasta=`. Cierra el frente 🔴 «el puente captación → análisis no
+  existe».
+- **Fase 2 · Corte sin ancla.** Sin comparables (`metodo="sin_comparables"`
+  en M03), M12 decide **rojo** con «Sin ancla de mercado independiente…» y M14
+  añade al checklist «**NO DETERMINABLE: sin comparables de mercado.**».
+- **Fase 3 · Comparables usados.** `ComparableUsado` (migración `0010`):
+  snapshot inmutable de cada comparable tal y como lo recibió M03.
+  `tests/test_comparables_usados.py`.
+- **Fase 4 · Detalle de la valoración.** `ComparableValorado` y
+  `ValoracionAjustes` (migración `0011`): intermedios de M03 por comparable y
+  agregados; `detalle_comparables` y `k_estado_activo` en `contracts.py`.
+  `tests/test_valoracion_detalle.py`.
+
+### Migraciones
+
+`0010_comparable_usado`, `0011_valoracion_detalle`.
+
 ---
 
 ## [Corrección del motor] — La base imponible del ITP y la puja inviable — 2026-09-11

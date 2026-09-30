@@ -222,7 +222,7 @@ Inicia sesión y pulsa **Nueva inversión**. Introduce exactamente esto (lo no m
 - Condiciones: verificación posesoria in situ; certificado de comunidad
 - Checklist: bloqueantes pendientes de **nota simple ≤ 5 días** y **verificación posesoria**
 
-Pulsa **Guardar análisis** → detalle con pestañas · **Descargar informe PDF** debe producir un PDF real de varias páginas.
+Pulsa **Guardar análisis** → detalle con ocho pestañas. La pestaña **Vista previa (no oficial)** muestra el informe de la configuración actual **en pantalla y sin botón de PDF**: el único PDF descargable es el de un informe oficial (ver *Pruebas de informes oficiales*, abajo), y debe ser un PDF real de varias páginas.
 
 ### Pruebas de vetos (comprueba que ninguna virtud compensa un defecto letal)
 - Repite con **ocupación = renta_antigua** → **ROJO** con veto `VETO-OCU-01`.
@@ -233,6 +233,28 @@ Pulsa **Guardar análisis** → detalle con pestañas · **Descargar informe PDF
 1. **Parámetros** → cambia ITP de `ejemplo` a **8** y guarda. Vuelve al asistente (mismo caso pero con el ITP manual **vacío**): `c_v` pasa de 6,4 % a **8,4 %** y todos los precios bajan; el análisis estampa `version_parametros …+1ov`. Restaura a 6.
 2. **Motor de reglas** → en `SEM-EJEC-01` pulsa *Nueva versión*, cambia el texto de la condición, justifica y publica: el historial muestra la vigencia cerrada y los nuevos análisis usan la redacción v2.
 3. **Administración** → crea un usuario rol **lector**; entra con él: puede consultar, pero *Nueva inversión* y las ediciones devuelven acceso denegado (403).
+
+### Pruebas de simulaciones (pestaña **Simulaciones** del detalle)
+
+Parte del análisis guardado arriba. Encima de las pestañas, el aviso debe decir **«Configuración original del análisis»**.
+
+1. **Crear.** Pulsa **Nueva simulación**. Cambia un parámetro numérico (p. ej. `semaforo.verde.ico_min`) y pulsa **Crear simulación (1 cambio)**. Aparece una fila nueva en estado **pendiente**; el aviso **no cambia**: crear no altera la configuración en uso. Prueba también un valor no numérico en ese campo: el botón no deja crear.
+2. **Comparar.** En la fila, **Comparar con original** abre la comparación: los parámetros que cambian, con su causa (el override que pediste, o *conocimiento vigente* si los parámetros globales cambiaron desde que se hizo el análisis), y los resultados de los dos lados. **Mostrar todos** enseña también los parámetros sin cambios.
+3. **Validar.** **Validar** → confirma. La simulación pasa a **validada** y a ser la configuración en uso: el aviso dice **«Mostrando la simulación {id}»** y el resto de pestañas (Resumen, Estrategia de puja…) enseñan sus resultados.
+4. **Descartar.** Crea otra simulación y pulsa **Descartar** → confirma. Queda **descartada** y solo conserva **Comparar con original**. Una simulación validada **no** se puede descartar.
+5. **Seleccionar.** Con dos simulaciones validadas, **Usar esta configuración** en la que no está en uso la convierte en la actual; el aviso lo refleja.
+6. **Volver a la original.** En el aviso, **Volver a la configuración original** (o **Volver a la original** en la fila «Original» de la tabla). El aviso vuelve a «Configuración original del análisis»; **ninguna simulación cambia de estado**.
+7. **Lector.** Entra con el usuario **lector**: ve la lista, la comparación y el aviso, pero **ningún** botón de crear, validar, descartar, usar o volver. Por API, esas escrituras responden **403**.
+
+### Pruebas de informes oficiales (pestaña **Informes oficiales**)
+
+1. **Emitir.** **Emitir informe oficial** → confirma con **Emitir**. Aparece en el histórico con su fecha y su procedencia: **Original**, o **Simulación {id}** si había una en uso.
+2. **Histórico.** Emite otro tras cambiar la configuración en uso (valida o selecciona otra simulación, o vuelve a la original). Los dos quedan en el histórico, cada uno con su procedencia.
+3. **Inmutabilidad.** Abre el primer informe y anota su semáforo y precios. Cambia la configuración en uso y vuelve a abrirlo: **no cambia**. Por API no existe ninguna ruta para modificar ni borrar un informe.
+4. **PDF.** **Descargar PDF oficial** descarga `SEIS_informe_oficial_{id}_{fecha}.pdf` con el contenido congelado de ese informe, no el de la configuración actual.
+5. **Lector.** Con el usuario **lector**: ve el histórico, abre informes y descarga el PDF, pero **no** ve **Emitir informe oficial**; por API, `POST …/informes` responde **403**.
+
+Estas dos secciones las recorre también la e2e `e2e/correr_simulaciones.sh` (navegador real + comprobación en la base); en Windows: `PLAYWRIGHT_CHROMIUM="C:/Program Files/Google/Chrome/Application/chrome.exe" bash e2e/correr_simulaciones.sh`.
 
 ---
 
@@ -246,11 +268,26 @@ TOKEN=$(curl -s -X POST $API/auth/login -d "username=admin@seis.local&password=a
 # analizar y persistir (payload: guarda el JSON del §6 como caso.json)
 curl -s -X POST $API/analisis -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d @caso.json
 
-# listado · detalle · informe markdown · checklist · PDF
+# listado · detalle · vista previa en markdown (no oficial) · checklist
 curl -s $API/analisis -H "Authorization: Bearer $TOKEN"
 curl -s $API/analisis/{ID} -H "Authorization: Bearer $TOKEN"
 curl -s $API/analisis/{ID}/informe -H "Authorization: Bearer $TOKEN"
-curl -s -o informe.pdf $API/analisis/{ID}/informe.pdf -H "Authorization: Bearer $TOKEN"
+curl -s $API/analisis/{ID}/checklist -H "Authorization: Bearer $TOKEN"
+
+# informes oficiales: emitir (devuelve su id) · histórico · detalle · PDF oficial
+curl -s -X POST $API/analisis/{ID}/informes -H "Authorization: Bearer $TOKEN"
+curl -s $API/analisis/{ID}/informes -H "Authorization: Bearer $TOKEN"
+curl -s $API/analisis/{ID}/informes/{INFORME_ID} -H "Authorization: Bearer $TOKEN"
+curl -s -o informe_oficial.pdf $API/analisis/{ID}/informes/{INFORME_ID}/pdf -H "Authorization: Bearer $TOKEN"
+
+# simulaciones: crear · listar · comparar · validar / descartar / seleccionar · volver a la original
+curl -s -X POST $API/analisis/{ID}/simulaciones -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"overrides": {"semaforo.verde.ico_min": 70}}'
+curl -s $API/analisis/{ID}/simulaciones -H "Authorization: Bearer $TOKEN"
+curl -s $API/analisis/{ID}/simulaciones/{SIM_ID}/comparacion -H "Authorization: Bearer $TOKEN"
+curl -s -X POST $API/analisis/{ID}/simulaciones/{SIM_ID}/validar -H "Authorization: Bearer $TOKEN"
+curl -s -X POST $API/analisis/{ID}/configuracion/original -H "Authorization: Bearer $TOKEN"
+# El PDF de la configuración actual (`/analisis/{ID}/informe.pdf`) sigue existiendo por
+# compatibilidad, pero la interfaz ya no lo ofrece: el PDF que vale es el del informe oficial.
 
 # análisis asíncrono vía Celery (con worker y Redis levantados)
 curl -s -X POST $API/analisis/async -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d @caso.json

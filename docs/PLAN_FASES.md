@@ -238,6 +238,7 @@ alertas de la Fase 12 vigilan el vacío y no hay nada que monetizar en la 13.
   subasta traída por el conector **no se puede analizar sin re-teclear todo**. El caudal que
   abre la 17-A desembocaría en un formulario de diez pasos. Descubierto con un caso real de la
   AEAT (ver `ESTADO_ACTUAL.md`). Esta ficha no cierra su PR sin resolverlo.
+  **✅ Resuelto** por la Fase 1 de la línea 5x (`POST /analisis?subasta_id=…`, commit `4a6f61d`).
 - **Decisión de producto con dueño (🟢, sin dependencias externas): cuál es el modo de
   notificación por defecto.** No es una optimización y no puede heredarse: con ingesta diaria,
   el `instantaneo` de fábrica manda **50 correos por cabeza y noche con diez usuarios**
@@ -255,7 +256,7 @@ alertas de la Fase 12 vigilan el vacío y no hay nada que monetizar en la 13.
 - **Modelo recomendado:** **Opus 5** para el andamiaje; **Sonnet 5** para el ajuste de selectores
   cuando tengas el HTML (tarea acotada de parsing, con fixtures como red).
 
-### Fase 17-C · Fuente automática de comparables de mercado 🟡 — **nueva, sin empezar**
+### Fase 17-C · Fuente automática de comparables de mercado 🟡 — **pendiente** (investigación inicial hecha: no hay servicio web libre; decisión de fuente abierta)
 
 **Objetivo.** Que el motor pueda valorar un inmueble **sin depender de que alguien teclee
 comparables a mano**, y que cuando no pueda lo diga en vez de compararse consigo mismo.
@@ -639,20 +640,48 @@ en `docs/HERRAMIENTAS.md` (Paso 4), no aquí.
 
 ## 5 · Resumen del orden y por qué
 
-| # | Fase | Clase | Depende de |
-|---|---|---|---|
-| **0** | **Deuda de cobertura (§2-bis a y b)** | 🟢 | — · **PUERTA: nada que toque producción se despliega antes** |
-| 1 | 11-B · Despliegue | 🟡 | Dominio, hosting · **la puerta 0** |
-| 2 | 17-A · Captación | 🟡 + 🔴 | HTML real del BOE |
-| 2-bis | 17-C · Comparables de mercado | 🟡 | La 17-B · investigar si el valor de referencia tiene servicio web libre |
-| 3 | 14 · RGPD | 🟢 | Abogado (textos) |
-| 4 | 13 · Stripe | 🟡 | **Figura fiscal** (empieza hoy) |
-| 5 | 16 · Seguridad | 🟢 | Que existan 13 y 17 |
-| 0' | Sistema de diseño | 🟢 | — (antes de la 15) |
-| 6 | 15 · Landing | 🟢 | Sistema de diseño |
-| 7 | 19 · Analítica | 🟡 | Alta en Plausible |
-| 8 | 18 · WhatsApp | 🔴 | Puerta de demanda + fiscal |
-| 9 | 20 · Beta | 🔴 | Todo lo anterior |
+| # | Fase | Clase | Depende de | Estado a 2026-09-30 |
+|---|---|---|---|---|
+| **0** | **Deuda de cobertura (§2-bis a y b)** | 🟢 | — · **PUERTA: nada que toque producción se despliega antes** | ✅ hecha (a y b; c es regla, d cerrada) |
+| 1 | 11-B · Despliegue | 🟡 | Dominio, hosting · **la puerta 0** | ⬜ pendiente — sin dominio ni hosting |
+| 2 | 17-A · Captación | 🟡 + 🔴 | HTML real del BOE | ✅ hecha (PR #12) |
+| 2 | 17-B · Captación real, selectores del BOE | 🔴 | HTML real del BOE · decidir el modo de notificación por defecto | ⬜ pendiente — espera el HTML |
+| 2-bis | 17-C · Comparables de mercado | 🟡 | La 17-B · investigar si el valor de referencia tiene servicio web libre | ⬜ pendiente — investigación hecha (no hay servicio libre, PR #25); decisión de fuente abierta |
+| 3 | 14 · RGPD | 🟢 | Abogado (textos) | ✅ hecha (PR #15; falta el texto del abogado) |
+| 4 | 13 · Stripe | 🟡 | **Figura fiscal** (empieza hoy) | ⬜ pendiente — cero código |
+| 5 | 16 · Seguridad | 🟢 | Que existan 13 y 17 | ✅ hecha (PR #16) |
+| 0' | Sistema de diseño | 🟢 | — (antes de la 15) | ✅ hecha |
+| 6 | 15 · Landing | 🟢 | Sistema de diseño | ✅ hecha (PR #23, #24) |
+| 5x | Línea de producto: fases 1-4 y 5C-5F.7 (puente, trazabilidad, simulaciones, informes oficiales) | 🟢 | — | ✅ hecha en la rama `checkpoint/5f6-simulaciones-informes`; **sin PR ni fusión** |
+| 7 | 19 · Analítica | 🟡 | Alta en Plausible | ⬜ pendiente |
+| 8 | 18 · WhatsApp | 🔴 | Puerta de demanda + fiscal | ⏸️ aparcada — condicional por diseño |
+| 9 | 20 · Beta | 🔴 | Todo lo anterior | ⬜ pendiente |
+
+> **La línea 5x no es del Plan Maestro.** Se abrió después de este plan, al recorrer una subasta
+> real (ver `docs/ESTADO_ACTUAL.md`), y se numeró por su cuenta: «Fase 1» a «Fase 4» y «Fase 5C»
+> a «Fase 5F.7» en el código y en `CHANGELOG.md`. No confundir con las fases 1-8 del motor. No
+> hay en el repositorio ninguna ficha previa que la planifique; aquí se registra lo hecho.
+
+### 5-bis · Avance hasta el lanzamiento: **50 %**
+
+**Criterio:** fases **hechas** sobre fases del plan hasta el lanzamiento, **sin ponderar** por
+tamaño ni esfuerzo. Entran las filas de la tabla de arriba, con dos exclusiones y una regla:
+
+- **Fuera:** la fila 0 (deuda de cobertura), porque es un prerrequisito y no una fase, y la
+  **18 (WhatsApp)**, porque es condicional: puede no hacerse nunca sin que el lanzamiento se
+  resienta.
+- **La línea 5x cuenta como una sola fase**, igual que cada fase del Plan Maestro cuenta una
+  vez aunque tenga subfases.
+
+Quedan **12 fases**: 11-B, 17-A, 17-B, 17-C, 14, 13, 16, 0', 15, 5x, 19 y 20. **Hechas, 6:**
+17-A, 14, 16, 0', 15 y 5x. **6 / 12 = 50 %.**
+
+Si solo se cuenta lo fusionado en `main`, la 5x todavía no entra: **5 / 12 ≈ 42 %**, que es la
+cifra que valdrá hasta que se fusione su PR.
+
+Lo que este número **no** dice: cuánto trabajo queda. Las seis pendientes son, casi todas, las
+que dependen de alguien de fuera (dominio, figura fiscal, HTML del BOE, fuente de comparables,
+Plausible) y ninguna se parece en tamaño a otra.
 
 **Mientras no haya portátil**, el trabajo 🟢 disponible es: el andamiaje de la 17-A, la Fase 14
 casi entera, la Fase 16 completa, y el sistema de diseño. Es varias semanas de trabajo sin tocar
