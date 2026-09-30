@@ -7,7 +7,7 @@ import { fecha } from "@/lib/format";
 import { puedeEscribir } from "@/lib/permisos";
 import type { Detalle, InformeOficialResumen, SimulacionResumen, ValorJson } from "@/lib/types";
 import { SemaforoBadge } from "@/components/resultado";
-import { Button, Card, CardContent, CardHeader, CardTitle, ErrorBox, Spinner } from "@/components/ui";
+import { Button, Card, CardContent, CardHeader, CardTitle, Confirmacion, ErrorBox, Spinner } from "@/components/ui";
 import { idCorto, invalidarConfiguracion } from "@/components/simulaciones/aviso-configuracion";
 
 /** Pestaña «Informes oficiales» (API de la Fase 5F.4).
@@ -103,7 +103,7 @@ export function InformesOficiales({ detalle }: { detalle: Detalle }) {
         )}
       </CardContent>
 
-      <Confirmacion abierta={confirmar} titulo="Emitir informe oficial" texto={textoConfirmacion}
+      <Confirmacion abierta={confirmar} titulo="Emitir informe oficial" texto={textoConfirmacion} boton="Emitir"
         onCancelar={() => setConfirmar(false)}
         onConfirmar={() => { setConfirmar(false); emitir.mutate(); }} />
     </Card>
@@ -286,32 +286,5 @@ function Valor({ v }: { v: ValorJson }) {
         {JSON.stringify(v, null, 2)}
       </pre>
     </details>
-  );
-}
-
-/** Mismo patrón que el diálogo de `simulaciones/lista.tsx` (no exportado allí):
- * `<dialog>` nativo con `showModal()`, que ya da foco, Escape y fondo inerte. */
-function Confirmacion({ abierta, titulo, texto, onConfirmar, onCancelar }: {
-  abierta: boolean; titulo: string; texto: string; onConfirmar: () => void; onCancelar: () => void;
-}) {
-  const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    const d = ref.current;
-    if (!d) return;
-    if (abierta && !d.open) d.showModal();
-    if (!abierta && d.open) d.close();
-  }, [abierta]);
-  return (
-    <dialog ref={ref} onCancel={(e) => { e.preventDefault(); onCancelar(); }} aria-labelledby="emitir-titulo"
-      className="w-[min(440px,calc(100vw-32px))] rounded-lg border border-borde-linea p-0 shadow-carta backdrop:bg-tinta/40">
-      <div className="px-5 py-4">
-        <h2 id="emitir-titulo" className="text-base font-semibold text-tinta">{titulo}</h2>
-        <p className="mt-2 text-sm text-slate-600">{texto}</p>
-      </div>
-      <div className="flex justify-end gap-2 border-t border-borde-linea px-5 py-3">
-        <Button variante="fantasma" onClick={onCancelar}>Cancelar</Button>
-        <Button onClick={onConfirmar}>Emitir</Button>
-      </div>
-    </dialog>
   );
 }

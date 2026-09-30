@@ -1,6 +1,6 @@
 "use client";
 import { Loader2 } from "lucide-react";
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useId, useRef, useState } from "react";
 
 const cx = (...c: (string | false | undefined)[]) => c.filter(Boolean).join(" ");
 
@@ -124,5 +124,35 @@ export function Stat({ etiqueta, valor, sub, cifra = true }: { etiqueta: string;
         {sub && <div className="mt-0.5 text-[12px] text-slate-400">{sub}</div>}
       </CardContent>
     </Card>
+  );
+}
+
+/** Diálogo de confirmación sobre `<dialog>` nativo: `showModal()` ya da foco
+ * dentro, cierre con Escape y fondo inerte, sin librerías. Compartido por la
+ * pestaña Simulaciones (validar, descartar) y por Informes oficiales (emitir). */
+export function Confirmacion({ abierta, titulo, texto, boton, peligro, onConfirmar, onCancelar }: {
+  abierta: boolean; titulo: string; texto: string; boton: string; peligro?: boolean;
+  onConfirmar: () => void; onCancelar: () => void;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const idTitulo = useId();
+  useEffect(() => {
+    const d = ref.current;
+    if (!d) return;
+    if (abierta && !d.open) d.showModal();
+    if (!abierta && d.open) d.close();
+  }, [abierta]);
+  return (
+    <dialog ref={ref} onCancel={(e) => { e.preventDefault(); onCancelar(); }} aria-labelledby={idTitulo}
+      className="w-[min(440px,calc(100vw-32px))] rounded-lg border border-borde-linea p-0 shadow-carta backdrop:bg-tinta/40">
+      <div className="px-5 py-4">
+        <h2 id={idTitulo} className="text-base font-semibold text-tinta">{titulo}</h2>
+        <p className="mt-2 text-sm text-slate-600">{texto}</p>
+      </div>
+      <div className="flex justify-end gap-2 border-t border-borde-linea px-5 py-3">
+        <Button variante="fantasma" onClick={onCancelar}>Cancelar</Button>
+        <Button variante={peligro ? "peligro" : "primario"} onClick={onConfirmar}>{boton}</Button>
+      </div>
+    </dialog>
   );
 }

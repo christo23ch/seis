@@ -1,5 +1,5 @@
 "use client";
-import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useIsMutating, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { fecha } from "@/lib/format";
@@ -22,6 +22,12 @@ export function invalidarConfiguracion(qc: QueryClient, analisisId: string) {
     qc.invalidateQueries({ queryKey: [clave, analisisId] });
   }
 }
+
+/** Clave común de TODAS las escrituras de simulaciones de un análisis (crear,
+ * validar, descartar, seleccionar, volver a la original), estén en el aviso o
+ * en la pestaña. Con ella, `useIsMutating` sabe si hay alguna en curso y los
+ * botones de otro componente se desactivan (mitiga la carrera descartar/validar). */
+export const claveEscrituraSimulaciones = (analisisId: string) => ["escritura-simulaciones", analisisId];
 
 /** Dice SIEMPRE qué configuración está pintando el detalle: la original del
  * análisis o una simulación seleccionada. Sin colores del semáforo; el estado
@@ -47,9 +53,12 @@ export function AvisoConfiguracion({ analisisId, simulacionValidadaId }: {
   });
 
   const volver = useMutation({
+    mutationKey: claveEscrituraSimulaciones(analisisId),
     mutationFn: () => api.simulaciones.volverAOriginal(analisisId),
     onSuccess: () => invalidarConfiguracion(qc, analisisId),
   });
+  // Cualquier escritura de simulaciones en curso (también las de la pestaña).
+  const escribiendo = useIsMutating({ mutationKey: claveEscrituraSimulaciones(analisisId) }) > 0;
 
   if (simulacionValidadaId == null || (lista.isSuccess && !fila)) {
     return (
@@ -90,7 +99,7 @@ export function AvisoConfiguracion({ analisisId, simulacionValidadaId }: {
         </div>
         {puedeEscribir(usuario) && (
           <Button variante="secundario" className="shrink-0" cargando={volver.isPending}
-            onClick={() => volver.mutate()}>
+            disabled={escribiendo} aria-disabled={escribiendo} onClick={() => volver.mutate()}>
             Volver a la configuración original
           </Button>
         )}

@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { type UseQueryResult, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -9,8 +9,8 @@ import type {
   ComparacionSimulacion, Detalle, EstadoSimulacion, Overrides, Semaforo, SimulacionDetalle, SimulacionResumen,
 } from "@/lib/types";
 import { SemaforoBadge } from "@/components/resultado";
-import { Button, Card, CardContent, CardHeader, CardTitle, ErrorBox, Spinner } from "@/components/ui";
-import { idCorto, invalidarConfiguracion } from "./aviso-configuracion";
+import { Button, Card, CardContent, CardHeader, CardTitle, Confirmacion, ErrorBox, Spinner } from "@/components/ui";
+import { claveEscrituraSimulaciones, idCorto, invalidarConfiguracion } from "./aviso-configuracion";
 import { PanelComparacion } from "./comparacion";
 import { EditorSimulacion } from "./editor";
 
@@ -78,6 +78,7 @@ export function ListaSimulaciones({ detalle }: { detalle: Detalle }) {
   });
 
   const accion = useMutation({
+    mutationKey: claveEscrituraSimulaciones(analisisId),
     // La respuesta no se usa: tras cada escritura se vuelve a pedir lo invalidado.
     mutationFn: async ({ accion, id }: Peticion): Promise<void> => {
       if (accion === "original") await api.simulaciones.volverAOriginal(analisisId);
@@ -99,6 +100,7 @@ export function ListaSimulaciones({ detalle }: { detalle: Detalle }) {
   const [creada, setCreada] = useState<SimulacionDetalle | null>(null);
   const [errorCrear, setErrorCrear] = useState<string | null>(null);
   const crear = useMutation({
+    mutationKey: claveEscrituraSimulaciones(analisisId),
     mutationFn: (overrides: Overrides) => api.simulaciones.crear(analisisId, overrides),
     onMutate: () => { setErrorCrear(null); setCreada(null); },
     onSuccess: (sim) => {
@@ -347,34 +349,5 @@ function Acciones({ f, ocupado, pedir, comparar, clase = "" }: {
         </Button>
       ))}
     </div>
-  );
-}
-
-/** Diálogo de confirmación mínimo sobre `<dialog>` nativo: `showModal()` ya da
- * foco dentro, cierre con Escape y fondo inerte, sin librerías. */
-function Confirmacion({ abierta, titulo, texto, boton, peligro, onConfirmar, onCancelar }: {
-  abierta: boolean; titulo: string; texto: string; boton: string; peligro?: boolean;
-  onConfirmar: () => void; onCancelar: () => void;
-}) {
-  const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    const d = ref.current;
-    if (!d) return;
-    if (abierta && !d.open) d.showModal();
-    if (!abierta && d.open) d.close();
-  }, [abierta]);
-  return (
-    <dialog ref={ref} onCancel={(e) => { e.preventDefault(); onCancelar(); }}
-      aria-labelledby="confirmacion-titulo"
-      className="w-[min(420px,calc(100vw-32px))] rounded-lg border border-borde-linea p-0 shadow-carta backdrop:bg-tinta/40">
-      <div className="px-5 py-4">
-        <h2 id="confirmacion-titulo" className="text-base font-semibold text-tinta">{titulo}</h2>
-        <p className="mt-2 text-sm text-slate-600">{texto}</p>
-      </div>
-      <div className="flex justify-end gap-2 border-t border-borde-linea px-5 py-3">
-        <Button variante="fantasma" onClick={onCancelar}>Cancelar</Button>
-        <Button variante={peligro ? "peligro" : "primario"} onClick={onConfirmar}>{boton}</Button>
-      </div>
-    </dialog>
   );
 }

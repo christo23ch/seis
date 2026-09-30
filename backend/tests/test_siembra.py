@@ -46,8 +46,9 @@ def base_desechable(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
 
     `init_db.main()` y `sembrar.main()` importan `SessionLocal` **dentro** de la
     función, así que se resuelve en la llamada y basta con sustituirlo en el
-    módulo. Sin esto, los `main()` sembrarían en el fichero compartido con la
-    fixture `api` y contaminarían a otros tests.
+    módulo. Sin esto, los `main()` sembrarían en la base de la suite —la que
+    usa la fixture `api`, temporal y propia desde 9db44b3— y contaminarían a
+    otros tests.
     """
     from app.core import db as modulo_db
 
