@@ -59,17 +59,21 @@ export function EscaleraPrecios({ d }: { d: Decision }) {
         <span className="text-[12px] text-slate-400">P. adjudicación esperado: <b className="cifra text-slate-600">{eur(d.p_adj_esperado)}</b></span>
       </CardHeader>
       <CardContent>
-        <div className="relative mt-6 flex h-44 items-end gap-3 pb-1">
+        {/* Fase 5G.4-C: a 390 px la fila no cabía con una monoespaciada de ~0,6 em
+            (DejaVu Sans Mono en Linux, Menlo en macOS; Consolas en Windows es más
+            estrecha): `flex-1` con `min-width: auto` no encoge por debajo de su cifra.
+            Por debajo de `sm`, escalones que encogen, cifra a 12 px y menos hueco. */}
+        <div className="relative mt-6 flex h-44 items-end gap-2 pb-1 sm:gap-3">
           {!degenerada && (
             <div className="absolute inset-x-0 border-t-2 border-dashed border-slate-400" style={{ bottom: `${adjPct * 0.88}%` }}>
               <span className="absolute -top-5 right-0 rounded bg-tinta px-1.5 py-0.5 text-[10px] font-semibold text-white">P adj. {eur(d.p_adj_esperado)}</span>
             </div>
           )}
           {escalones.map((e, i) => (
-            <div key={e.n} className="escalon flex-1" style={{ height: `${e.alto}%`, background: i === 2 ? "#E8EDF7" : "white" }}>
+            <div key={e.n} className="escalon min-w-0 flex-1" style={{ height: `${e.alto}%`, background: i === 2 ? "#E8EDF7" : "white" }}>
               <span className="escalon-etiqueta">{e.n}</span>
-              <div className="px-2 pb-2 text-center">
-                <div className="cifra text-sm font-bold">{eur(e.v)}</div>
+              <div className="px-1 pb-2 text-center sm:px-2">
+                <div className="cifra text-[12px] font-bold sm:text-sm">{eur(e.v)}</div>
               </div>
             </div>
           ))}
@@ -86,10 +90,10 @@ export function EscaleraPrecios({ d }: { d: Decision }) {
               </div>
             </div>
           ) : (
-            <div className="escalon flex-1" style={{ height: "100%", background: "#FBEAEA" }}>
+            <div className="escalon min-w-0 flex-1" style={{ height: "100%", background: "#FBEAEA" }}>
               <span className="escalon-etiqueta">Límite</span>
-              <div className="px-2 pb-2 text-center">
-                <div className="cifra text-sm font-bold">{eur(p.p_limite)}</div>
+              <div className="px-1 pb-2 text-center sm:px-2">
+                <div className="cifra text-[12px] font-bold sm:text-sm">{eur(p.p_limite)}</div>
               </div>
             </div>
           )}

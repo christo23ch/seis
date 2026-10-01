@@ -60,8 +60,21 @@ async function api(tok, metodo, ruta, cuerpo) {
 
 const navegador = await chromium.launch({ executablePath: EJECUTABLE });
 const incidencias = [];
-async function sesion(cred, ancho) {
+// Fase 5G.4-C: `.cifra` usa la monoespaciada DEL SISTEMA, y su ancho cambia: Consolas
+// (Windows) es más estrecha que DejaVu Sans Mono (Linux) o Menlo (macOS). La Escalera
+// de precios desbordaba 8 px a 390 px solo en Linux y nadie lo vio en Windows. Con
+// `fuenteAncha`, se fuerza el peor caso para que la medida sea la misma en cualquier
+// sistema.
+const MONO_ANCHA = '.cifra, .font-cifra { font-family: "DejaVu Sans Mono", "Courier New", monospace !important; }';
+async function sesion(cred, ancho, { fuenteAncha = false } = {}) {
   const ctx = await navegador.newContext({ viewport: { width: ancho, height: ancho > 500 ? 900 : 844 }, acceptDownloads: true });
+  if (fuenteAncha) {
+    await ctx.addInitScript((css) => {
+      document.addEventListener("DOMContentLoaded", () => {
+        const st = document.createElement("style"); st.textContent = css; document.head.appendChild(st);
+      });
+    }, MONO_ANCHA);
+  }
   const p = await ctx.newPage();
   // Diagnóstico permanente, como en alta-real: sin la consola ni la red, un fallo
   // futuro se depura a ciegas.
@@ -115,6 +128,11 @@ try {
   // 1. Detalle con la configuración original.
   await p.goto(`${FRONTEND}/app/inversiones/${ids.analisis}`, { waitUntil: "networkidle" });
   comprobar((await aviso(p)).includes("Configuración original del análisis"), "1. el aviso dice «Configuración original»");
+  // Fase 5G.4: la nota del coste de capital, con la tasa en formato español (un error de
+  // formato dejó «1, %» en la interfaz con el valor por defecto 0,015).
+  const nota = plano(await p.locator("[data-nota-coste-capital]").first().innerText());
+  comprobar(nota.startsWith("El coste de capital (1,5 % anual, coste de oportunidad del capital propio)"),
+    `1. la escalera explica el coste de capital: «${nota.slice(0, 60)}…»`);
 
   // 2. Nueva simulación con coma decimal.
   await pestana(p, "Simulaciones");
@@ -210,8 +228,8 @@ try {
   await l.context().close();
 
   // 10. Sin desbordamiento horizontal, pestaña a pestaña y con los paneles abiertos.
-  for (const ancho of [390, 1440]) {
-    const v = pagina = await sesion(ADMIN, ancho);
+  for (const { ancho, fuenteAncha } of [{ ancho: 390 }, { ancho: 1440 }, { ancho: 390, fuenteAncha: true }]) {
+    const v = pagina = await sesion(ADMIN, ancho, { fuenteAncha });
     await v.goto(`${FRONTEND}/app/inversiones/${ids.analisis}`, { waitUntil: "networkidle" });
     const nombres = await v.locator("button.border-b-2").allInnerTexts();
     const malas = [];
@@ -232,8 +250,8 @@ try {
     await v.locator(`[data-informe="${ids.informe1}"]:visible`).getByRole("button", { name: "Abrir" }).click();
     await detalleInf(v).locator("[data-markdown]").waitFor();
     [sw, iw] = await desborde(v); if (sw !== iw) malas.push(`informe (${sw}/${iw})`);
-    await v.screenshot({ path: `${DIR}/informe-${ancho}.png`, fullPage: true });
-    comprobar(malas.length === 0, `10. a ${ancho} px, ${nombres.length} pestañas + editor + comparación + informe sin desbordar${malas.length ? `: ${malas.join(", ")}` : ""}`);
+    await v.screenshot({ path: `${DIR}/informe-${ancho}${fuenteAncha ? "-mono-ancha" : ""}.png`, fullPage: true });
+    comprobar(malas.length === 0, `10. a ${ancho} px${fuenteAncha ? " con monoespaciada ancha" : ""}, ${nombres.length} pestañas + editor + comparación + informe sin desbordar${malas.length ? `: ${malas.join(", ")}` : ""}`);
     await v.context().close();
   }
 } catch (e) {
