@@ -261,3 +261,79 @@ def test_informe_sin_snapshot_de_parametros_genera_pdf_y_lo_declara(api, headers
     # El resultado histórico no trae versiones: se dice, no se buscan fuera.
     assert _esperado("Versión de parámetros: no consta", fuente) in texto
     assert _esperado("Versión de reglas: no consta", fuente) in texto
+
+
+# ─────────────────── F. Overrides del informe (Fase 5G.2) ───────────────────
+
+def test_el_bloque_lista_los_overrides_de_ese_informe(api, headers, fuente):
+    analisis_id = _crear_analisis(api, headers)
+    _validar_simulacion(analisis_id, {"capital.coste_capital_anual": 0.31})
+    informe = _emitir(api, headers, analisis_id)
+
+    texto = " ".join(_paginas(_pdf_oficial(api, headers, analisis_id, informe["id"])))
+
+    assert "Overrides aplicados: 1" in texto
+    assert "capital.coste_capital_anual = 0.31" in texto
+
+
+def test_los_overrides_salen_ordenados_y_las_estructuras_abreviadas():
+    """Sin HTTP: la lista sale solo de `Informe.overrides`, por clave, con el
+    valor técnico tal cual y las estructuras en JSON recortado a 60 caracteres."""
+    bandas = [{"min": 1.05, "banda": "alcanzable"}, {"min": 0.9, "banda": "ajustado"},
+              {"min": 0.8, "banda": "improbable"}, {"min": 0.0, "banda": "inviable"}]
+    ident = pdf_service.identificacion_oficial(models.Informe(
+        id="1" * 36, analisis_id="a", simulacion_id="2" * 36, parametros_aplicados={},
+        overrides={"semaforo.verde.ico_min": 70, "adjudicacion.rvc_bandas": bandas},
+        resultado={"decision": {}}, generado_en=datetime(2026, 10, 1, tzinfo=timezone.utc)))
+
+    lineas = [linea for linea in ident.bloque if " = " in linea]
+
+    assert lineas[0].startswith("· adjudicacion.rvc_bandas = [{")
+    assert lineas[1] == "· semaforo.verde.ico_min = 70"
+    valor = lineas[0].split(" = ", 1)[1]
+    assert len(valor) == 60 and valor.endswith("…")
+
+
+def test_sin_overrides_no_hay_lista(api, headers):
+    analisis_id = _crear_analisis(api, headers)
+    informe = _emitir(api, headers, analisis_id)
+    db = SessionLocal()
+    try:
+        ident = pdf_service.identificacion_oficial(db.get(models.Informe, informe["id"]))
+    finally:
+        db.close()
+    assert "Overrides aplicados: 0" in ident.bloque
+    assert not any(" = " in linea for linea in ident.bloque)
+
+
+# ─────────── G. Un informe emitido antes de 5G.2 conserva su texto ───────────
+
+def test_un_informe_ya_emitido_conserva_su_texto_exacto(api, headers):
+    """El Markdown de un informe oficial está congelado: el arreglo de formato
+    de 5G.2 no lo reescribe, ni en la base, ni en la API, ni en su PDF."""
+    analisis_id = _crear_analisis(api, headers)
+    antiguo = ("# Informe de análisis SEIS\n\n## 8 · Estrategia de puja\n"
+               "- Cargar límites en la interfaz antes de abrir la puja: objetivo 60,011 € · "
+               "máximo 68,731 € · límite absoluto 80,022 € (infranqueable por software)\n"
+               "- Depósito requerido: 7,600 € (5% del valor de subasta)\n")
+    db = SessionLocal()
+    try:
+        informe = models.Informe(analisis_id=analisis_id, simulacion_id=None, entrada_snapshot={},
+                                 parametros_aplicados={}, overrides={},
+                                 resultado={"decision": {}, "informe_markdown": antiguo})
+        db.add(informe)
+        db.commit()
+        informe_id = informe.id
+    finally:
+        db.close()
+
+    detalle = api.get(f"/api/v1/analisis/{analisis_id}/informes/{informe_id}", headers=headers).json()
+    texto = " ".join(_paginas(_pdf_oficial(api, headers, analisis_id, informe_id)))
+
+    assert detalle["resultado"]["informe_markdown"] == antiguo
+    db = SessionLocal()
+    try:
+        assert db.get(models.Informe, informe_id).resultado["informe_markdown"] == antiguo
+    finally:
+        db.close()
+    assert "objetivo 60,011" in texto and "7,600" in texto

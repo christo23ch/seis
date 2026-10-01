@@ -5,6 +5,7 @@ completo) y fallback a Helvetica con transliteración latin-1.
 """
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -50,6 +51,8 @@ NO_CONSTA = "no consta"
 # reduce el cuerpo hasta este mínimo en vez de saltar de línea.
 TAMANO_PIE = 8.0
 TAMANO_PIE_MINIMO = 6.0
+# Valor de un override de estructura (lista o diccionario) en el bloque.
+LARGO_VALOR_OVERRIDE = 60
 
 
 @dataclass(frozen=True)
@@ -68,6 +71,23 @@ class Identificacion:
 def _utc(fecha: datetime) -> datetime:
     # SQLite devuelve `generado_en` sin zona; se escribió en UTC (`models._now`).
     return fecha.replace(tzinfo=timezone.utc) if fecha.tzinfo is None else fecha.astimezone(timezone.utc)
+
+
+def _lineas_overrides(overrides: dict) -> tuple[str, ...]:
+    """Fase 5G.2: «· clave = valor», por clave. El valor técnico va tal cual
+    (`0.31`, no «0,31»: es el dato del parámetro, no una cifra del informe); las
+    listas y diccionarios, en JSON compacto recortado a `LARGO_VALOR_OVERRIDE`."""
+    lineas = []
+    for clave in sorted(overrides):
+        valor = overrides[clave]
+        if isinstance(valor, (list, dict)):
+            texto = json.dumps(valor, ensure_ascii=False, separators=(",", ":"))
+            if len(texto) > LARGO_VALOR_OVERRIDE:
+                texto = texto[:LARGO_VALOR_OVERRIDE - 1] + "…"
+        else:
+            texto = str(valor)
+        lineas.append(f"· {clave} = {texto}")
+    return tuple(lineas)
 
 
 def identificacion_oficial(informe) -> Identificacion:
@@ -94,6 +114,7 @@ def identificacion_oficial(informe) -> Identificacion:
         f"Versión de parámetros: {decision.get('version_parametros') or NO_CONSTA}",
         f"Versión de reglas: {decision.get('version_reglas') or NO_CONSTA}",
         f"Overrides aplicados: {len(informe.overrides or {})}",
+        *_lineas_overrides(informe.overrides or {}),
     )
     if informe.parametros_aplicados is None:
         bloque += ("Sin snapshot de parámetros (análisis anterior a la migración 0014)",)

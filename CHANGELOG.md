@@ -19,6 +19,52 @@ convertirse en un SaaS. Lo anterior está en el historial de git.
 
 ---
 
+## [Fase 5G.2] — Coherencia del texto del informe y overrides en el PDF oficial — 2026-10-01
+
+Tres hallazgos en un PDF oficial real (simulación con `capital.coste_capital_anual` alto).
+
+### Corregido
+
+- **El informe presentaba como accionable un precio límite inutilizable.** Con la escalera
+  degenerada (§9.3, la marca `decision.precios.degenerada` que ya pone M12 y que hace el
+  semáforo rojo), la tabla decía «Precio límite absoluto -13.894 € — infranqueable» y el plan
+  de puja instruía a «cargar límites». Ahora:
+  - tabla: «No utilizable: escalera de precios degenerada (§9.3)», sin la cifra;
+  - plan de puja (M13): «No cargar límites ni pujar: la escalera de precios es degenerada
+    (§9.3); la estructura de costes consume el valor y no hay precio límite utilizable», sin
+    las dos tácticas de cómo pujar; se mantienen el depósito y el re-análisis;
+  - checklist: «Escalera de precios cargada en la interfaz de puja» pasa a **pendiente**
+    («Escalera de precios degenerada (§9.3): no hay escalera utilizable para pujar.») y sale
+    entre los bloqueantes, con el mismo patrón que «sin comparables».
+
+  El valor calculado sigue en `decision.precios.p_limite`. **Ningún cálculo cambia**: un test
+  fija los números de M13 y de la escalera capturados antes del cambio (caso §19, §19 con
+  coste de capital 0,31 y un caso inviable).
+- **Separador de miles inglés.** El plan de puja de M13 escribía «60,011 €» y «7,600 €»
+  (`:,.0f`) mientras el resto del informe escribe «60.011 €». Un único helper,
+  `app/engine/formato.py::eur`, para M13, M14 y el correo de alertas
+  (`notificaciones_service`, «Valor de subasta: 152.000 €»). El informe del caso dorado §19
+  es idéntico al anterior salvo esas cuatro cifras (comparado con su texto previo,
+  `tests/datos/informe_caso19_antes_5g2.md`).
+
+### Añadido
+
+- **PDF oficial:** el bloque de identificación lista los overrides del informe, uno por línea
+  y por clave (`· capital.coste_capital_anual = 0.31`), leídos solo de `Informe.overrides`;
+  valor técnico tal cual y estructuras en JSON recortado a 60 caracteres.
+
+### Sin cambios
+
+Los informes oficiales ya emitidos conservan su texto exacto (Markdown congelado; hay test).
+Los análisis y simulaciones ya guardados conservan el texto anterior hasta que se reanalicen.
+Sin migración. Ni M01-M12, ni la parte numérica de M13/M14, ni modelos ni frontend.
+
+### Pruebas
+
+`test_formato.py`, `test_informe_coherencia.py`, tres casos nuevos en
+`test_pdf_identificacion.py` y uno en `test_notificaciones.py`. Suite: 863 passed,
+18 skipped, 0 failed.
+
 ## [Fase 5G.1] — Identificación del informe oficial en el PDF — 2026-09-30
 
 Resuelve la deuda D5: impreso, un informe oficial no decía qué informe era.

@@ -10,8 +10,8 @@
 
 ## Frentes abiertos
 
-**Actualizado:** 2026-09-30 · **Rama de trabajo:** `checkpoint/5f6-simulaciones-informes` · **Suite (SQLite):** 837 passed, 17 skipped, 0 failed (los 8 omitidos nuevos son la variante DejaVu de 5G.1, que sí corre en CI) · **E2E simulaciones:** verde (`e2e/correr_simulaciones.sh`)
-**Última fase cerrada:** 5G.1 (identificación del informe oficial en el PDF) · **Puerta: ABIERTA**
+**Actualizado:** 2026-10-01 · **Rama de trabajo:** `checkpoint/5f6-simulaciones-informes` · **Suite (SQLite):** 863 passed, 18 skipped, 0 failed (9 de los omitidos son las variantes DejaVu de 5G.1/5G.2, que sí corren en CI) · **E2E simulaciones:** verde (`e2e/correr_simulaciones.sh`)
+**Última fase cerrada:** 5G.2 (coherencia del texto del informe y overrides en el PDF oficial) · **Puerta: ABIERTA**
 
 ### Estado a 2026-09-30
 
@@ -353,6 +353,17 @@ Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VER
     ofrece. No es un defecto; conviene decidir si se retira.
 11. [VERIFICAR: si una clave editable faltara en el árbol vigente, el catálogo o la validación
     darían 500 en vez de clasificarla. Hoy las 103 claves resuelven; no reproducido.]
+12. **`capital.coste_capital_anual` sin rango ni advertencia** (`catalogo.py`, ambos
+    `PENDIENTE_DE_DEFINIR`): acepta sin aviso valores 20-27 veces el defecto (0,015), como el
+    0,31 o el 0,4 de las simulaciones de 5G.1/5G.2, que bastan para degenerar la escalera.
+13. **Pregunta de producto abierta: ¿ROI y TIR deben mostrarse también netos del coste de
+    capital?** Hoy no lo están por diseño: según §9.1 el coste de capital solo se resta del
+    precio límite (`m12_decision.py:121-126`), así que simularlo cambia el límite y el semáforo
+    pero no el ROI, la TIR ni el resto de la escalera.
+14. **Análisis y simulaciones ya guardados conservan el texto anterior a 5G.2** (plan de puja
+    con «60,011 €» y, si la escalera era degenerada, la instrucción de cargar el límite) hasta
+    que se reanalicen: su `resultado` no se regenera. Los informes oficiales ya emitidos lo
+    conservan por diseño (Markdown congelado).
 
 **Frontend**
 
@@ -370,6 +381,13 @@ Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VER
 8. [VERIFICAR: longitud de la página a 390 px con «Mostrar todos» en la comparación (~9.800 px
    medidos en 5F.7.7) y si «Usar esta configuración» sigue ocupando dos líneas — no
    re-medido.]
+9. **Escalera degenerada sin tratamiento en la interfaz** (para una 5G.3 de frontend): el
+   escalón «Límite» de `EscaleraPrecios` (`components/resultado.tsx`) se dibuja como el más
+   alto aunque el valor sea negativo, y la línea del precio de adjudicación se recorta al 2 %;
+   las métricas clave (`resultado.tsx:196`) y la comparación (`comparacion.tsx:154`) muestran
+   el precio límite sin ninguna marca. Solo hay una nota roja al pie de la tarjeta.
+10. **Formato de 4 cifras distinto:** la interfaz (`Intl` es-ES, `lib/format.ts`) muestra
+    «7600 €» y el informe «7.600 €».
 
 **Pruebas**
 

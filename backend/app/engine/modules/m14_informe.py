@@ -8,13 +8,11 @@ from __future__ import annotations
 
 from app.engine.contracts import (AnalisisInput, AnalisisResult, ChecklistItem,
                                   DecisionFinal)
+# Fase 5G.2: un único formato de importes para M13 y M14 (`app/engine/formato.py`).
+from app.engine.formato import eur as _eur
 
 _SEM_ICONO = {"verde": "🟢 VERDE", "amarillo": "🟡 AMARILLO",
               "naranja": "🟠 NARANJA", "rojo": "🔴 ROJO"}
-
-
-def _eur(x: float | None) -> str:
-    return f"{x:,.0f} €".replace(",", ".") if x is not None else "—"
 
 
 # ───────────────────────────── CHECKLIST (§13) ─────────────────────────────
@@ -90,6 +88,11 @@ def construir_checklist(inp: AnalisisInput, dec: DecisionFinal, hechos: dict, *,
         add("D. Económico", "Escalera de precios cargada en la interfaz de puja", True, "pendiente",
             "No determinable sin comparables de mercado independientes: no hay "
             "escalera utilizable para pujar (§6.3).")
+    elif dec.precios.degenerada:
+        # Fase 5G.2: con la escalera degenerada (§9.3, la marca de M12) no hay
+        # límites que cargar; mismo patrón que «sin comparables».
+        add("D. Económico", "Escalera de precios cargada en la interfaz de puja", True, "pendiente",
+            "Escalera de precios degenerada (§9.3): no hay escalera utilizable para pujar.")
     else:
         add("D. Económico", "Escalera de precios cargada en la interfaz de puja", True, "ok",
             f"Objetivo {_eur(dec.precios.p_objetivo)} · Máx {_eur(dec.precios.p_max)} · Límite {_eur(dec.precios.p_limite)}")
@@ -168,6 +171,10 @@ def construir_informe(inp: AnalisisInput, res_parciales: dict, dec: DecisionFina
     condiciones = "\n".join(f"- {c}" for c in dec.condiciones) or "- (ninguna)"
     vetos = "\n".join(f"- **{v.codigo}**: {v.motivo}" + (f" · Subsanable con: {v.subsanable_con}" if v.subsanable_con else "")
                       for v in dec.vetos) or "- (ninguno)"
+    # Fase 5G.2: degenerada (§9.3), el límite no se ofrece como cifra accionable;
+    # el valor calculado sigue en `decision.precios.p_limite`.
+    fila_limite = ("No utilizable: escalera de precios degenerada (§9.3)" if dec.precios.degenerada
+                   else f"{_eur(dec.precios.p_limite)} — infranqueable")
     trazas = "\n".join(f"- `{r.codigo}` v{r.version} ({r.categoria})" for r in res_parciales["reglas"]) or "- (sin disparos)"
 
     return f"""# Informe de análisis SEIS
@@ -185,7 +192,7 @@ def construir_informe(inp: AnalisisInput, res_parciales: dict, dec: DecisionFina
 | **Precio ideal** | {_eur(dec.precios.p_ideal)} |
 | **Precio objetivo** | {_eur(dec.precios.p_objetivo)} |
 | **Precio máximo recomendado** | {_eur(dec.precios.p_max)} |
-| **Precio límite absoluto** | {_eur(dec.precios.p_limite)} — infranqueable |
+| **Precio límite absoluto** | {fila_limite} |
 | ROI base (a P objetivo) | {rent.roi:.1%} ({rent.roi_anualizado:.1%} anualizado) |
 | TIR anual | {rent.tir_anual:.1%} |
 | Margen de seguridad (caída de VS soportable) | {dec.margen_seguridad_valor:.1%} |
