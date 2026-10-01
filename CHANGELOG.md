@@ -19,6 +19,41 @@ convertirse en un SaaS. Lo anterior está en el historial de git.
 
 ---
 
+## [Fase 5G.3] — Escalera degenerada en la interfaz y formato de 4 cifras — 2026-10-01
+
+Lo mismo que 5G.2 hizo en el informe, ahora en la interfaz. La interfaz no decide si una
+escalera es degenerada: usa la marca `decision.precios.degenerada` de M12.
+
+### Corregido
+
+- **Escalera de precios** (`components/resultado.tsx`): con la escalera degenerada, el escalón
+  «Límite» deja de dibujarse como el más alto y sin su cifra: muestra «No utilizable» y
+  «escalera degenerada (§9.3)», con borde discontinuo y la altura del escalón «Objetivo». La
+  **línea de adjudicación se oculta**: no hay ningún escalón válido contra el que situarla, y
+  el precio de adjudicación esperado sigue en la cabecera de la tarjeta. La nota al pie se
+  mantiene. Sin escalera degenerada, el marcado es el de antes.
+- **Métricas clave:** «Precio límite: No utilizable (escalera degenerada)».
+- **Comparación original / simulación:** la celda del precio límite dice «No utilizable» en el
+  lado cuya escalera es degenerada; si el dato es antiguo y no trae la marca, la cifra como
+  antes.
+- **Importes de 4 cifras:** `lib/format.ts::eur` agrupa siempre (`useGrouping: "always"`):
+  «7.600 €» en vez de «7600 €», igual que el informe. es-ES no agrupa 4 cifras por defecto
+  (`minimumGroupingDigits` = 2 en CLDR). `num`, `pct` y `fecha` no cambian.
+
+### Añadido
+
+- `GET /analisis/{id}/simulaciones/{sid}/comparacion`: campo `escalera_degenerada`
+  (`bool | null`) en `resultado.original` y `resultado.simulacion`, leído tal cual de
+  `decision.precios.degenerada`; `null` si el resultado no trae la marca. Sin cálculos.
+
+### Pruebas
+
+`test_comparacion_simulacion_api.py`: `true` con `capital.coste_capital_anual = 0.31`, `false` en
+el original y `null` sin la marca. Suite: 865 passed, 18 skipped, 0 failed. `tsc` sin errores.
+Verificación visual en copia aislada a 1440 y 390 px (análisis normal, 4 cifras, simulación
+degenerada en uso y su comparación), sin desbordamiento horizontal. La e2e no se ejecutó: el
+puerto 3000 estaba ocupado por el entorno de desarrollo.
+
 ## [Fase 5G.2] — Coherencia del texto del informe y overrides en el PDF oficial — 2026-10-01
 
 Tres hallazgos en un PDF oficial real (simulación con `capital.coste_capital_anual` alto).

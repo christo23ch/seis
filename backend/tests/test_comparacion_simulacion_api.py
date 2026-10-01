@@ -18,10 +18,13 @@ from tests.conftest import entrada_base, token_headers
 
 N_EDITABLES = 103
 CAMPOS_RESULTADO = {"semaforo", "ico", "ra", "ici", "icu", "p_ideal", "p_objetivo", "p_max",
-                    "p_limite", "rvc", "p_adj_esperado", "margen_seguridad_valor"}
+                    "p_limite", "rvc", "p_adj_esperado", "margen_seguridad_valor",
+                    "escalera_degenerada"}
 _RUTA_RESULTADO = {c: ("decision", c) for c in CAMPOS_RESULTADO}
 _RUTA_RESULTADO.update({c: ("decision", "precios", c)
                         for c in ("p_ideal", "p_objetivo", "p_max", "p_limite")})
+# Fase 5G.3: la marca de M12, tal cual (no se recalcula en la comparación).
+_RUTA_RESULTADO["escalera_degenerada"] = ("decision", "precios", "degenerada")
 
 
 @pytest.fixture(scope="module")
@@ -396,6 +399,38 @@ def test_campo_ausente_en_el_resultado_es_null(api, orgs):
     resultado = _comparar(api, h, aid, sim["id"])["resultado"]
     assert resultado["original"]["rvc"] is None
     assert resultado["simulacion"]["rvc"] is not None
+
+
+
+# ─────────────── Escalera degenerada (Fase 5G.3) ───────────────
+
+def test_escalera_degenerada_true_en_la_simulacion_y_false_en_el_original(api, orgs):
+    """Con coste de capital 0,31 el límite del §19 cae por debajo del máximo
+    y M12 marca la escalera como degenerada; el original no lo está."""
+    h = orgs["a_h"]
+    aid = _analisis(api, h)
+    sim = _crear(api, h, aid, {"capital.coste_capital_anual": 0.31})
+
+    resultado = _comparar(api, h, aid, sim["id"])["resultado"]
+
+    assert resultado["original"]["escalera_degenerada"] is False
+    assert resultado["simulacion"]["escalera_degenerada"] is True
+
+
+def test_escalera_degenerada_null_si_el_resultado_no_trae_la_marca(api, orgs):
+    """Dato antiguo sin la marca: null, nunca deducido de los precios."""
+    h = orgs["a_h"]
+    aid = _analisis(api, h)
+    sim = _crear(api, h, aid)
+
+    def quitar_marca(res):
+        del res["decision"]["precios"]["degenerada"]
+        return res
+    _editar_arbol(models.Analisis, aid, "resultado", quitar_marca)
+
+    resultado = _comparar(api, h, aid, sim["id"])["resultado"]
+    assert resultado["original"]["escalera_degenerada"] is None
+    assert resultado["simulacion"]["escalera_degenerada"] is False
 
 
 # ─────────────────────────── G. Configuración actual ───────────────────────────

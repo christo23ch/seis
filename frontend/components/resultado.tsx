@@ -37,17 +37,21 @@ const MetricaMini = ({ etiqueta, valor }: { etiqueta: string; valor: string }) =
   </div>
 );
 
-/** Elemento firma: la escalera de precios como escalera real, con P_adj cruzándola. */
+/** Elemento firma: la escalera de precios como escalera real, con P_adj cruzándola.
+ *
+ * Fase 5G.3: con la escalera degenerada (marca `precios.degenerada` de M12, §9.3)
+ * el límite no es utilizable: su escalón no se dibuja como el más alto ni con su
+ * cifra, y la línea de adjudicación se oculta, porque no hay ningún escalón
+ * válido contra el que situarla (el precio adjudicado sigue en la cabecera). */
 export function EscaleraPrecios({ d }: { d: Decision }) {
   const p = d.precios;
+  const degenerada = p.degenerada;
   const escalones = [
     { n: "Ideal", v: p.p_ideal, alto: 34 },
     { n: "Objetivo", v: p.p_objetivo, alto: 56 },
     { n: "Máximo", v: p.p_max, alto: 78 },
-    { n: "Límite", v: p.p_limite, alto: 100 },
   ];
-  const max = p.p_limite;
-  const adjPct = Math.min(100, Math.max(2, (d.p_adj_esperado / max) * 100));
+  const adjPct = Math.min(100, Math.max(2, (d.p_adj_esperado / p.p_limite) * 100));
   return (
     <Card>
       <CardHeader className="flex items-center justify-between">
@@ -56,17 +60,39 @@ export function EscaleraPrecios({ d }: { d: Decision }) {
       </CardHeader>
       <CardContent>
         <div className="relative mt-6 flex h-44 items-end gap-3 pb-1">
-          <div className="absolute inset-x-0 border-t-2 border-dashed border-slate-400" style={{ bottom: `${adjPct * 0.88}%` }}>
-            <span className="absolute -top-5 right-0 rounded bg-tinta px-1.5 py-0.5 text-[10px] font-semibold text-white">P adj. {eur(d.p_adj_esperado)}</span>
-          </div>
+          {!degenerada && (
+            <div className="absolute inset-x-0 border-t-2 border-dashed border-slate-400" style={{ bottom: `${adjPct * 0.88}%` }}>
+              <span className="absolute -top-5 right-0 rounded bg-tinta px-1.5 py-0.5 text-[10px] font-semibold text-white">P adj. {eur(d.p_adj_esperado)}</span>
+            </div>
+          )}
           {escalones.map((e, i) => (
-            <div key={e.n} className="escalon flex-1" style={{ height: `${e.alto}%`, background: i === 3 ? "#FBEAEA" : i === 2 ? "#E8EDF7" : "white" }}>
+            <div key={e.n} className="escalon flex-1" style={{ height: `${e.alto}%`, background: i === 2 ? "#E8EDF7" : "white" }}>
               <span className="escalon-etiqueta">{e.n}</span>
               <div className="px-2 pb-2 text-center">
                 <div className="cifra text-sm font-bold">{eur(e.v)}</div>
               </div>
             </div>
           ))}
+          {degenerada ? (
+            // Texto compacto y altura del escalón «Objetivo» a propósito, medidos a 390 px:
+            // con un cuerpo mayor la página desbordaba 4 px (cifras negativas de 5 dígitos
+            // en los otros escalones), y con un escalón más bajo el texto partido en
+            // cinco líneas tapaba la etiqueta «Límite».
+            <div className="escalon min-w-0 flex-1 border-dashed" style={{ height: "56%" }}>
+              <span className="escalon-etiqueta">Límite</span>
+              <div className="px-0.5 pb-2 text-center">
+                <div className="text-[12px] font-bold leading-tight text-tinta">No utilizable</div>
+                <div className="mt-0.5 text-[10px] leading-tight text-slate-500">escalera degenerada (§9.3)</div>
+              </div>
+            </div>
+          ) : (
+            <div className="escalon flex-1" style={{ height: "100%", background: "#FBEAEA" }}>
+              <span className="escalon-etiqueta">Límite</span>
+              <div className="px-2 pb-2 text-center">
+                <div className="cifra text-sm font-bold">{eur(p.p_limite)}</div>
+              </div>
+            </div>
+          )}
         </div>
         <p className="mt-3 text-[12px] text-slate-500">
           El <b>límite absoluto</b> es infranqueable por software; superar el <b>máximo</b> exige doble firma del comité.
@@ -193,7 +219,8 @@ export function MetricasClave({ res }: { res: Resultado }) {
   const d = res.decision, r = res.rentabilidad;
   const filas: [string, string][] = [
     ["Precio ideal", eur(d.precios.p_ideal)], ["Precio objetivo", eur(d.precios.p_objetivo)],
-    ["Precio máximo", eur(d.precios.p_max)], ["Precio límite", eur(d.precios.p_limite)],
+    ["Precio máximo", eur(d.precios.p_max)],
+    ["Precio límite", d.precios.degenerada ? "No utilizable (escalera degenerada)" : eur(d.precios.p_limite)],
     ["ROI (base)", `${pct(r.roi)} · ${pct(r.roi_anualizado)} anual`], ["TIR anual", pct(r.tir_anual)],
     ["Margen de seguridad", pct(d.margen_seguridad_valor)], ["Inversión total a P obj.", eur(r.inversion_total)],
     ["VS prudente", eur(res.vs_prudente)], ["δ_v aplicado", pct(res.delta_v)],

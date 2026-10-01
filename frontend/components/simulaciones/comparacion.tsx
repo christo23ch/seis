@@ -159,6 +159,9 @@ const CAMPOS: { campo: Campo; etiqueta: string; formato: (v: number) => string }
 
 function Resultado({ original, simulacion }: { original: ResumenResultadoComparado; simulacion: ResumenResultadoComparado }) {
   const celda = (r: ResumenResultadoComparado, c: (typeof CAMPOS)[number]) => {
+    // Fase 5G.3: con la escalera degenerada (marca de M12) el límite no es una
+    // cifra utilizable. Si la marca falta (null, dato antiguo), la cifra como siempre.
+    if (c.campo === "p_limite" && r.escalera_degenerada === true) return "No utilizable";
     const v = r[c.campo];
     return typeof v === "number" ? c.formato(v) : "—";
   };

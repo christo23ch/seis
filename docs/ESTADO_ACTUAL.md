@@ -10,8 +10,8 @@
 
 ## Frentes abiertos
 
-**Actualizado:** 2026-10-01 · **Rama de trabajo:** `checkpoint/5f6-simulaciones-informes` · **Suite (SQLite):** 863 passed, 18 skipped, 0 failed (9 de los omitidos son las variantes DejaVu de 5G.1/5G.2, que sí corren en CI) · **E2E simulaciones:** verde (`e2e/correr_simulaciones.sh`)
-**Última fase cerrada:** 5G.2 (coherencia del texto del informe y overrides en el PDF oficial) · **Puerta: ABIERTA**
+**Actualizado:** 2026-10-01 · **Rama de trabajo:** `checkpoint/5f6-simulaciones-informes` · **Suite (SQLite):** 865 passed, 18 skipped, 0 failed (9 de los omitidos son las variantes DejaVu de 5G.1/5G.2, que sí corren en CI) · **E2E simulaciones:** verde (`e2e/correr_simulaciones.sh`)
+**Última fase cerrada:** 5G.3 (escalera degenerada en la interfaz y formato de 4 cifras) · **Puerta: ABIERTA**
 
 ### Estado a 2026-09-30
 
@@ -316,6 +316,11 @@ Los **nueve** endpoints que devuelven o crean datos de análisis filtran por
   otra escritura en curso~~ → `4df5de8`.
 - ~~Herramientas de revisión visual inservibles en Windows~~ → `medir-desborde.mjs` acepta
   `CHROMIUM_PATH` (5F.7.9).
+- ~~Escalera degenerada sin tratamiento en la interfaz (Frontend 9)~~ → 5G.3: escalón «Límite»
+  «No utilizable», sin cifra ni línea de adjudicación; métricas y comparación dicen «No
+  utilizable» (la comparación trae `escalera_degenerada` del motor).
+- ~~Formato de 4 cifras distinto (Frontend 10)~~ → 5G.3: `eur` con `useGrouping: "always"`
+  («7.600 €»).
 - ~~El PDF oficial no lleva su id, fecha ni procedencia (deuda D5)~~ → 5G.1: cabecera, bloque
   inicial y pie con la identificación leída de la fila `Informe`; la vista previa de
   `/informe.pdf` lleva «VISTA PREVIA — NO OFICIAL».
@@ -365,6 +370,10 @@ Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VER
     que se reanalicen: su `resultado` no se regenera. Los informes oficiales ya emitidos lo
     conservan por diseño (Markdown congelado).
 
+15. **El informe usa punto decimal con miles en formato español**: «25.0%», «6.40%», «RVC
+    1.08», «CV 5.3%» junto a «60.011 €». Los porcentajes y ratios de M14 se formatean con
+    `:.1%`/`:.2f` sin pasar por un formato español.
+
 **Frontend**
 
 1. **Sin tests unitarios y sin ESLint**: no hay configuración de ESLint y
@@ -381,13 +390,8 @@ Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VER
 8. [VERIFICAR: longitud de la página a 390 px con «Mostrar todos» en la comparación (~9.800 px
    medidos en 5F.7.7) y si «Usar esta configuración» sigue ocupando dos líneas — no
    re-medido.]
-9. **Escalera degenerada sin tratamiento en la interfaz** (para una 5G.3 de frontend): el
-   escalón «Límite» de `EscaleraPrecios` (`components/resultado.tsx`) se dibuja como el más
-   alto aunque el valor sea negativo, y la línea del precio de adjudicación se recorta al 2 %;
-   las métricas clave (`resultado.tsx:196`) y la comparación (`comparacion.tsx:154`) muestran
-   el precio límite sin ninguna marca. Solo hay una nota roja al pie de la tarjeta.
-10. **Formato de 4 cifras distinto:** la interfaz (`Intl` es-ES, `lib/format.ts`) muestra
-    «7600 €» y el informe «7.600 €».
+9. *(Resuelta en 5G.3: ver «Cerrada» arriba.)*
+10. *(Resuelta en 5G.3: ver «Cerrada» arriba.)*
 
 **Pruebas**
 

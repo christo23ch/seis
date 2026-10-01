@@ -132,6 +132,8 @@ export interface ResumenResultadoComparado {
   semaforo: Semaforo | null; ico: number | null; ra: number | null; ici: number | null; icu: number | null;
   p_ideal: number | null; p_objetivo: number | null; p_max: number | null; p_limite: number | null;
   rvc: number | null; p_adj_esperado: number | null; margen_seguridad_valor: number | null;
+  /** Fase 5G.3: la marca de M12 tal cual; `null` en resultados antiguos que no la traen. */
+  escalera_degenerada: boolean | null;
 }
 
 /** `GET /analisis/{id}/simulaciones/{sid}/comparacion` (Fase 5F.7.3). */

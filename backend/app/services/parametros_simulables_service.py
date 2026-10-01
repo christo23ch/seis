@@ -165,6 +165,9 @@ _RESUMEN_RESULTADO: dict[str, tuple[str, ...]] = {
     "rvc": ("decision", "rvc"),
     "p_adj_esperado": ("decision", "p_adj_esperado"),
     "margen_seguridad_valor": ("decision", "margen_seguridad_valor"),
+    # Fase 5G.3: la marca que pone M12 (§9.3), leída tal cual; `null` si un
+    # resultado antiguo no la trae. La interfaz no deduce nada de los precios.
+    "escalera_degenerada": ("decision", "precios", "degenerada"),
 }
 
 
