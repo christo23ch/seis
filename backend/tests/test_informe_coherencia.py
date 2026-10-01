@@ -92,12 +92,23 @@ def test_ninguna_cifra_usa_separador_de_miles_ingles(caso, request):
     assert not MILES_INGLES.findall(" ".join(r.puja.plan))
 
 
+# Fase 5G.4-A: línea explicativa del coste de capital, al final de la tabla de
+# escenarios de la sección 7. Es la única línea nueva del informe en esa fase.
+FILA_OPTIMISTA = "| optimista | 20% | 186.996 € | 133.996 € | 53.000 € | 39.6% | 43.6% | 11 m |\n"
+LINEA_COSTE_CAPITAL = ("\nEl coste de capital (1,5 % anual, coste de oportunidad del capital propio) "
+                       "solo se descuenta del precio límite (§9.1); ROI y TIR no lo incluyen. "
+                       "Importe aplicado: 3.659 €.\n")
+
+
 def test_sin_escalera_degenerada_el_informe_es_el_de_antes_salvo_el_formato(dorado):
-    """Única diferencia permitida con el texto anterior: las cuatro cifras del
-    plan de puja que salían con separador inglés."""
+    """Diferencias permitidas con el texto anterior, y ninguna más:
+    - 5G.2: las cuatro cifras del plan de puja que salían con separador inglés;
+    - 5G.4-A: la línea del coste de capital tras la fila «optimista» (§7)."""
     antes = ANTES.read_text(encoding="utf-8")
     corregido = MILES_INGLES.sub(lambda m: m.group(0).replace(",", "."), antes)
     assert corregido != antes, "premisa: el texto anterior tenía cifras en formato inglés"
+    assert corregido.count(FILA_OPTIMISTA) == 1
+    corregido = corregido.replace(FILA_OPTIMISTA, FILA_OPTIMISTA + LINEA_COSTE_CAPITAL)
     assert dorado.informe_markdown == corregido
 
 

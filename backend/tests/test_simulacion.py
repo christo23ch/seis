@@ -462,7 +462,7 @@ def test_simulaciones_no_modifican_defaults_yaml(api):
         antes = cargar_defaults().raw()
         analisis_id = _crear_analisis(db)
         simulacion_service.crear_simulacion(
-            db, analisis_id, {"capital.coste_capital_anual": 0.5})
+            db, analisis_id, {"capital.coste_capital_anual": 0.10})
         simulacion_service.crear_simulacion(
             db, analisis_id, {"semaforo.verde.ico_min": 1})
         despues = cargar_defaults().raw()
@@ -543,7 +543,7 @@ def test_forma_invalida_anidada_indica_la_ruta_interna(api):
 
 
 @pytest.mark.parametrize("clave,valor", [
-    ("capital.coste_capital_anual", 1),                   # int donde la referencia es float
+    ("capital.coste_capital_anual", 0),                   # int donde la referencia es float
     ("semaforo.verde.ico_min", 90.5),                     # float donde la referencia es int
     ("adjudicacion.ratios.aeat", {"default": 0.6}),       # estructura con su forma exacta
     ("riesgos.bandas_ra", [{"max": 30, "banda": "bajo"}, {"max": 100, "banda": "alto"}]),

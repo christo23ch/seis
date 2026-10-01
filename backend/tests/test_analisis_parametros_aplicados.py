@@ -87,11 +87,11 @@ def test_snapshot_permanece_aunque_cambie_conocimiento_despues(api):
         assert valor_en_creacion == 0.015   # valor de defaults.yaml, sin overrides todavía
 
         conocimiento_service.set_parametro(
-            db, "capital.coste_capital_anual", 0.5, fuente_legal=None, quien="test")
+            db, "capital.coste_capital_anual", 0.10, fuente_legal=None, quien="test")
 
         analisis = db.get(models.Analisis, analisis_id)
         assert analisis.parametros_aplicados["capital"]["coste_capital_anual"] == 0.015
-        assert analisis.parametros_aplicados["capital"]["coste_capital_anual"] != 0.5
+        assert analisis.parametros_aplicados["capital"]["coste_capital_anual"] != 0.10
     finally:
         # Revertir: set_parametro es un cambio real y permanente de gobernanza
         # T3 (misma clave+fecha => reemplaza, `conocimiento_service.py:48`) que

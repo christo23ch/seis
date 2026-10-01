@@ -108,6 +108,8 @@ export interface ParametroEditable {
   clave: string; nombre_legible: string; modulo: string; descripcion: string; unidad: string;
   tipo: "numero" | "estructura"; rango: RangoParametro;
   advertencia: string; impacto: string; nivel_riesgo_modificacion: string;
+  /** Fase 5G.4: aviso NO bloqueante si el valor supera `umbral_aviso`; `null` sin aviso. */
+  umbral_aviso: number | null; texto_aviso: string | null;
   dependencia: string | null; origen: string;
   plantilla: PlantillaParametro | null;
   valor_vigente: ValorJson; valor_original: ValorJson | null; difiere_de_original: boolean | null;

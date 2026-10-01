@@ -73,6 +73,10 @@ class ParametroCatalogo:
     dependencia: Grupo | None  # None solo para TIPO 2 (no aplica el grafo de simulación)
     nivel_riesgo_modificacion: TextoOpcional
     origen: str = ""  # archivo:línea de referencia, informativo
+    # Fase 5G.4: aviso NO bloqueante cuando el valor escrito supera `umbral_aviso`.
+    # Distinto de `rango`, que sí es vinculante (422). `None` ⇒ sin aviso.
+    umbral_aviso: float | None = None
+    texto_aviso: str | None = None
 
 
 @dataclass(frozen=True)
@@ -103,6 +107,8 @@ class ParametroPlantilla:
     dependencia: Grupo
     nivel_riesgo_modificacion: TextoOpcional
     origen: str = ""
+    umbral_aviso: float | None = None   # Fase 5G.4: ver ParametroCatalogo
+    texto_aviso: str | None = None
 
 
 @dataclass(frozen=True)
@@ -353,26 +359,40 @@ PARAMETROS_FIJOS.append(ParametroCatalogo(
     nivel_riesgo_modificacion=PENDIENTE_DE_DEFINIR,
     origen="m12_decision.py:107-108 (calcular_escalera, rama rentista)",
 ))
+# Fase 5G.4 (ADR-0016): decisiones D1-D4 del responsable. El rango 0-0,15 es una
+# DECISIÓN DE NEGOCIO, no una cota técnica como las de arriba: lo fija el ADR, no
+# el código. El umbral de aviso (0,06) procede de la sensibilidad medida en el
+# caso §19: la escalera degenera a partir de 0,061285.
 PARAMETROS_FIJOS.append(ParametroCatalogo(
     clave="capital.coste_capital_anual",
     nombre_legible="Coste de capital anual",
     modulo="M12",
     descripcion=(
-        "Coste anual de oportunidad del capital inmovilizado, restado de "
-        "P_límite: coste_capital = cc_anual · inversión_aprox · plazo/12 (§9.1)."
+        "Coste de oportunidad del capital propio: lo que rendiría ese dinero en "
+        "otra inversión de riesgo comparable. Se descuenta del precio límite: "
+        "coste_capital = cc_anual · inversión_aprox · plazo_p80/12 (§9.1), con la "
+        "inversión aproximada a P_max y costes P80, en interés simple."
     ),
-    unidad="fracción anual (0-1)",
+    unidad="fracción anual (0–1)",
     editable=True,
-    rango=PENDIENTE_DE_DEFINIR,
-    advertencia=PENDIENTE_DE_DEFINIR,
+    rango=(0.0, 0.15),
+    advertencia=(
+        "Solo afecta al precio límite (§9.1). No entra en el ROI, el ROI "
+        "anualizado ni la TIR (M11), que se calculan sin él. Rango admitido "
+        "0–0,15 (ADR-0016); fuera de él el valor se rechaza."
+    ),
     impacto=(
         "coste_capital crece linealmente con este parámetro y se resta de "
-        "p_lim_bruto ⇒ un valor mayor reduce P_límite. Derivado directamente "
-        "de `p_lim = p_lim_bruto - coste_capital`."
+        "p_lim_bruto ⇒ un valor mayor reduce el precio límite; si lo lleva "
+        "por debajo de P_max, la escalera queda degenerada y el semáforo pasa "
+        "a rojo (§9.3). No cambia P_ideal, P_objetivo, P_max, ROI ni TIR."
     ),
     dependencia="A",
     nivel_riesgo_modificacion=PENDIENTE_DE_DEFINIR,
     origen="m12_decision.py:121-126 (calcular_escalera)",
+    umbral_aviso=0.06,
+    texto_aviso=("Por encima del 6 % la escalera de precios suele degenerar "
+                 "(umbral medido en el caso de referencia §19: 6,13 %)"),
 ))
 
 

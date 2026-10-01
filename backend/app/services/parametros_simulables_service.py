@@ -94,6 +94,8 @@ def _editable(clave: str, meta, plantilla: dict | None, vigentes: Parametros,
         "tipo": _tipo(valor_vigente), "rango": _rango(meta.rango),
         "advertencia": meta.advertencia, "impacto": meta.impacto,
         "nivel_riesgo_modificacion": meta.nivel_riesgo_modificacion,
+        # Fase 5G.4: aviso no bloqueante; `None` en los parámetros que no lo tienen.
+        "umbral_aviso": meta.umbral_aviso, "texto_aviso": meta.texto_aviso,
         "dependencia": meta.dependencia, "origen": meta.origen,
         "plantilla": plantilla,
         "valor_vigente": valor_vigente,

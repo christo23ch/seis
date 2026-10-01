@@ -1,5 +1,5 @@
 "use client";
-import { eur, num, pct } from "@/lib/format";
+import { eur, num, pct, tasa } from "@/lib/format";
 import type { Decision, Resultado, RiesgoDim, Semaforo } from "@/lib/types";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Badge, Card, CardContent, CardHeader, CardTitle } from "./ui";
@@ -98,8 +98,24 @@ export function EscaleraPrecios({ d }: { d: Decision }) {
           El <b>límite absoluto</b> es infranqueable por software; superar el <b>máximo</b> exige doble firma del comité.
           {p.degenerada && <span className="ml-1 font-semibold text-sem-rojo">Escalera degenerada: la estructura de costes consume el valor.</span>}
         </p>
+        <NotaCosteCapital detalle={p.detalle} />
       </CardContent>
     </Card>
+  );
+}
+
+/** Fase 5G.4 (ADR-0016): mismo texto que el informe (M14). Tasa e importe salen del
+ * mismo resultado (`precios.detalle` de M12); si falta cualquiera de los dos
+ * —resultados anteriores a 5G.4 no traen la tasa—, no se afirma nada. */
+function NotaCosteCapital({ detalle }: { detalle: Record<string, number> | undefined }) {
+  const tasaAnual = detalle?.coste_capital_anual;
+  const importe = detalle?.coste_capital;
+  if (tasaAnual == null || importe == null) return null;
+  return (
+    <p data-nota-coste-capital className="mt-1.5 text-[12px] text-slate-500">
+      El coste de capital ({tasa(tasaAnual)} anual, coste de oportunidad del capital propio) solo se
+      descuenta del precio límite (§9.1); ROI y TIR no lo incluyen. Importe aplicado: <span className="cifra">{eur(importe)}</span>.
+    </p>
   );
 }
 

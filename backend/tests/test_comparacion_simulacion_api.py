@@ -158,14 +158,14 @@ def test_sin_cambios_las_103_editables_sin_modificar(api, orgs):
 def test_override_numerico(api, orgs):
     h = orgs["a_h"]
     aid = _analisis(api, h)
-    sim = _crear(api, h, aid, {"capital.coste_capital_anual": 0.31})
+    sim = _crear(api, h, aid, {"capital.coste_capital_anual": 0.12})
 
     f = _filas(_comparar(api, h, aid, sim["id"]))["capital.coste_capital_anual"]
 
     assert f["editable"] is True
-    assert f["tiene_override"] is True and f["override"] == 0.31
-    assert f["valor_aplicado"] == 0.31
-    assert f["valor_original"] != 0.31
+    assert f["tiene_override"] is True and f["override"] == 0.12
+    assert f["valor_aplicado"] == 0.12
+    assert f["valor_original"] != 0.12
     assert f["modificado"] is True and f["causa"] == "override"
 
 
@@ -335,7 +335,7 @@ def test_analisis_sin_parametros_aplicados_declara_la_carencia(api, orgs):
     h = orgs["a_h"]
     aid = _analisis(api, h)
     _editar_arbol(models.Analisis, aid, "parametros_aplicados", lambda _: None)
-    sim = _crear(api, h, aid, {"capital.coste_capital_anual": 0.31})
+    sim = _crear(api, h, aid, {"capital.coste_capital_anual": 0.12})
 
     cmp = _comparar(api, h, aid, sim["id"])
 
@@ -354,7 +354,7 @@ def test_analisis_sin_parametros_aplicados_declara_la_carencia(api, orgs):
 def test_las_modificadas_van_primero_y_despues_por_clave(api, orgs):
     h = orgs["a_h"]
     aid = _analisis(api, h)
-    sim = _crear(api, h, aid, {"capital.coste_capital_anual": 0.31,
+    sim = _crear(api, h, aid, {"capital.coste_capital_anual": 0.12,
                                "semaforo.verde.ico_min": 90})
 
     parametros = _comparar(api, h, aid, sim["id"])["parametros"]
@@ -370,7 +370,7 @@ def test_las_modificadas_van_primero_y_despues_por_clave(api, orgs):
 def test_resultado_se_lee_de_lo_persistido(api, orgs):
     h = orgs["a_h"]
     aid = _analisis(api, h)
-    sim = _crear(api, h, aid, {"capital.coste_capital_anual": 0.31})
+    sim = _crear(api, h, aid, {"capital.coste_capital_anual": 0.12})
     db = SessionLocal()
     try:
         res_original = db.get(models.Analisis, aid).resultado
@@ -409,7 +409,7 @@ def test_escalera_degenerada_true_en_la_simulacion_y_false_en_el_original(api, o
     y M12 marca la escalera como degenerada; el original no lo está."""
     h = orgs["a_h"]
     aid = _analisis(api, h)
-    sim = _crear(api, h, aid, {"capital.coste_capital_anual": 0.31})
+    sim = _crear(api, h, aid, {"capital.coste_capital_anual": 0.12})
 
     resultado = _comparar(api, h, aid, sim["id"])["resultado"]
 
@@ -439,7 +439,7 @@ def test_es_configuracion_actual_coincide_con_el_listado(api, orgs):
     h = orgs["a_h"]
     aid = _analisis(api, h)
     a = _crear(api, h, aid)
-    b = _crear(api, h, aid, {"capital.coste_capital_anual": 0.31})
+    b = _crear(api, h, aid, {"capital.coste_capital_anual": 0.12})
     base = f"/api/v1/analisis/{aid}"
 
     def comprobar():
@@ -466,7 +466,7 @@ def test_es_configuracion_actual_coincide_con_el_listado(api, orgs):
 def test_no_ejecuta_el_motor_ni_escribe_ni_audita(api, orgs):
     h = orgs["a_h"]
     aid = _analisis(api, h)
-    sim = _crear(api, h, aid, {"capital.coste_capital_anual": 0.31})
+    sim = _crear(api, h, aid, {"capital.coste_capital_anual": 0.12})
     simulaciones, auditorias = _contar(models.Simulacion), _contar(models.Auditoria)
 
     with patch("app.engine.pipeline.ejecutar_analisis") as motor, \

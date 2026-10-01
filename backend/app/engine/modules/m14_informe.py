@@ -10,6 +10,7 @@ from app.engine.contracts import (AnalisisInput, AnalisisResult, ChecklistItem,
                                   DecisionFinal)
 # Fase 5G.2: un único formato de importes para M13 y M14 (`app/engine/formato.py`).
 from app.engine.formato import eur as _eur
+from app.engine.formato import tasa as _tasa
 
 _SEM_ICONO = {"verde": "🟢 VERDE", "amarillo": "🟡 AMARILLO",
               "naranja": "🟠 NARANJA", "rojo": "🔴 ROJO"}
@@ -176,6 +177,16 @@ def construir_informe(inp: AnalisisInput, res_parciales: dict, dec: DecisionFina
     fila_limite = ("No utilizable: escalera de precios degenerada (§9.3)" if dec.precios.degenerada
                    else f"{_eur(dec.precios.p_limite)} — infranqueable")
     trazas = "\n".join(f"- `{r.codigo}` v{r.version} ({r.categoria})" for r in res_parciales["reglas"]) or "- (sin disparos)"
+    # Fase 5G.4 (ADR-0016): el coste de capital solo descuenta el precio límite
+    # (§9.1). La tasa sale de los parámetros aplicados y el importe de M12; si
+    # falta cualquiera de los dos, no se afirma nada.
+    cc_anual = res_parciales.get("coste_capital_anual")
+    cc_importe = dec.precios.detalle.get("coste_capital")
+    nota_coste_capital = (
+        f"\n\nEl coste de capital ({_tasa(cc_anual)} anual, coste de oportunidad del capital "
+        f"propio) solo se descuenta del precio límite (§9.1); ROI y TIR no lo incluyen. "
+        f"Importe aplicado: {_eur(cc_importe)}."
+        if cc_anual is not None and cc_importe is not None else "")
 
     return f"""# Informe de análisis SEIS
 
@@ -234,7 +245,7 @@ Riesgo agregado **RA {dec.ra}** (banda {ra.banda}{", dominancia: " + ra.dominanc
 ## 7 · Análisis financiero (a precio objetivo {_eur(dec.precios.p_objetivo)})
 | Escenario | Prob. | VS | Coste total | Beneficio | ROI | ROI anual | Plazo |
 |---|---|---|---|---|---|---|---|
-{filas_esc}
+{filas_esc}{nota_coste_capital}
 
 ## 8 · Estrategia de puja
 Ratio histórico del segmento: {puja.ratio_base:.0%} sobre valor de subasta.

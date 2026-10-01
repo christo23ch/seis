@@ -144,7 +144,7 @@ def test_el_pie_cabe_en_el_ancho_util(fuente):
 
 def test_procedencia_de_una_simulacion(api, headers, fuente):
     analisis_id = _crear_analisis(api, headers)
-    sim_id = _validar_simulacion(analisis_id, {"capital.coste_capital_anual": 0.4})
+    sim_id = _validar_simulacion(analisis_id, {"capital.coste_capital_anual": 0.08})
     informe = _emitir(api, headers, analisis_id)
     assert informe["simulacion_id"] == sim_id
 
@@ -164,10 +164,10 @@ def test_dos_descargas_identifican_igual_aunque_cambie_todo_entre_medias(api, he
     primera = _pdf_oficial(api, headers, analisis_id, informe["id"])
 
     # Entre medias cambian la configuración en uso y el conocimiento global.
-    _validar_simulacion(analisis_id, {"capital.coste_capital_anual": 0.5})
+    _validar_simulacion(analisis_id, {"capital.coste_capital_anual": 0.10})
     db = SessionLocal()
     try:
-        conocimiento_service.set_parametro(db, "capital.coste_capital_anual", 0.33, None, "test-5g1")
+        conocimiento_service.set_parametro(db, "capital.coste_capital_anual", 0.13, None, "test-5g1")
     finally:
         db.close()
     try:
@@ -267,13 +267,13 @@ def test_informe_sin_snapshot_de_parametros_genera_pdf_y_lo_declara(api, headers
 
 def test_el_bloque_lista_los_overrides_de_ese_informe(api, headers, fuente):
     analisis_id = _crear_analisis(api, headers)
-    _validar_simulacion(analisis_id, {"capital.coste_capital_anual": 0.31})
+    _validar_simulacion(analisis_id, {"capital.coste_capital_anual": 0.12})
     informe = _emitir(api, headers, analisis_id)
 
     texto = " ".join(_paginas(_pdf_oficial(api, headers, analisis_id, informe["id"])))
 
     assert "Overrides aplicados: 1" in texto
-    assert "capital.coste_capital_anual = 0.31" in texto
+    assert "capital.coste_capital_anual = 0.12" in texto
 
 
 def test_los_overrides_salen_ordenados_y_las_estructuras_abreviadas():

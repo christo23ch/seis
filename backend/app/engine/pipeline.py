@@ -121,7 +121,10 @@ def ejecutar_analisis(inp: AnalisisInput, params: Parametros | None = None,
 
     parciales = {"valoracion": valoracion, "icu": icu, "reforma": reforma, "costes": costes,
                  "riesgos": ra_res, "rentabilidad": rentabilidad, "puja": puja, "ici": ici,
-                 "delta_v": delta_v, "vs_p": vs_p, "reglas": reglas_out}
+                 "delta_v": delta_v, "vs_p": vs_p, "reglas": reglas_out,
+                 # Fase 5G.4: tasa de los parámetros aplicados, para la línea
+                 # explicativa del coste de capital en M14 (solo redacción).
+                 "coste_capital_anual": params.get("capital.coste_capital_anual")}
     checklist = m14_informe.construir_checklist(inp, decision, hechos,
                                                 metodo_valoracion=valoracion.metodo)
     informe = m14_informe.construir_informe(inp, parciales, decision, checklist)

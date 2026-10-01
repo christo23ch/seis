@@ -124,13 +124,13 @@ try {
     await p.locator('section[aria-label="Nueva simulación"] details[data-grupo]',
       { has: p.locator(`[data-parametro="${PARAMETRO}"]`) }).locator(":scope > summary").click();
   }
-  await campo.fill("0,31");
+  await campo.fill("0,12");
   const [rCrear] = await Promise.all([
     p.waitForResponse((x) => x.request().method() === "POST" && /\/simulaciones$/.test(new URL(x.url()).pathname)),
     p.getByRole("button", { name: /^Crear simulación/ }).click(),
   ]);
   comprobar(rCrear.status() === 201, `2. POST /simulaciones → ${rCrear.status()}`);
-  comprobar(rCrear.request().postData() === JSON.stringify({ overrides: { [PARAMETRO]: 0.31 } }),
+  comprobar(rCrear.request().postData() === JSON.stringify({ overrides: { [PARAMETRO]: 0.12 } }),
     `2. se envía el número convertido: ${rCrear.request().postData()}`);
   ids.simulacion = (await rCrear.json()).id;
   await esperarTextoEn(p, `[data-fila="${ids.simulacion}"]`, "pendiente");

@@ -77,7 +77,9 @@ def _contar(modelo) -> int:
 _CAMPOS_EDITABLE = {"clave", "nombre_legible", "modulo", "descripcion", "unidad", "tipo",
                     "rango", "advertencia", "impacto", "nivel_riesgo_modificacion",
                     "dependencia", "origen", "plantilla", "valor_vigente", "valor_original",
-                    "difiere_de_original"}
+                    "difiere_de_original",
+                    # Fase 5G.4: aviso no bloqueante (número y texto, o null).
+                    "umbral_aviso", "texto_aviso"}
 
 
 # ─────────────────────────── A. Forma y recuentos ───────────────────────────
@@ -125,7 +127,9 @@ def test_grupos_disjuntos(api, orgs):
 def test_rango_y_dependencia_tal_cual_del_catalogo(api, orgs):
     por_clave = _por_clave(_catalogo(api, orgs["a_h"], _analisis(api, orgs["a_h"])))
     assert por_clave["semaforo.verde.ico_min"]["rango"] == [0.0, 100.0]
-    assert por_clave["capital.coste_capital_anual"]["rango"] == "pendiente_de_definir"
+    # Fase 5G.4 (ADR-0016): rango de negocio 0–0,15, ya no «pendiente_de_definir».
+    assert por_clave["capital.coste_capital_anual"]["rango"] == [0.0, 0.15]
+    assert por_clave["financiacion.dscr_minimo"]["rango"] == "pendiente_de_definir"
     assert {e["dependencia"] for e in por_clave.values()} <= {"A", "B"}
 
 

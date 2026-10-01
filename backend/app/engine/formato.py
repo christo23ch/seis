@@ -7,6 +7,13 @@ formateaba por su cuenta con `:,.0f`, que pone el separador de miles inglés
 from __future__ import annotations
 
 
+def tasa(x: float) -> str:
+    """Tasa anual como porcentaje, sin ceros sobrantes y con hasta dos decimales
+    (Fase 5G.4): `0.015` → «1,5 %», `0.0125` → «1,25 %», `0.06` → «6 %»."""
+    texto = f"{x * 100:.2f}".rstrip("0").rstrip(".")
+    return f"{texto.replace('.', ',')} %"
+
+
 def eur(x: float | None) -> str:
     """Euros sin decimales con punto de miles: `60011` → «60.011 €»,
     `-13894` → «-13.894 €», `None` → «—»."""

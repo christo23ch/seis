@@ -167,18 +167,30 @@ export function EditorSimulacion({ analisisId, creando, bloqueado, error, onCrea
 
 // ─────────────────────────── estado de un campo ───────────────────────────
 
-interface EstadoCampo { valor: number | null; error: string | null; cambiado: boolean }
+/** `aviso` (Fase 5G.4) es informativo y NUNCA bloquea crear: el rango lo decide el
+ * backend (422 con su mensaje); aquí solo se anticipa con el texto que llega de él. */
+interface EstadoCampo { valor: number | null; error: string | null; cambiado: boolean; aviso: string | null }
 
 // Número decimal con punto o coma (una sola) y exponente opcional. Nada de separadores de miles.
 const NUMERO = /^[+-]?(\d+([.,]\d*)?|[.,]\d+)([eE][+-]?\d+)?$/;
 
 function estadoCampo(p: ParametroEditable, texto: string | undefined): EstadoCampo {
-  if (texto === undefined) return { valor: null, error: null, cambiado: false };
+  if (texto === undefined) return { valor: null, error: null, cambiado: false, aviso: null };
   const limpio = texto.trim();
   const n = NUMERO.test(limpio) ? Number(limpio.replace(",", ".")) : NaN;
-  if (!Number.isFinite(n)) return { valor: null, error: "No es un número", cambiado: true };
-  return { valor: n, error: null, cambiado: n !== p.valor_vigente };
+  if (!Number.isFinite(n)) return { valor: null, error: "No es un número", cambiado: true, aviso: null };
+  return { valor: n, error: null, cambiado: n !== p.valor_vigente, aviso: avisoDe(p, n) };
 }
+
+function avisoDe(p: ParametroEditable, n: number): string | null {
+  if (Array.isArray(p.rango) && (n < p.rango[0] || n > p.rango[1])) {
+    return `Fuera del rango admitido (${cifra(p.rango[0])}–${cifra(p.rango[1])}): el servidor rechazará la simulación.`;
+  }
+  if (p.umbral_aviso !== null && p.texto_aviso && n > p.umbral_aviso) return p.texto_aviso;
+  return null;
+}
+
+const cifra = (n: number) => String(n).replace(".", ",");
 
 // ─────────────────────────── agrupación (sin etiquetas propias) ───────────────────────────
 
@@ -245,6 +257,7 @@ function CampoNumerico({ p, estado, texto, bloqueado, escribir, restaurar }: {
         )}
       </div>
       {estado.error && <p id={idError} className="mt-1 text-[12px] text-sem-rojo">{estado.error}</p>}
+      {estado.aviso && <p data-aviso className="mt-1 text-[12px] font-medium text-sem-amarillo">{estado.aviso}</p>}
       <p className="mt-1 text-[12px] text-slate-500">
         Vigente <span className="cifra">{mostrar(p.valor_vigente)}</span>
         {" · "}Original <span className="cifra">{mostrar(p.valor_original)}</span>

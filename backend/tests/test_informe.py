@@ -55,7 +55,7 @@ def test_informe_desde_simulacion_validada_copia_su_snapshot(api):
     try:
         analisis_id = _crear_analisis(db)
         analisis = db.get(models.Analisis, analisis_id)
-        sim = _simulacion_seleccionada(db, analisis_id, {"capital.coste_capital_anual": 0.5})
+        sim = _simulacion_seleccionada(db, analisis_id, {"capital.coste_capital_anual": 0.10})
         simulacion_service.seleccionar_simulacion_validada(db, analisis_id, sim.id)
 
         informe = informe_service.generar_informe_oficial(db, analisis_id)
@@ -112,7 +112,7 @@ def test_generar_informe_no_modifica_la_simulacion(api):
     db = SessionLocal()
     try:
         analisis_id = _crear_analisis(db)
-        sim = _simulacion_seleccionada(db, analisis_id, {"capital.coste_capital_anual": 0.33})
+        sim = _simulacion_seleccionada(db, analisis_id, {"capital.coste_capital_anual": 0.13})
         antes = {
             "estado": sim.estado,
             "fecha_validacion": sim.fecha_validacion,
@@ -154,7 +154,7 @@ def test_informe_inmutable_ante_cambios_posteriores(api):
 
         # 1. Cambia la gobernanza T3 global.
         conocimiento_service.set_parametro(
-            db, "capital.coste_capital_anual", 0.95, fuente_legal=None, quien="test")
+            db, "capital.coste_capital_anual", 0.14, fuente_legal=None, quien="test")
         # 2. Cambia un perfil de inversión.
         db.add(models.PerfilInversion(
             codigo="flip_integral", nombre="Perfil alterado",
@@ -196,7 +196,7 @@ def test_multiples_informes_coexisten_e_independientes(api):
         i1_congelado = dict(i1.resultado)
         assert i1.simulacion_id is None
 
-        s1 = _simulacion_seleccionada(db, analisis_id, {"capital.coste_capital_anual": 0.21})
+        s1 = _simulacion_seleccionada(db, analisis_id, {"capital.coste_capital_anual": 0.07})
         i2 = informe_service.generar_informe_oficial(db, analisis_id)
 
         s2 = _simulacion_seleccionada(db, analisis_id, {"financiacion.dscr_minimo": 1.55})
@@ -246,7 +246,7 @@ def test_pertenencia_cruzada_rechazada(api):
     try:
         analisis_a = _crear_analisis(db)
         analisis_b = _crear_analisis(db)
-        sim_de_b = _simulacion_seleccionada(db, analisis_b, {"capital.coste_capital_anual": 0.4})
+        sim_de_b = _simulacion_seleccionada(db, analisis_b, {"capital.coste_capital_anual": 0.08})
 
         # Corrupción deliberada del puntero de A hacia una simulación de B.
         analisis = db.get(models.Analisis, analisis_a)
@@ -366,7 +366,7 @@ def test_auditoria_una_entrada_por_informe_con_simulacion(api):
     db = SessionLocal()
     try:
         analisis_id = _crear_analisis(db)
-        sim = _simulacion_seleccionada(db, analisis_id, {"capital.coste_capital_anual": 0.25})
+        sim = _simulacion_seleccionada(db, analisis_id, {"capital.coste_capital_anual": 0.09})
         antes = db.query(models.Auditoria).filter_by(entidad="informe").count()
 
         informe = informe_service.generar_informe_oficial(

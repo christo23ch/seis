@@ -190,7 +190,7 @@ def test_informes_conservan_su_procedencia_al_cambiar_de_configuracion(api, head
     db = SessionLocal()
     try:
         s_a = simulacion_service.crear_simulacion(
-            db, analisis_id, {"capital.coste_capital_anual": 0.31})
+            db, analisis_id, {"capital.coste_capital_anual": 0.12})
         simulacion_service.validar_simulacion(db, analisis_id, s_a.id)
     finally:
         db.close()
@@ -203,7 +203,7 @@ def test_informes_conservan_su_procedencia_al_cambiar_de_configuracion(api, head
         # último solo actúa en la rama rentista, así que con un perfil de venta
         # no cambiaría el resultado y el test no probaría nada.
         s_b = simulacion_service.crear_simulacion(
-            db, analisis_id, {"capital.coste_capital_anual": 0.62})
+            db, analisis_id, {"capital.coste_capital_anual": 0.14})
         simulacion_service.validar_simulacion(db, analisis_id, s_b.id)
     finally:
         db.close()
@@ -298,7 +298,7 @@ def test_pdf_procede_del_markdown_congelado_y_no_ejecuta_m14(api, headers):
     db = SessionLocal()
     try:
         sim = simulacion_service.crear_simulacion(
-            db, analisis_id, {"capital.coste_capital_anual": 0.6})
+            db, analisis_id, {"capital.coste_capital_anual": 0.13})
         simulacion_service.validar_simulacion(db, analisis_id, sim.id)
         assert sim.resultado["informe_markdown"] != markdown_congelado
         auditorias_antes = db.query(models.Auditoria).count()

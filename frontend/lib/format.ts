@@ -5,6 +5,10 @@ const EUR = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR",
 export const eur = (n: number | null | undefined) => (n == null ? "—" : EUR.format(n));
 export const pct = (n: number | null | undefined, dec = 1) =>
   n == null ? "—" : `${(n * 100).toFixed(dec).replace(".", ",")} %`;
+/** Tasa anual como porcentaje sin ceros sobrantes (Fase 5G.4), como `formato.tasa`
+ * del backend: 0.015 → «1,5 %», 0.0125 → «1,25 %», 0.06 → «6 %». */
+export const tasa = (n: number) =>
+  `${(n * 100).toFixed(2).replace(/.?0+$/, "").replace(".", ",")} %`;
 export const num = (n: number | null | undefined, dec = 0) =>
   n == null ? "—" : new Intl.NumberFormat("es-ES", { maximumFractionDigits: dec }).format(n);
 export const fecha = (iso: string | null | undefined) =>

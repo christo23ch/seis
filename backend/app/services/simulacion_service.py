@@ -128,6 +128,9 @@ def _validar_overrides(overrides: dict[str, object], params_base) -> None:
     contra el valor de referencia del mismo árbol (`_discrepancia_de_forma`).
     Sin esto, un valor mal formado llegaba al motor y reventaba con
     `TypeError` (HTTP 500) o se aceptaba en silencio.
+
+    Fase 5G.4: con la forma ya correcta, `validar_rangos` aplica el `rango`
+    concreto del catálogo (la misma función que usa la edición global).
     """
     hardcodes = {p.clave for p in catalogo.CONSTANTES_HARDCODE}
     editables_fijos = {p.clave for p in catalogo.obtener_parametros_editables()}
@@ -146,6 +149,56 @@ def _validar_overrides(overrides: dict[str, object], params_base) -> None:
         motivo = _discrepancia_de_forma(valor, params_base.get(clave))
         if motivo is not None:
             raise OverrideInvalidoError(clave, motivo)
+        validar_rangos(clave, valor)
+
+
+# ─────────────────────────── rango del catálogo (Fase 5G.4) ───────────────────────────
+
+def _cifra(x: float) -> str:
+    """`0.15` → «0,15», `100.0` → «100»: sin ceros sobrantes, con coma decimal."""
+    return f"{x:g}".replace(".", ",")
+
+
+_AUSENTE = object()
+
+
+def _hoja(valor: object, ruta: list[str]) -> object:
+    """Valor en `ruta` dentro de `valor`, o `_AUSENTE` si no está."""
+    for parte in ruta:
+        if not isinstance(valor, dict) or parte not in valor:
+            return _AUSENTE
+        valor = valor[parte]
+    return valor
+
+
+def validar_rangos(clave: str, valor: object) -> None:
+    """Única regla de rango del sistema: la usan las simulaciones y la edición
+    global (`conocimiento_service.set_parametro`), con el mismo mensaje.
+
+    Solo los parámetros con `rango` concreto en el catálogo; `None` y
+    `pendiente_de_definir` siguen sin validarse. Cubre también la publicación
+    de una sección entera (`clave="semaforo.verde"` con un objeto): cada hoja
+    con rango que contenga se comprueba como si se hubiera publicado sola.
+    """
+    for p in catalogo.obtener_catalogo():
+        if not isinstance(p.rango, tuple):
+            continue
+        if p.clave == clave:
+            hoja = valor
+        elif p.clave.startswith(clave + "."):
+            hoja = _hoja(valor, p.clave[len(clave) + 1:].split("."))
+            if hoja is _AUSENTE:
+                continue
+        else:
+            continue
+        minimo, maximo = p.rango
+        admitido = f"de {_cifra(minimo)} a {_cifra(maximo)}, ambos incluidos"
+        if not (_es_numero(hoja) and math.isfinite(hoja)):
+            raise OverrideInvalidoError(
+                p.clave, f"debe ser un número dentro del rango admitido: {admitido}")
+        if not minimo <= hoja <= maximo:
+            raise OverrideInvalidoError(
+                p.clave, f"{_cifra(hoja)} está fuera del rango admitido: {admitido}")
 
 
 def _es_numero(v: object) -> bool:

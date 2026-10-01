@@ -208,7 +208,7 @@ def test_configuracion_actual_con_seleccion_usa_resultado_de_la_simulacion(api):
         entrada_original = dict(analisis.entrada)
 
         sim = simulacion_service.crear_simulacion(
-            db, analisis_id, {"capital.coste_capital_anual": 0.5})
+            db, analisis_id, {"capital.coste_capital_anual": 0.10})
         simulacion_service.validar_simulacion(db, analisis_id, sim.id)
 
         config = simulacion_service.obtener_configuracion_actual(db, analisis_id)
@@ -261,7 +261,7 @@ def test_endpoints_reflejan_la_simulacion_seleccionada(api, headers):
         entrada_original = dict(analisis.entrada)
 
         sim = simulacion_service.crear_simulacion(
-            db, analisis_id, {"capital.coste_capital_anual": 0.5})
+            db, analisis_id, {"capital.coste_capital_anual": 0.10})
         simulacion_service.validar_simulacion(db, analisis_id, sim.id)
         resultado_sim = dict(sim.resultado)
     finally:
@@ -293,7 +293,7 @@ def test_endpoints_vuelven_al_original_tras_deseleccionar(api, headers):
         resultado_original = dict(analisis.resultado)
 
         sim = simulacion_service.crear_simulacion(
-            db, analisis_id, {"capital.coste_capital_anual": 0.5})
+            db, analisis_id, {"capital.coste_capital_anual": 0.10})
         simulacion_service.validar_simulacion(db, analisis_id, sim.id)
         simulacion_service.volver_a_configuracion_original(db, analisis_id)
     finally:

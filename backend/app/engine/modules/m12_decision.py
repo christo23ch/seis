@@ -126,7 +126,9 @@ def calcular_escalera(inp: AnalisisInput, params, banda_ra: str, vs_p: float,
     p_lim = p_lim_bruto - coste_capital
     if perfil["tipo"] == "rentista":
         p_lim = min(p_lim, p_lim_rent) if p_lim_rent > 0 else p_lim
-    detalle.update({"coste_capital": round(coste_capital, 2)})
+    # Fase 5G.4: la tasa viaja junto al importe para que el resultado explique de
+    # dónde sale (informe e interfaz); es trazabilidad, no entra en ningún cálculo.
+    detalle.update({"coste_capital": round(coste_capital, 2), "coste_capital_anual": cc_anual})
 
     escalera = EscaleraPrecios(
         p_ideal=round(p_ideal), p_objetivo=round(p_obj), p_max=round(p_max),

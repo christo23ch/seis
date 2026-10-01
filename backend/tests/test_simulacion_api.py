@@ -19,7 +19,7 @@ from tests.conftest import entrada_base, token_headers
 
 # `capital.coste_capital_anual` y no `financiacion.dscr_minimo`: este último
 # solo actúa en la rama rentista y `entrada_base` es un perfil de venta.
-OVERRIDE_VALIDO = {"capital.coste_capital_anual": 0.31}
+OVERRIDE_VALIDO = {"capital.coste_capital_anual": 0.12}
 
 
 @pytest.fixture(scope="module")
@@ -207,7 +207,7 @@ def test_crear_con_override_valido_201_y_detalle_completo(api, orgs):
     assert sim["analisis_id"] == aid
     assert sim["estado"] == "pendiente"
     assert sim["overrides"] == OVERRIDE_VALIDO
-    assert sim["parametros_aplicados"]["capital"]["coste_capital_anual"] == 0.31
+    assert sim["parametros_aplicados"]["capital"]["coste_capital_anual"] == 0.12
     assert sim["fecha_validacion"] is None
     assert sim["resultado"]["informe_markdown"]
     assert sim["resultado"] != original["resultado"]
@@ -307,7 +307,7 @@ def test_campo_desconocido_en_el_cuerpo_422(api, orgs):
 
 
 @pytest.mark.parametrize("overrides", [
-    {"capital.coste_capital_anual": 1},                # int donde la referencia es float
+    {"capital.coste_capital_anual": 0},                # int donde la referencia es float
     {"adjudicacion.ratios.aeat": {"default": 0.6}},    # estructura con su forma exacta
 ])
 def test_valor_con_forma_valida_201(api, orgs, overrides):
@@ -561,8 +561,8 @@ def test_original_no_esta_bajo_simulaciones(api, orgs):
 def test_informes_toman_la_procedencia_de_la_simulacion_seleccionada(api, orgs):
     h = orgs["a_h"]
     aid = _analisis(api, h)
-    a = _crear(api, h, aid, {"capital.coste_capital_anual": 0.31})
-    b = _crear(api, h, aid, {"capital.coste_capital_anual": 0.62})
+    a = _crear(api, h, aid, {"capital.coste_capital_anual": 0.12})
+    b = _crear(api, h, aid, {"capital.coste_capital_anual": 0.14})
 
     _accion(api, h, aid, a["id"], "validar")
     i_a = api.post(f"/api/v1/analisis/{aid}/informes", headers=h)
@@ -604,7 +604,7 @@ def test_cada_escritura_deja_una_auditoria_exacta(api, orgs):
     aid = _analisis(api, h)
     quien = "sim-a@example.com"
 
-    a = _crear(api, h, aid, {"capital.coste_capital_anual": 0.31,
+    a = _crear(api, h, aid, {"capital.coste_capital_anual": 0.12,
                              "semaforo.verde.ico_min": 80})
     (fila,) = _auditorias("simulacion", a["id"], "crear")
     assert fila.quien == quien
@@ -634,7 +634,7 @@ def test_delta_no_contiene_valores_de_overrides(api, orgs):
     aid = _analisis(api, h)
     sim = _crear(api, h, aid, OVERRIDE_VALIDO)
     (fila,) = _auditorias("simulacion", sim["id"], "crear")
-    assert "0.31" not in json.dumps(fila.delta)
+    assert "0.12" not in json.dumps(fila.delta)
     assert "capital" not in json.dumps(fila.delta)
 
 
