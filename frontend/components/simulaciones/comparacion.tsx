@@ -158,10 +158,15 @@ const CAMPOS: { campo: Campo; etiqueta: string; formato: (v: number) => string }
 ];
 
 function Resultado({ original, simulacion }: { original: ResumenResultadoComparado; simulacion: ResumenResultadoComparado }) {
+  // Fase 5G.3: con la escalera degenerada (marca de M12) el límite no es una
+  // cifra utilizable. Si la marca falta (null, dato antiguo), la cifra como siempre.
+  const noUtilizable = (r: ResumenResultadoComparado, c: (typeof CAMPOS)[number]) =>
+    c.campo === "p_limite" && r.escalera_degenerada === true;
+  // Fase 5G.4-C: «No utilizable» es texto, no una cifra: no lleva la fuente monoespaciada.
+  const claseCifra = (r: ResumenResultadoComparado, c: (typeof CAMPOS)[number]) =>
+    noUtilizable(r, c) ? "" : "cifra ";
   const celda = (r: ResumenResultadoComparado, c: (typeof CAMPOS)[number]) => {
-    // Fase 5G.3: con la escalera degenerada (marca de M12) el límite no es una
-    // cifra utilizable. Si la marca falta (null, dato antiguo), la cifra como siempre.
-    if (c.campo === "p_limite" && r.escalera_degenerada === true) return "No utilizable";
+    if (noUtilizable(r, c)) return "No utilizable";
     const v = r[c.campo];
     return typeof v === "number" ? c.formato(v) : "—";
   };
@@ -185,8 +190,8 @@ function Resultado({ original, simulacion }: { original: ResumenResultadoCompara
           {CAMPOS.map((c) => (
             <tr key={c.campo} className="border-b border-borde-linea">
               <th scope="row" className="py-1 pr-2 text-left font-normal text-slate-600">{c.etiqueta}</th>
-              <td className="cifra px-2 py-1 text-right">{celda(original, c)}</td>
-              <td className="cifra py-1 pl-2 text-right">{celda(simulacion, c)}</td>
+              <td className={`${claseCifra(original, c)}px-2 py-1 text-right`}>{celda(original, c)}</td>
+              <td className={`${claseCifra(simulacion, c)}py-1 pl-2 text-right`}>{celda(simulacion, c)}</td>
             </tr>
           ))}
         </tbody>

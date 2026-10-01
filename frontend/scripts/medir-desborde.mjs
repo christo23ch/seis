@@ -26,9 +26,10 @@
 //     ilegible o un botón de 20 px pasan esta comprobación.
 
 import { chromium } from "playwright";
+import { rutaNavegador } from "./navegador.mjs";
 // Igual que `capturar.mjs` y `guard-sesion.mjs`: `CHROMIUM_PATH` apunta a otro
 // navegador (p. ej. el Chrome del sistema en Windows); sin ella, el de Linux/CI.
-const EJ = process.env.CHROMIUM_PATH ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
+const EJ = rutaNavegador();   // CHROMIUM_PATH › PLAYWRIGHT_CHROMIUM › sandbox (navegador.mjs)
 const BASE = process.env.SEIS_BASE ?? "http://localhost:3000";
 const ANCHO = Number(process.env.SEIS_ANCHO ?? 390);
 const PUBLICAS = ["/", "/ayuda", "/login", "/registro", "/recuperar", "/resetear", "/verificar"];

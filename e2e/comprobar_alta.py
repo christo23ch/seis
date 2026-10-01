@@ -17,6 +17,12 @@ import sys
 RUTA_BD = os.environ.get("E2E_BD", "/tmp/e2e-seis.db")
 RUTA_EMAIL = os.environ.get("E2E_EMAIL_FICHERO", "/tmp/e2e-email.txt")
 
+# En Windows la consola usa cp1252 y no puede imprimir «✓»/«✗»: sin esto, el
+# comprobador revienta al informar del primer resultado (mismo arreglo que
+# `comprobar_simulaciones.py`, 5F.7.9; aplicado aquí en 5G.4-C).
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 fallos: list[str] = []
 
 
@@ -26,7 +32,7 @@ def comprobar(condicion: bool, descripcion: str) -> None:
         fallos.append(descripcion)
 
 
-with open(RUTA_EMAIL) as fh:
+with open(RUTA_EMAIL, encoding="utf-8") as fh:
     email = fh.read().strip()
 
 con = sqlite3.connect(RUTA_BD)

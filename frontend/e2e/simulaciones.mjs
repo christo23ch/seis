@@ -21,13 +21,13 @@
  *     el nombre esperado. El contenido lo prueba la suite (`test_informe_api`).
  */
 import { chromium } from "playwright";
+import { rutaNavegador } from "../scripts/navegador.mjs";
 import { readFile, stat, writeFile } from "node:fs/promises";
 
 const FRONTEND = process.env.E2E_FRONTEND ?? "http://localhost:3010";
 const BACKEND = process.env.E2E_BACKEND ?? "http://localhost:8010/api/v1";
 const DIR = process.env.E2E_DIR ?? ".";
-const EJECUTABLE = process.env.PLAYWRIGHT_CHROMIUM ?? process.env.CHROMIUM_PATH
-  ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
+const EJECUTABLE = rutaNavegador();   // CHROMIUM_PATH › PLAYWRIGHT_CHROMIUM › sandbox (navegador.mjs)
 const ADMIN = { email: process.env.E2E_ADMIN_EMAIL ?? "admin@seis.local",
                 password: process.env.E2E_ADMIN_PASSWORD ?? "admin-de-e2e" };
 const LECTOR = { email: `lector-e2e-${Date.now()}@ejemplo.com`, password: "LectorE2e-5F79" };

@@ -32,11 +32,11 @@
 
 import { mkdir } from "node:fs/promises";
 import { chromium } from "playwright";
+import { rutaNavegador } from "./navegador.mjs";
 
 // El Chromium del sandbox no siempre coincide con el que espera `playwright`. Si cambia
 // la build, esta es la única línea que hay que tocar (ver docs/REVISION_VISUAL.md §3).
-const EJECUTABLE = process.env.CHROMIUM_PATH
-  ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
+const EJECUTABLE = rutaNavegador();   // CHROMIUM_PATH › PLAYWRIGHT_CHROMIUM › sandbox (navegador.mjs)
 const BASE = process.env.SEIS_BASE ?? "http://localhost:3000";
 // Con `SEIS_ENCAJE` la captura se recorta al viewport: el desbordamiento se ve
 // cortado en vez de disimulado. Por defecto sigue siendo `fullPage`, porque para

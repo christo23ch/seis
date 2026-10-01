@@ -21,9 +21,9 @@
 //     otra cosa, y no se mira aquí.
 
 import { chromium } from "playwright";
+import { rutaNavegador } from "./navegador.mjs";
 
-const EJECUTABLE = process.env.CHROMIUM_PATH
-  ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
+const EJECUTABLE = rutaNavegador();   // CHROMIUM_PATH › PLAYWRIGHT_CHROMIUM › sandbox (navegador.mjs)
 const BASE = process.env.SEIS_BASE ?? "http://localhost:3000";
 
 const PRIVADAS = ["/app", "/app/inversiones", "/app/nueva", "/app/alertas", "/app/subastas",

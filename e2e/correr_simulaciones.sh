@@ -16,9 +16,10 @@
 #
 # Uso:
 #   Linux / CI:        bash e2e/correr_simulaciones.sh
-#   Windows (Git Bash) PLAYWRIGHT_CHROMIUM="C:/Program Files/Google/Chrome/Application/chrome.exe" \
+#   Windows (Git Bash) CHROMIUM_PATH="C:/Program Files/Google/Chrome/Application/chrome.exe" \
 #                        bash e2e/correr_simulaciones.sh
-# Variables: PUERTO_API, PUERTO_WEB, PY, PLAYWRIGHT_CHROMIUM, E2E_SIN_BUILD=1,
+# Variables: PUERTO_API, PUERTO_WEB, PY, CHROMIUM_PATH (o PLAYWRIGHT_CHROMIUM, por
+# compatibilidad; ver frontend/scripts/navegador.mjs), E2E_SIN_BUILD=1,
 # E2E_CONSERVAR=1 (no borra el directorio temporal: capturas, PDF y base).
 set -uo pipefail
 

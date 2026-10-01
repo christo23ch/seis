@@ -100,32 +100,35 @@ export default function Dashboard() {
           <Card>
             <CardHeader><CardTitle>Recientes</CardTitle></CardHeader>
             <CardContent className="px-0 pb-0">
-              <table className="w-full text-sm">
-                <thead className="text-left text-[11.5px] uppercase tracking-wide text-slate-400">
-                  <tr className="border-b border-slate-100">
-                    <th className="px-5 py-2">Activo</th><th className="px-3 py-2">Semáforo</th>
-                    <th className="px-3 py-2">ICO</th><th className="px-3 py-2">P. objetivo</th>
-                    <th className="px-3 py-2">RVC</th><th className="px-3 py-2">Fecha</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recientes.map((a) => (
-                    <tr key={a.id} className="border-b border-slate-50 hover:bg-slate-50/60">
-                      <td className="px-5 py-2.5">
-                        <Link href={rutaApp(`/inversiones/${a.id}`)} className="font-medium text-primario hover:underline">
-                          {a.tipologia ?? "activo"} · {a.municipio ?? "—"}
-                        </Link>
-                        <div className="text-[12px] text-slate-400">{a.perfil} · {num(a.superficie_m2 ?? 0)} m²</div>
-                      </td>
-                      <td className="px-3 py-2.5"><SemaforoBadge s={a.semaforo} /></td>
-                      <td className="cifra px-3 py-2.5">{a.ico}</td>
-                      <td className="cifra px-3 py-2.5">{eur(a.p_objetivo)}</td>
-                      <td className="cifra px-3 py-2.5">{a.rvc.toFixed(2)}</td>
-                      <td className="px-3 py-2.5 text-slate-500">{fecha(a.creado_en)}</td>
+              {/* Fase 5G.4-C: con datos, la tabla medía 447 px a 390; el contenedor la desplaza a ella, nunca a la página. */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="text-left text-[11.5px] uppercase tracking-wide text-slate-400">
+                    <tr className="border-b border-slate-100">
+                      <th className="px-5 py-2">Activo</th><th className="px-3 py-2">Semáforo</th>
+                      <th className="px-3 py-2">ICO</th><th className="px-3 py-2">P. objetivo</th>
+                      <th className="px-3 py-2">RVC</th><th className="px-3 py-2">Fecha</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {recientes.map((a) => (
+                      <tr key={a.id} className="border-b border-slate-50 hover:bg-slate-50/60">
+                        <td className="px-5 py-2.5">
+                          <Link href={rutaApp(`/inversiones/${a.id}`)} className="font-medium text-primario hover:underline">
+                            {a.tipologia ?? "activo"} · {a.municipio ?? "—"}
+                          </Link>
+                          <div className="text-[12px] text-slate-400">{a.perfil} · {num(a.superficie_m2 ?? 0)} m²</div>
+                        </td>
+                        <td className="px-3 py-2.5"><SemaforoBadge s={a.semaforo} /></td>
+                        <td className="cifra px-3 py-2.5">{a.ico}</td>
+                        <td className="cifra px-3 py-2.5">{eur(a.p_objetivo)}</td>
+                        <td className="cifra px-3 py-2.5">{a.rvc.toFixed(2)}</td>
+                        <td className="px-3 py-2.5 text-slate-500">{fecha(a.creado_en)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </CardContent>
           </Card>
         </>

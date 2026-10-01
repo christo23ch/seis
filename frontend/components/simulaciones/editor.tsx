@@ -257,7 +257,8 @@ function CampoNumerico({ p, estado, texto, bloqueado, escribir, restaurar }: {
         )}
       </div>
       {estado.error && <p id={idError} className="mt-1 text-[12px] text-sem-rojo">{estado.error}</p>}
-      {estado.aviso && <p data-aviso className="mt-1 text-[12px] font-medium text-sem-amarillo">{estado.aviso}</p>}
+      {/* Fase 5G.4: estilo informativo del proyecto (variante «azul» de ui.tsx), no un color del semáforo. */}
+      {estado.aviso && <p data-aviso className="mt-1 rounded bg-primario-tenue px-2 py-1 text-[12px] font-medium text-primario">{estado.aviso}</p>}
       <p className="mt-1 text-[12px] text-slate-500">
         Vigente <span className="cifra">{mostrar(p.valor_vigente)}</span>
         {" · "}Original <span className="cifra">{mostrar(p.valor_original)}</span>
