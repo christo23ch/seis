@@ -7,6 +7,21 @@ formateaba por su cuenta con `:,.0f`, que pone el separador de miles inglés
 from __future__ import annotations
 
 
+def decimal(x: float, decimales: int = 2, *, signo: bool = False) -> str:
+    """Número con coma decimal y punto de miles (Fase 5G.4-B): `1.077` → «1,08»,
+    `3.0` con `signo` → «+3,0». Mismo redondeo que el formato de Python que
+    sustituye: solo cambian los separadores."""
+    texto = f"{x:{'+' if signo else ''},.{decimales}f}"
+    return texto.replace(",", "\x00").replace(".", ",").replace("\x00", ".")
+
+
+def pct(x: float, decimales: int = 1) -> str:
+    """Fracción como porcentaje, con coma y espacio antes de `%` (Fase 5G.4-B):
+    `0.25` → «25,0 %», `0.064` con 2 → «6,40 %», `0.05` con 0 → «5 %». Sustituye
+    a `:.N%`, con el mismo redondeo."""
+    return f"{decimal(x * 100, decimales)} %"
+
+
 def tasa(x: float) -> str:
     """Tasa anual como porcentaje, sin ceros sobrantes y con hasta dos decimales
     (Fase 5G.4): `0.015` → «1,5 %», `0.0125` → «1,25 %», `0.06` → «6 %»."""

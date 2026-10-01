@@ -7,6 +7,8 @@ Todo determinista; cada disparo de regla queda trazado (P1, P2, P6).
 from __future__ import annotations
 
 from app.engine import fiscal
+# Fase 5G.4-B: las razones se leen en el informe y en la interfaz (formato español).
+from app.engine.formato import decimal, pct
 from app.engine.contracts import (AnalisisInput, CostesResultado, DecisionFinal,
                                   EscaleraPrecios, ICIResultado, ICUResultado,
                                   RAResultado, RentabilidadResultado, RiesgoOut,
@@ -254,7 +256,7 @@ def decidir_semaforo(params, ico: int, ra_res: RAResultado, rent: RentabilidadRe
     if (ico >= sv["ico_min"] and not hay_alta and b_pes >= piso * i_base
             and ms_valor >= sv["ms_valor_min"] and rvc >= sv["rvc_min"] and ici >= sv["ici_min"]):
         candidato = "verde"
-        razones.append(f"ICO {ico} sin riesgos altos; pesimista positivo; MS {ms_valor:.0%}; RVC {rvc:.2f}")
+        razones.append(f"ICO {ico} sin riesgos altos; pesimista positivo; MS {pct(ms_valor, 0)}; RVC {decimal(rvc)}")
     elif (ico >= sa["ico_min"] and not hay_critica and b_pes >= sa["pes_piso_frac_i"] * i_base
           and rvc >= sa["rvc_min"] and ici >= sa["ici_min"]):
         candidato = "amarillo"
@@ -265,7 +267,7 @@ def decidir_semaforo(params, ico: int, ra_res: RAResultado, rent: RentabilidadRe
     else:
         motivo = "ICO insuficiente" if ico < sn["ico_min"] else \
             ("RVC por debajo del mínimo" if rvc < sn["rvc_min"] else "riesgo crítico")
-        return "rojo", [f"No alcanza Naranja: {motivo} (ICO {ico}, RVC {rvc:.2f})"]
+        return "rojo", [f"No alcanza Naranja: {motivo} (ICO {ico}, RVC {decimal(rvc)})"]
 
     # Techos: dominancia de críticas mitigables, ICI y reglas de semáforo
     if hay_critica:

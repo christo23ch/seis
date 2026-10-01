@@ -100,15 +100,57 @@ LINEA_COSTE_CAPITAL = ("\nEl coste de capital (1,5 % anual, coste de oportunidad
                        "Importe aplicado: 3.659 €.\n")
 
 
+# Fase 5G.4-B: decimales en formato español. Cada par es un fragmento EXACTO del
+# texto anterior y su sustituto; ninguna cifra cambia, solo «.»→«,» y «%»→« %».
+# Se aplican uno a uno y cada uno debe aparecer el número de veces indicado: si
+# el informe cambiara en cualquier otra cosa, la igualdad final fallaría.
+FORMATO_5G4B = [
+    # §1 página de decisión
+    ("| ROI base (a P objetivo) | 25.0% (22.9% anualizado) |",
+     "| ROI base (a P objetivo) | 25,0 % (22,9 % anualizado) |", 1),
+    ("| TIR anual | 33.9% |", "| TIR anual | 33,9 % |", 1),
+    ("| Margen de seguridad (caída de VS soportable) | 24.8% |",
+     "| Margen de seguridad (caída de VS soportable) | 24,8 % |", 1),
+    ("63.840 € · **1.08** (alcanzable)", "63.840 € · **1,08** (alcanzable)", 1),
+    # §2 activo y subasta
+    ("depósito 5%. Ocupación", "depósito 5 %. Ocupación", 1),
+    # §3 valoración
+    ("(CV 5.3%, confianza 76%)", "(CV 5,3 %, confianza 76 %)", 1),
+    ("δ_v aplicado 6.0% ⇒", "δ_v aplicado 6,0 % ⇒", 1),
+    # §4 mercado
+    ("Tendencia +3.0 %/a", "Tendencia +3,0 %/a", 1),
+    # §5 costes
+    ("c_v = 6.40% (ITP)", "c_v = 6,40 % (ITP)", 1),
+    ("Contingencia 10%.", "Contingencia 10 %.", 1),
+    # §7 escenarios
+    ("| pesimista | 25% | 160.837 € | 151.559 € | 9.278 € | 6.1% | 4.0% | 18 m |",
+     "| pesimista | 25 % | 160.837 € | 151.559 € | 9.278 € | 6,1 % | 4,0 % | 18 m |", 1),
+    ("| base | 55% | 176.744 € | 141.396 € | 35.349 € | 25.0% | 22.9% | 13 m |",
+     "| base | 55 % | 176.744 € | 141.396 € | 35.349 € | 25,0 % | 22,9 % | 13 m |", 1),
+    ("| optimista | 20% | 186.996 € | 133.996 € | 53.000 € | 39.6% | 43.6% | 11 m |",
+     "| optimista | 20 % | 186.996 € | 133.996 € | 53.000 € | 39,6 % | 43,6 % | 11 m |", 1),
+    # §8 estrategia de puja (M13)
+    ("Ratio histórico del segmento: 42% sobre", "Ratio histórico del segmento: 42 % sobre", 1),
+    ("(5% del valor de subasta)", "(5 % del valor de subasta)", 1),
+]
+
+
 def test_sin_escalera_degenerada_el_informe_es_el_de_antes_salvo_el_formato(dorado):
     """Diferencias permitidas con el texto anterior, y ninguna más:
     - 5G.2: las cuatro cifras del plan de puja que salían con separador inglés;
-    - 5G.4-A: la línea del coste de capital tras la fila «optimista» (§7)."""
+    - 5G.4-A: la línea del coste de capital tras la fila «optimista» (§7);
+    - 5G.4-B: los fragmentos de `FORMATO_5G4B` (solo separadores decimales y «%»)."""
     antes = ANTES.read_text(encoding="utf-8")
     corregido = MILES_INGLES.sub(lambda m: m.group(0).replace(",", "."), antes)
     assert corregido != antes, "premisa: el texto anterior tenía cifras en formato inglés"
     assert corregido.count(FILA_OPTIMISTA) == 1
     corregido = corregido.replace(FILA_OPTIMISTA, FILA_OPTIMISTA + LINEA_COSTE_CAPITAL)
+    for viejo, nuevo, veces in FORMATO_5G4B:
+        assert corregido.count(viejo) == veces, viejo
+        # Mismos dígitos en el mismo orden: solo pueden cambiar separadores y espacios.
+        assert re.findall(r"\d", viejo) == re.findall(r"\d", nuevo), viejo
+        assert re.sub(r"[\d.,% ]", "", viejo) == re.sub(r"[\d.,% ]", "", nuevo), viejo
+        corregido = corregido.replace(viejo, nuevo)
     assert dorado.informe_markdown == corregido
 
 
@@ -119,7 +161,7 @@ def test_sin_escalera_degenerada_el_plan_es_el_de_antes_salvo_el_formato(dorado)
         "Pujar siempre el tramo mínimo; sin pujas psicológicas redondas",
         "Entrar tarde con límites precargados: la extensión automática del cierre neutraliza "
         "el sniping; la ventaja es la disciplina",
-        "Depósito requerido: 7.600 € (5% del valor de subasta)",
+        "Depósito requerido: 7.600 € (5 % del valor de subasta)",   # 5G.4-B
         "Si aparece información nueva durante la subasta, re-análisis exprés; si el semáforo "
         "cae, retirada",
     ]

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from app.engine.contracts import AnalisisInput, EscaleraPrecios, PujaResultado
-from app.engine.formato import eur
+from app.engine.formato import eur, pct
 
 
 def _ratio_segmento(inp: AnalisisInput, params) -> float:
@@ -68,7 +68,7 @@ def ejecutar(inp: AnalisisInput, params, hechos: dict, escalera: EscaleraPrecios
         ]
     plan = [
         *tacticas,
-        f"Depósito requerido: {eur(deposito)} ({inp.subasta.deposito_pct:.0%} del valor de subasta)",
+        f"Depósito requerido: {eur(deposito)} ({pct(inp.subasta.deposito_pct, 0)} del valor de subasta)",
         "Si aparece información nueva durante la subasta, re-análisis exprés; si el semáforo cae, retirada",
     ]
     if banda == "ajustado":
