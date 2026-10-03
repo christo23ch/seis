@@ -19,6 +19,97 @@ convertirse en un SaaS. Lo anterior está en el historial de git.
 
 ---
 
+## [Fase 5G.4] — Coste de capital, decimales en formato español y e2e en CI — 2026-10-01
+
+Decisiones del responsable D1–D5 sobre `capital.coste_capital_anual`, registradas en
+[ADR-0016](30-Decisiones/ADR/ADR-0016-coste-de-capital-como-coste-de-oportunidad.md).
+**Ningún cálculo del motor cambia**: los tests de la fase fijan los valores de M11, M12 y M13
+del caso §19 capturados antes de empezar. Commits `3ecc9c8` (A), `729efd5` (B), `e2284da` y
+`b74abd0` (C). **CI en verde con los cuatro jobs, incluido el nuevo `e2e`:**
+[ejecución 36921942152](https://github.com/christo23ch/seis/actions/runs/36921942152).
+
+### 5G.4-A · Coste de capital como coste de oportunidad, rango y aviso
+
+#### Añadido
+- **Catálogo:** `capital.coste_capital_anual` se describe como coste de oportunidad del capital
+  propio (D1), con unidad «fracción anual (0–1)», **rango 0–0,15** (D2) y dos campos nuevos
+  opcionales, `umbral_aviso` (0,06) y `texto_aviso` (D3). Advertencia e impacto dicen que solo
+  afecta al precio límite (§9.1), no al ROI ni a la TIR. El nivel de riesgo sigue
+  `pendiente_de_definir`: el catálogo no tiene escala para él.
+- **`GET /analisis/{id}/parametros-simulables`** devuelve `umbral_aviso` y `texto_aviso` en cada
+  editable (`null` si no tiene aviso). Cambio aditivo.
+- **Editor de simulaciones:** aviso en el campo si el valor supera el umbral o sale del rango.
+  No bloquea crear; el backend decide.
+- **Informe (M14) e interfaz (escalera de precios):** «El coste de capital (X % anual, coste de
+  oportunidad del capital propio) solo se descuenta del precio límite (§9.1); ROI y TIR no lo
+  incluyen. Importe aplicado: Y €.» Sin tasa o sin importe no se muestra.
+- **M12** añade la tasa aplicada a `precios.detalle["coste_capital_anual"]` (trazabilidad).
+
+#### Cambiado
+- **Validación de rango vinculante** con una sola función, `simulacion_service.validar_rangos`,
+  para las simulaciones y para la edición global (`PUT /parametros`). Fuera del rango concreto
+  del catálogo: **422** con el rango en español, sin escribir filas ni auditoría. Las **11
+  cotas técnicas** que ya existían (dominancias de RA, umbral ICI del ICO, `ico_min`, `ici_min`
+  y `ms_valor_min` del semáforo) pasan a ser vinculantes; ningún valor guardado ni por defecto
+  quedaba fuera. Publicar una sección entera no salta el rango de sus hojas.
+- **Incompatible:** `PUT /parametros` responde 422 (antes 200) a un valor fuera de rango, y una
+  simulación con coste de capital > 0,15 ya no se puede crear. Las ya guardadas se siguen
+  leyendo.
+
+### 5G.4-B · Decimales en formato español en el informe
+
+#### Corregido
+- El informe usaba el formato de Python: «25.0%», «6.40%», «RVC 1.08», «CV 5.3%». Pasa a coma
+  decimal y «25,0 %» con `app/engine/formato.py` (`decimal`, `pct`) en M14, M13 (depósito del
+  plan de puja) y M12 (razones con MS y RVC). Mismo redondeo; solo cambian los separadores. En
+  el §19 cambian 15 fragmentos, enumerados en `tests/test_informe_coherencia.py::FORMATO_5G4B`.
+- Los informes oficiales ya emitidos conservan su texto (Markdown congelado).
+
+### 5G.4-C · E2E en CI, lanzadores unificados y desbordamiento de /app
+
+#### Añadido
+- **Job `e2e` en la CI** (`ubuntu-latest`, `CHROMIUM_PATH=/usr/bin/google-chrome`, sin descargar
+  navegadores): ejecuta `e2e/correr.sh` y `e2e/correr_simulaciones.sh`.
+- `frontend/scripts/navegador.mjs`: **una sola variable para el navegador** en los seis guiones
+  de Playwright (`CHROMIUM_PATH`, y `PLAYWRIGHT_CHROMIUM` por compatibilidad).
+
+#### Corregido
+- **`e2e/correr.sh` (alta)** funciona en Windows: sonda `/api/v1/health` (esperaba a
+  `/health/vivo`, que no existe), Python del venv, rutas nativas en un temporal fuera del repo,
+  puertos 8020/3020, compila contra su propio backend y cierra sus procesos por PID de Windows.
+  `comprobar_alta.py` imprime en UTF-8.
+- **`/app` desbordaba a 482 px con datos** (tabla de 447 px a 390 px), defecto previo a 5G.4. La
+  tabla del panel y la de la comparativa van dentro de un contenedor con desplazamiento propio.
+- «No utilizable» en la comparación ya no usa la fuente de las cifras.
+- El aviso del editor usa el estilo informativo del proyecto, no un color del semáforo.
+- **La Escalera de precios desbordaba 8 px a 390 px en Linux y macOS** (`b74abd0`), defecto
+  previo a 5G.4 que destapó la primera ejecución del job `e2e` (398/390 en la pestaña
+  Resumen). `.cifra` usa la monoespaciada del sistema, ~0,6 em en DejaVu Sans Mono y Menlo
+  frente a ~0,55 em de Consolas, y los escalones `flex-1` no encogían por debajo de su cifra.
+  Ahora encogen (`min-w-0`) y, por debajo de `sm`, la cifra va a 12 px. El paso 10 de
+  `simulaciones.mjs` mide además con la monoespaciada ancha forzada, para verlo en Windows.
+- **«1, % anual» en la nota de la escalera** (defecto de 5G.4-A, `b74abd0`): la expresión
+  regular de `lib/format.ts::tasa` perdió una barra al escribirse. Reescrita sin expresión
+  regular; la e2e comprueba el texto «1,5 % anual».
+
+### 5G.4-D · Decisión y documentación
+
+- **ADR-0016** (aceptado): D1–D4 con su justificación, D5 aceptada y pendiente para la 5H, y la
+  tabla de sensibilidad del §19 (coste de capital 0–0,20) con el umbral de degeneración 6,13 %.
+- `MANUAL_DE_PRUEBAS.md`: cómo probar el rango y el aviso, y las dos e2e con `CHROMIUM_PATH`.
+- `docs/ESTADO_ACTUAL.md` §4: cerradas Backend 12, 13 y 15 (y la 4 en parte), Pruebas 1 y
+  Entorno 1-2; deudas nuevas Backend 16-18, Frontend 11-14 y Entorno 7.
+- `CLAUDE.md`: reglas de entorno 3 y 5 actualizadas (las dos e2e compilan; puertos 8020/3020
+  del alta) y regla 6 nueva (`CHROMIUM_PATH`).
+
+### 5G.4-E · Auditoría del motor frente a la especificación
+
+- `docs/AUDITORIA_MOTOR_ESPECIFICACION.md` (solo lectura de código): doble cuenta con hipoteca,
+  `coste_capital()` sin definir, TIR del §19, perfil rentista, colchón de plazo y depósito,
+  diseño del VAN y orden propuesto para la 5H.
+
+---
+
 ## [Fase 5G.3] — Escalera degenerada en la interfaz y formato de 4 cifras — 2026-10-01
 
 Lo mismo que 5G.2 hizo en el informe, ahora en la interfaz. La interfaz no decide si una

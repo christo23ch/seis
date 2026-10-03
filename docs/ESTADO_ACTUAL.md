@@ -10,8 +10,8 @@
 
 ## Frentes abiertos
 
-**Actualizado:** 2026-10-01 · **Rama de trabajo:** `checkpoint/5f6-simulaciones-informes` · **Suite (SQLite):** 865 passed, 18 skipped, 0 failed (9 de los omitidos son las variantes DejaVu de 5G.1/5G.2, que sí corren en CI) · **E2E simulaciones:** verde (`e2e/correr_simulaciones.sh`)
-**Última fase cerrada:** 5G.3 (escalera degenerada en la interfaz y formato de 4 cifras) · **Puerta: ABIERTA**
+**Actualizado:** 2026-10-01 · **Rama de trabajo:** `checkpoint/5f6-simulaciones-informes` · **Suite (SQLite):** 922 passed, 18 skipped, 0 failed (9 de los omitidos son las variantes DejaVu de 5G.1/5G.2, que sí corren en CI) · **E2E:** alta y simulaciones en la CI (job `e2e`, 5G.4-C)
+**Última fase cerrada:** 5G.4 (coste de capital como coste de oportunidad, decimales en formato español, e2e en CI; ADR-0016) · **Siguiente:** 5H, preparada en `docs/AUDITORIA_MOTOR_ESPECIFICACION.md` · **Puerta: ABIERTA**
 
 ### Estado a 2026-09-30
 
@@ -49,13 +49,15 @@ publicar. Para el hash vigente, `git log --oneline -1`.
 
 | Suite | Linux / CI | Windows (Git Bash) |
 |---|---|---|
-| Simulaciones e informes (`e2e/correr_simulaciones.sh`) | `bash e2e/correr_simulaciones.sh` | `PLAYWRIGHT_CHROMIUM="C:/Program Files/Google/Chrome/Application/chrome.exe" bash e2e/correr_simulaciones.sh` |
-| Alta real (`e2e/correr.sh`, `npm run e2e` desde `frontend/`) | `bash e2e/correr.sh` (frontend ya compilado) | **No funciona hoy** — ver §4, deuda «Entorno 1» |
+| Simulaciones e informes (`e2e/correr_simulaciones.sh`) | `bash e2e/correr_simulaciones.sh` | `CHROMIUM_PATH="C:/Program Files/Google/Chrome/Application/chrome.exe" bash e2e/correr_simulaciones.sh` |
+| Alta real (`e2e/correr.sh`) | `bash e2e/correr.sh` | `CHROMIUM_PATH="C:/Program Files/Google/Chrome/Application/chrome.exe" bash e2e/correr.sh` |
 
-`correr_simulaciones.sh` usa los puertos 8010/3010, una base SQLite en un temporal fuera del
-repo, compila el frontend en `frontend/.next` y mata sus propios procesos al terminar. **No
-lanzarla con un `next dev` en marcha sobre ese `.next`.** Variables: `PUERTO_API`,
-`PUERTO_WEB`, `PY`, `PLAYWRIGHT_CHROMIUM`, `E2E_SIN_BUILD=1`, `E2E_CONSERVAR=1`.
+Los dos lanzadores siguen el mismo patrón desde 5G.4-C: puertos propios (8010/3010 simulaciones,
+8020/3020 alta), una base SQLite en un temporal fuera del repo, compilan el frontend en
+`frontend/.next` contra su propio backend y matan sus propios procesos al terminar. **No
+lanzarlos con un `next dev` en marcha sobre ese `.next`.** Variables: `PUERTO_API`,
+`PUERTO_WEB`, `PY`, `CHROMIUM_PATH` (o `PLAYWRIGHT_CHROMIUM`, por compatibilidad),
+`E2E_SIN_BUILD=1`, `E2E_CONSERVAR=1`. La CI los ejecuta en el job `e2e`.
 
 **Suite de backend:** `cd backend && python -m pytest -q`. Usa su propia base en un
 directorio temporal (`conftest.py`) y **no toca `seis_dev.db`**.
@@ -321,6 +323,24 @@ Los **nueve** endpoints que devuelven o crean datos de análisis filtran por
   utilizable» (la comparación trae `escalera_degenerada` del motor).
 - ~~Formato de 4 cifras distinto (Frontend 10)~~ → 5G.3: `eur` con `useGrouping: "always"`
   («7.600 €»).
+- ~~Sin cotas de rango en los overrides (Backend 4, en parte)~~ → 5G.4-A: los rangos concretos
+  del catálogo son vinculantes (422) en simulaciones y edición global. Siguen sin validarse las
+  listas vacías y los parámetros con rango `pendiente_de_definir` (ver Backend 4).
+- ~~`capital.coste_capital_anual` sin rango ni advertencia (Backend 12)~~ → 5G.4-A, ADR-0016:
+  rango 0–0,15, aviso desde 0,06, advertencia e impacto definidos.
+- ~~¿ROI y TIR netos del coste de capital? (Backend 13)~~ → 5G.4-A: decidido explicarlo (el
+  informe y la interfaz dicen que solo descuenta el precio límite). La comparación TIR − coste
+  de capital y el VAN quedan diseñados para la 5H (auditoría, E6).
+- ~~Punto decimal en el informe (Backend 15)~~ → 5G.4-B: «25,0 %», «RVC 1,08».
+- ~~Ninguna e2e corre en la CI (Pruebas 1)~~ → 5G.4-C: job `e2e`.
+- ~~`e2e/correr.sh` no funciona en Windows (Entorno 1)~~ y ~~dos nombres para el navegador
+  (Entorno 2)~~ → 5G.4-C: lanzador alineado con `correr_simulaciones.sh` y
+  `frontend/scripts/navegador.mjs`.
+- ~~`/app` desbordaba a 390 px con datos~~ → 5G.4-C: la tabla del panel (y la de la comparativa)
+  en un contenedor con desplazamiento propio. Defecto previo a 5G.4, medido también sobre
+  `9c41bbe`.
+- ~~La Escalera de precios desbordaba 8 px a 390 px en Linux/macOS~~ → `b74abd0`: escalones que
+  encogen por debajo de `sm`. La e2e mide ahora también con la monoespaciada ancha forzada.
 - ~~El PDF oficial no lleva su id, fecha ni procedencia (deuda D5)~~ → 5G.1: cabecera, bloque
   inicial y pie con la identificación leída de la fila `Informe`; la vista previa de
   `/informe.pdf` lleva «VISTA PREVIA — NO OFICIAL».
@@ -341,10 +361,9 @@ Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VER
 3. **`obtener_configuracion_actual` no mira el estado** de la simulación apuntada
    (`simulacion_service.py:509`). Hoy solo `validar` y `seleccionar` mueven el puntero, y los
    dos lo comprueban.
-4. **Sin cotas de rango en los overrides.** La validación es de forma, no de valor:
-   `semaforo.verde.ico_min = 150`, listas vacías o ratios negativos se aceptan y cambian el
-   resultado sin aviso (docstring de `_discrepancia_de_forma`: «ni tramos, ni longitud de
-   listas, ni coherencia entre parámetros»).
+4. **Validación de contenido incompleta.** Desde 5G.4-A los rangos concretos del catálogo son
+   vinculantes, pero las listas vacías, los tramos desordenados y los parámetros cuyo rango sigue
+   `pendiente_de_definir` (p. ej. `rvc_min`, ratios de adjudicación) se aceptan sin aviso.
 5. *(Resuelta en 5G.1: ver arriba. Se conserva el número para no renumerar.)*
 6. **El listado de simulaciones no trae `version_parametros_base`**, y el aviso pide el
    detalle completo (con el `resultado` entero) solo para ese campo.
@@ -358,21 +377,25 @@ Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VER
     ofrece. No es un defecto; conviene decidir si se retira.
 11. [VERIFICAR: si una clave editable faltara en el árbol vigente, el catálogo o la validación
     darían 500 en vez de clasificarla. Hoy las 103 claves resuelven; no reproducido.]
-12. **`capital.coste_capital_anual` sin rango ni advertencia** (`catalogo.py`, ambos
-    `PENDIENTE_DE_DEFINIR`): acepta sin aviso valores 20-27 veces el defecto (0,015), como el
-    0,31 o el 0,4 de las simulaciones de 5G.1/5G.2, que bastan para degenerar la escalera.
-13. **Pregunta de producto abierta: ¿ROI y TIR deben mostrarse también netos del coste de
-    capital?** Hoy no lo están por diseño: según §9.1 el coste de capital solo se resta del
-    precio límite (`m12_decision.py:121-126`), así que simularlo cambia el límite y el semáforo
-    pero no el ROI, la TIR ni el resto de la escalera.
+12. *(Resuelta en 5G.4-A: ver «Cerrada» arriba.)*
+13. *(Resuelta en 5G.4-A: ver «Cerrada» arriba.)*
 14. **Análisis y simulaciones ya guardados conservan el texto anterior a 5G.2** (plan de puja
     con «60,011 €» y, si la escalera era degenerada, la instrucción de cargar el límite) hasta
     que se reanalicen: su `resultado` no se regenera. Los informes oficiales ya emitidos lo
     conservan por diseño (Markdown congelado).
 
-15. **El informe usa punto decimal con miles en formato español**: «25.0%», «6.40%», «RVC
-    1.08», «CV 5.3%» junto a «60.011 €». Los porcentajes y ratios de M14 se formatean con
-    `:.1%`/`:.2f` sin pasar por un formato español.
+15. *(Resuelta en 5G.4-B: ver «Cerrada» arriba.)*
+16. **Con hipoteca, el precio límite cuenta dos veces el coste de la parte financiada**: los
+    intereses ya están en `c_v` (M06) y el coste de capital se aplica sobre toda la inversión.
+    Decisión D5 del ADR-0016, pendiente de implementar en la **5H** (auditoría, E1).
+17. **El «depósito del 5%» de la condición de la regla T2 `SEM-EJEC-01`** sale sin espacio
+    antes de «%». Es texto de una regla versionada (`rules/catalogo.yaml`), no de un módulo:
+    corregirlo exige una versión nueva de la regla. `test_formato_espanol_5g4.py` lo tiene
+    localizado como única excepción.
+18. **Puntos del motor frente a la especificación**, sin corregir: `coste_capital()` sin
+    definir en la especificación, TIR del §19 (≈23 %) frente a la del motor (33,87 %), el
+    perfil rentista resta coste de capital y §9.2 no, y «colchón de plazo» y coste del depósito
+    sin implementar. Detalle, medidas y orden propuesto en `docs/AUDITORIA_MOTOR_ESPECIFICACION.md`.
 
 **Frontend**
 
@@ -392,12 +415,24 @@ Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VER
    re-medido.]
 9. *(Resuelta en 5G.3: ver «Cerrada» arriba.)*
 10. *(Resuelta en 5G.3: ver «Cerrada» arriba.)*
+11. **`resultado.tsx` usa colores del semáforo para cosas que no son semáforo:** los estados del
+    checklist (`ok` → `sem-verde`, `pendiente` → `sem-amarillo`) y la viñeta de las
+    condiciones (`sem-amarillo`). `sem-rojo` como color de error sí es la convención de
+    `ui.tsx` (`Campo`, `ErrorBox`, botón `peligro`). Falta un token de estado neutro.
+12. **El editor global de `/app/parametros` no muestra el aviso del coste de capital**: es un
+    editor libre de JSON sin los metadatos del catálogo. Recibe el 422 con el rango, pero no el
+    aviso de 0,06.
+13. **`medir-desborde.mjs` mide solo el estado inicial**: la tabla de `/app/comparativa` no
+    aparece hasta seleccionar análisis, así que su contenedor de 5G.4-C no lo cubre ninguna
+    medida automática.
+14. **La etiqueta «P adj. …» de la Escalera de precios queda tapada por el escalón «Límite»**
+    (`components/resultado.tsx`): la línea de adjudicación va antes que los escalones en el DOM
+    y estos, `relative`, se pintan encima. Visto en una captura a 390 px en 5G.4; el orden del
+    DOM no ha cambiado desde antes de la fase, así que es previo. Sin corregir.
 
 **Pruebas**
 
-1. **Ninguna e2e corre en la CI.** `.github/workflows/ci.yml` no llama a `correr.sh` ni a
-   `correr_simulaciones.sh`. Propuesta pendiente de decisión: job aparte con
-   `PLAYWRIGHT_CHROMIUM=/usr/bin/google-chrome`.
+1. *(Resuelta en 5G.4-C: job `e2e` en la CI.)*
 2. **El botón del aviso desactivado durante otra escritura** (`4df5de8`) no se ha probado en el
    navegador; la e2e solo cubre el caso en reposo.
 3. **La marca «difiere del original»** del editor no se ha visto nunca en el navegador: la base
@@ -407,13 +442,9 @@ Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VER
 
 **Entorno**
 
-1. **`e2e/correr.sh` (alta) no funciona en Windows y choca con el entorno de desarrollo:**
-   usa el puerto **8000** por defecto, rutas `/tmp`, el `python` del sistema, espera a
-   `/health/vivo` —que no existe: las sondas son `/health/listo` y `/health/detalle`— y no
-   compila. Conviene alinearlo con `correr_simulaciones.sh`.
-2. **Dos nombres para el navegador:** `PLAYWRIGHT_CHROMIUM` en las e2e y `CHROMIUM_PATH` en
-   `frontend/scripts/`. `simulaciones.mjs` acepta los dos.
-3. **`correr_simulaciones.sh` compila en `frontend/.next`** y regenera `next-env.d.ts`: no puede
+1. *(Resuelta en 5G.4-C.)*
+2. *(Resuelta en 5G.4-C.)*
+3. **Las dos e2e compilan en `frontend/.next`** y regenera `next-env.d.ts`: no puede
    convivir con un `next dev` sobre esa carpeta, y `next-env.d.ts` hay que restaurarlo después.
 4. **`main` local va un commit por delante de `origin/main`** (`90fab7b`, docs de la 17-C) sin
    publicar.
@@ -421,6 +452,13 @@ Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VER
    `PLAN_FASES.md` §2-bis, no una tarea.
 6. [VERIFICAR: si siguen las 2 vulnerabilidades de producción del `postcss` que fija Next — no
    se ha ejecutado `npm audit` en esta sesión.]
+7. **La duración de la suite varía con la carga de la máquina:** 27 min 20 s en una ejecución
+   y 2 min 39 s y 2 min 10 s en las dos siguientes, con el mismo código (2026-10-01). Ningún
+   test pasa de 4 s (`--durations=25`) y crear y borrar la base temporal cuesta ~0,23 s por
+   módulo. Defender tiene la protección en tiempo real activa y consumía ~21 % de un núcleo
+   durante la suite. Propuesta: ejecutar siempre con `--durations=25`; si vuelve a pasar,
+   mirar qué procesos corrían a la vez y, solo entonces, pedir a un administrador que excluya
+   los directorios `seis-pytest-*` del análisis en tiempo real.
 
 ---
 

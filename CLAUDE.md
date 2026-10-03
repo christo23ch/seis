@@ -348,15 +348,18 @@ Cada una salió de un incidente real en esta máquina de desarrollo (Windows):
    directorio temporal antes de importar la app y aborta si apunta a otra. **No lo quites ni
    exportes `DATABASE_URL` para la suite:** antes del commit `9db44b3`, `pytest` borraba
    `seis_dev.db`, la base del `uvicorn` de desarrollo.
-3. **No ejecutar `npm run build` ni la e2e (`correr_simulaciones.sh`, que compila) con un
-   `next dev` en marcha:** los dos escriben en `frontend/.next` y se pisan.
+3. **No ejecutar `npm run build` ni las e2e (`correr.sh` y `correr_simulaciones.sh`, que
+   compilan) con un `next dev` en marcha:** escriben en `frontend/.next` y se pisan.
 4. **`frontend/next-env.d.ts` nunca entra en un commit.** `next build` lo regenera; se restaura
    con `git checkout -- frontend/next-env.d.ts` y los ficheros se añaden por nombre, nunca con
    `git add .` ni `-A`.
 5. **Verificar en una copia aislada o en puertos dedicados, sin tocar los servidores del
    usuario.** El usuario suele tener su backend en **8000** y su `next dev` en **3000**, con
    `backend/seis_dev.db`: no se paran, no se reinician y no se escribe en esa base. Para probar,
-   una copia del frontend en el scratchpad o la e2e con sus puertos propios (8010/3010), una
-   base SQLite desechable fuera del repo, y al terminar se matan **solo** los procesos propios.
-   Ojo: `e2e/correr.sh` (alta) usa el 8000 por defecto — no lanzarlo con el backend del usuario
-   en marcha.
+   una copia del frontend en el scratchpad o las e2e con sus puertos propios (8010/3010
+   simulaciones, 8020/3020 alta, desde 5G.4-C), una base SQLite desechable fuera del repo, y al
+   terminar se matan **solo** los procesos propios.
+6. **Una sola variable para el navegador: `CHROMIUM_PATH`** (en Windows,
+   `C:/Program Files/Google/Chrome/Application/chrome.exe`). La leen todos los guiones de
+   Playwright a través de `frontend/scripts/navegador.mjs`; `PLAYWRIGHT_CHROMIUM` solo se
+   acepta por compatibilidad.
