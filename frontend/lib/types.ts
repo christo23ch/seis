@@ -21,7 +21,9 @@ export interface Resultado {
   reforma: { nivel: string; total_p50: number; total_p80: number; plazo_obra_meses: number };
   costes: { c_v: number; c_f_p50: number; c_f_p80: number; desglose_p50: Record<string, number>; contingencia_pct: number; plazo_meses_p50: number; plazo_meses_p80: number; regimen_fiscal: string };
   riesgos: { ra: number; ra_base: number; banda: string; dominancia_aplicada: string | null; dimensiones: RiesgoDim[] };
-  rentabilidad: { inversion_total: number; beneficio: number; roi: number; roi_anualizado: number; tir_anual: number; valor_esperado: number; escenarios: EscenarioOut[]; y_neta?: number | null; dscr?: number | null };
+  rentabilidad: { inversion_total: number; beneficio: number; roi: number; roi_anualizado: number; tir_anual: number; valor_esperado: number; escenarios: EscenarioOut[]; y_neta?: number | null; dscr?: number | null;
+    /** Fase 5H.1-A (ADR-0017): informativos; ausentes en resultados anteriores. */
+    van_coste_capital?: number | null; diferencial_tir_coste_capital?: number | null };
   puja: { p_adj_esperado: number; ratio_base: number; rvc: number; banda_rvc: string; plan: string[]; riesgo_ejecucion: string[] };
   checklist: ChecklistItem[];
   reglas_disparadas: { codigo: string; version: string; categoria: string }[];
@@ -136,6 +138,8 @@ export interface ResumenResultadoComparado {
   rvc: number | null; p_adj_esperado: number | null; margen_seguridad_valor: number | null;
   /** Fase 5G.3: la marca de M12 tal cual; `null` en resultados antiguos que no la traen. */
   escalera_degenerada: boolean | null;
+  /** Fase 5H.1-A (ADR-0017): VAN al coste de capital (€) y TIR − coste de capital (puntos). */
+  van_coste_capital: number | null; diferencial_tir_coste_capital: number | null;
 }
 
 /** `GET /analisis/{id}/simulaciones/{sid}/comparacion` (Fase 5F.7.3). */

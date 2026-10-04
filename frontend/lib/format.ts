@@ -10,6 +10,9 @@ export const pct = (n: number | null | undefined, dec = 1) =>
 export const tasa = (n: number) =>
   // `Number(...)` quita los ceros sobrantes sin expresiones regulares: «1.50» → 1.5.
   `${String(Number((n * 100).toFixed(2))).replace(".", ",")} %`;
+/** Diferencia en puntos porcentuales con signo (Fase 5H.1-A): 32.37 → «+32,37 puntos». */
+export const puntos = (n: number | null | undefined) =>
+  n == null ? "—" : `${n > 0 ? "+" : ""}${n.toFixed(2).replace(".", ",")} puntos`;
 export const num = (n: number | null | undefined, dec = 0) =>
   n == null ? "—" : new Intl.NumberFormat("es-ES", { maximumFractionDigits: dec }).format(n);
 export const fecha = (iso: string | null | undefined) =>

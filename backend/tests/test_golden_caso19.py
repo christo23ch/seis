@@ -14,8 +14,9 @@ from app.engine.contracts import (ActivoInput, AnalisisInput, CargaInput,
 from app.engine.pipeline import ejecutar_analisis
 
 
-@pytest.fixture(scope="module")
-def caso_19() -> AnalisisInput:
+def entrada_caso_19() -> AnalisisInput:
+    """La entrada del caso §19 como función normal: la reutilizan la guarda
+    invariante de la 5H.1 y sus scripts de captura (un fixture no se puede llamar)."""
     comparables = [ComparableInput(precio_m2=v, estado="reformado", origen="testigo")
                    for v in (2100, 2200, 2250, 2293, 2350, 2420, 2490)]
     return AnalisisInput(
@@ -44,6 +45,11 @@ def caso_19() -> AnalisisInput:
         costes=CostesInput(itp_tipo_override=0.06),
         financiacion=FinanciacionInput(tipo="cash"),
     )
+
+
+@pytest.fixture(scope="module")
+def caso_19() -> AnalisisInput:
+    return entrada_caso_19()
 
 
 @pytest.fixture(scope="module")

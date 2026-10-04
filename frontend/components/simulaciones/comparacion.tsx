@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
-import { eur, fecha, num, pct } from "@/lib/format";
+import { eur, fecha, num, pct, puntos } from "@/lib/format";
 import type { ComparacionSimulacion, FilaComparacion, ResumenResultadoComparado, ValorJson } from "@/lib/types";
 import { SemaforoBadge } from "@/components/resultado";
 import { Button, Check, ErrorBox, Spinner } from "@/components/ui";
@@ -155,6 +155,9 @@ const CAMPOS: { campo: Campo; etiqueta: string; formato: (v: number) => string }
   { campo: "p_adj_esperado", etiqueta: "P. adjudicación esperado", formato: eur },
   { campo: "rvc", etiqueta: "RVC", formato: (v) => num(v, 3) },
   { campo: "margen_seguridad_valor", etiqueta: "Margen de seguridad", formato: (v) => pct(v) },
+  // Fase 5H.1-A (ADR-0017): informativos; «—» si el resultado no los trae.
+  { campo: "van_coste_capital", etiqueta: "VAN al coste de capital", formato: eur },
+  { campo: "diferencial_tir_coste_capital", etiqueta: "TIR − coste de capital", formato: (v) => puntos(v) },
 ];
 
 function Resultado({ original, simulacion }: { original: ResumenResultadoComparado; simulacion: ResumenResultadoComparado }) {

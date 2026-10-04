@@ -1,5 +1,5 @@
 "use client";
-import { eur, num, pct, tasa } from "@/lib/format";
+import { eur, num, pct, puntos, tasa } from "@/lib/format";
 import type { Decision, Resultado, RiesgoDim, Semaforo } from "@/lib/types";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Badge, Card, CardContent, CardHeader, CardTitle } from "./ui";
@@ -244,6 +244,10 @@ export function MetricasClave({ res }: { res: Resultado }) {
     ["ROI (base)", `${pct(r.roi)} · ${pct(r.roi_anualizado)} anual`], ["TIR anual", pct(r.tir_anual)],
     ["Margen de seguridad", pct(d.margen_seguridad_valor)], ["Inversión total a P obj.", eur(r.inversion_total)],
     ["VS prudente", eur(res.vs_prudente)], ["δ_v aplicado", pct(res.delta_v)],
+    // Fase 5H.1-A (ADR-0017): informativos; un resultado anterior no los trae y no se muestran.
+    ...(r.van_coste_capital != null ? [["VAN al coste de capital", eur(r.van_coste_capital)] as [string, string]] : []),
+    ...(r.diferencial_tir_coste_capital != null
+      ? [["TIR − coste de capital", puntos(r.diferencial_tir_coste_capital)] as [string, string]] : []),
   ];
   return (
     <Card>

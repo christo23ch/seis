@@ -19,12 +19,16 @@ from tests.conftest import entrada_base, token_headers
 N_EDITABLES = 103
 CAMPOS_RESULTADO = {"semaforo", "ico", "ra", "ici", "icu", "p_ideal", "p_objetivo", "p_max",
                     "p_limite", "rvc", "p_adj_esperado", "margen_seguridad_valor",
-                    "escalera_degenerada"}
+                    "escalera_degenerada",
+                    # Fase 5H.1-A (ADR-0017): informativos de M11.
+                    "van_coste_capital", "diferencial_tir_coste_capital"}
 _RUTA_RESULTADO = {c: ("decision", c) for c in CAMPOS_RESULTADO}
 _RUTA_RESULTADO.update({c: ("decision", "precios", c)
                         for c in ("p_ideal", "p_objetivo", "p_max", "p_limite")})
 # Fase 5G.3: la marca de M12, tal cual (no se recalcula en la comparación).
 _RUTA_RESULTADO["escalera_degenerada"] = ("decision", "precios", "degenerada")
+_RUTA_RESULTADO.update({c: ("rentabilidad", c)
+                        for c in ("van_coste_capital", "diferencial_tir_coste_capital")})
 
 
 @pytest.fixture(scope="module")

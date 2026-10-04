@@ -98,6 +98,9 @@ FILA_OPTIMISTA = "| optimista | 20% | 186.996 € | 133.996 € | 53.000 € | 3
 LINEA_COSTE_CAPITAL = ("\nEl coste de capital (1,5 % anual, coste de oportunidad del capital propio) "
                        "solo se descuenta del precio límite (§9.1); ROI y TIR no lo incluyen. "
                        "Importe aplicado: 3.659 €.\n")
+# Fase 5H.1-A (ADR-0017): VAN y diferencial, justo después de la línea anterior.
+LINEA_VAN_5H1A = ("\nVAN al coste de capital (1,5 %): 33.230 € · "
+                  "TIR frente a coste de capital: +32,37 puntos\n")
 
 
 # Fase 5G.4-B: decimales en formato español. Cada par es un fragmento EXACTO del
@@ -139,12 +142,13 @@ def test_sin_escalera_degenerada_el_informe_es_el_de_antes_salvo_el_formato(dora
     """Diferencias permitidas con el texto anterior, y ninguna más:
     - 5G.2: las cuatro cifras del plan de puja que salían con separador inglés;
     - 5G.4-A: la línea del coste de capital tras la fila «optimista» (§7);
+    - 5H.1-A: la línea del VAN y el diferencial, a continuación;
     - 5G.4-B: los fragmentos de `FORMATO_5G4B` (solo separadores decimales y «%»)."""
     antes = ANTES.read_text(encoding="utf-8")
     corregido = MILES_INGLES.sub(lambda m: m.group(0).replace(",", "."), antes)
     assert corregido != antes, "premisa: el texto anterior tenía cifras en formato inglés"
     assert corregido.count(FILA_OPTIMISTA) == 1
-    corregido = corregido.replace(FILA_OPTIMISTA, FILA_OPTIMISTA + LINEA_COSTE_CAPITAL)
+    corregido = corregido.replace(FILA_OPTIMISTA, FILA_OPTIMISTA + LINEA_COSTE_CAPITAL + LINEA_VAN_5H1A)
     for viejo, nuevo, veces in FORMATO_5G4B:
         assert corregido.count(viejo) == veces, viejo
         # Mismos dígitos en el mismo orden: solo pueden cambiar separadores y espacios.

@@ -190,6 +190,12 @@ def construir_informe(inp: AnalisisInput, res_parciales: dict, dec: DecisionFina
         f"propio) solo se descuenta del precio límite (§9.1); ROI y TIR no lo incluyen. "
         f"Importe aplicado: {_eur(cc_importe)}."
         if cc_anual is not None and cc_importe is not None else "")
+    # Fase 5H.1-A (ADR-0017): VAN y diferencial, con los flujos de la TIR. Sin dato, nada.
+    van, dif = getattr(rent, "van_coste_capital", None), getattr(rent, "diferencial_tir_coste_capital", None)
+    nota_van = (
+        f"\n\nVAN al coste de capital ({_tasa(cc_anual)}): {_eur(van)} · "
+        f"TIR frente a coste de capital: {_dec(dif, 2, signo=True)} puntos"
+        if van is not None and dif is not None and cc_anual is not None else "")
 
     return f"""# Informe de análisis SEIS
 
@@ -248,7 +254,7 @@ Riesgo agregado **RA {dec.ra}** (banda {ra.banda}{", dominancia: " + ra.dominanc
 ## 7 · Análisis financiero (a precio objetivo {_eur(dec.precios.p_objetivo)})
 | Escenario | Prob. | VS | Coste total | Beneficio | ROI | ROI anual | Plazo |
 |---|---|---|---|---|---|---|---|
-{filas_esc}{nota_coste_capital}
+{filas_esc}{nota_coste_capital}{nota_van}
 
 ## 8 · Estrategia de puja
 Ratio histórico del segmento: {_pct(puja.ratio_base, 0)} sobre valor de subasta.

@@ -133,6 +133,13 @@ try {
   const nota = plano(await p.locator("[data-nota-coste-capital]").first().innerText());
   comprobar(nota.startsWith("El coste de capital (1,5 % anual, coste de oportunidad del capital propio)"),
     `1. la escalera explica el coste de capital: «${nota.slice(0, 60)}…»`);
+  // Fase 5H.1-A (ADR-0017): VAN y diferencial en «Métricas de decisión», en formato español
+  // («33.230 €», «+32,37 puntos»): punto de miles, coma decimal y signo explícito.
+  const metricas = plano(await p.locator("div.rounded-lg", { hasText: "Métricas de decisión" }).first().innerText());
+  const van = metricas.match(/VAN al coste de capital (-?\d{1,3}(?:\.\d{3})* €)/);
+  const dif = metricas.match(/TIR − coste de capital ([+-]\d+,\d{2} puntos)/);
+  comprobar(van !== null, `1. métricas: VAN al coste de capital ${van ? van[1] : "(no aparece o sin formato español)"}`);
+  comprobar(dif !== null, `1. métricas: TIR − coste de capital ${dif ? dif[1] : "(no aparece o sin formato español)"}`);
 
   // 2. Nueva simulación con coma decimal.
   await pestana(p, "Simulaciones");

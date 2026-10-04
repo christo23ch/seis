@@ -320,6 +320,10 @@ class RentabilidadResultado(BaseModel):
     y_neta: float | None = None
     dscr: float | None = None
     cash_on_cash: float | None = None
+    # Fase 5H.1-A (ADR-0017): informativos, con los mismos flujos que la TIR. `None` en
+    # resultados anteriores a la fase. No entran en el ICO, el semáforo ni la escalera.
+    van_coste_capital: float | None = None              # € al coste de capital
+    diferencial_tir_coste_capital: float | None = None  # TIR − coste de capital, en puntos
 
 
 class EscaleraPrecios(BaseModel):

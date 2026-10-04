@@ -152,8 +152,8 @@ def obtener_parametros_simulables(db: Session, analisis: models.Analisis) -> dic
 # snapshots ya persistidos (`Analisis.parametros_aplicados`/`resultado` y los de
 # la `Simulacion`): no carga el conocimiento vigente ni ejecuta el motor.
 
-# Campos del resultado que se ponen lado a lado. Todos existen en `decision` del
-# `AnalisisResult` persistido (verificado en el Paso 0 de 5F.7.3); ninguno se calcula.
+# Campos del resultado que se ponen lado a lado, leídos tal cual del `AnalisisResult`
+# persistido; ninguno se calcula. Un resultado antiguo que no traiga alguno da `null`.
 _RESUMEN_RESULTADO: dict[str, tuple[str, ...]] = {
     "semaforo": ("decision", "semaforo"),
     "ico": ("decision", "ico"),
@@ -170,6 +170,9 @@ _RESUMEN_RESULTADO: dict[str, tuple[str, ...]] = {
     # Fase 5G.3: la marca que pone M12 (§9.3), leída tal cual; `null` si un
     # resultado antiguo no la trae. La interfaz no deduce nada de los precios.
     "escalera_degenerada": ("decision", "precios", "degenerada"),
+    # Fase 5H.1-A (ADR-0017): informativos de M11; `null` en resultados anteriores.
+    "van_coste_capital": ("rentabilidad", "van_coste_capital"),
+    "diferencial_tir_coste_capital": ("rentabilidad", "diferencial_tir_coste_capital"),
 }
 
 

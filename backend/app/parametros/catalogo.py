@@ -377,15 +377,19 @@ PARAMETROS_FIJOS.append(ParametroCatalogo(
     editable=True,
     rango=(0.0, 0.15),
     advertencia=(
-        "Solo afecta al precio límite (§9.1). No entra en el ROI, el ROI "
-        "anualizado ni la TIR (M11), que se calculan sin él. Rango admitido "
-        "0–0,15 (ADR-0016); fuera de él el valor se rechaza."
+        "En la decisión solo afecta al precio límite (§9.1). No entra en el "
+        "ROI, el ROI anualizado ni la TIR (M11), que se calculan sin él; sí en "
+        "los indicadores informativos VAN al coste de capital y TIR − coste de "
+        "capital (ADR-0017). Rango admitido 0–0,15 (ADR-0016); fuera de él el "
+        "valor se rechaza."
     ),
     impacto=(
         "coste_capital crece linealmente con este parámetro y se resta de "
         "p_lim_bruto ⇒ un valor mayor reduce el precio límite; si lo lleva "
         "por debajo de P_max, la escalera queda degenerada y el semáforo pasa "
-        "a rojo (§9.3). No cambia P_ideal, P_objetivo, P_max, ROI ni TIR."
+        "a rojo (§9.3). No cambia P_ideal, P_objetivo, P_max, ROI ni TIR. "
+        "Un valor mayor también baja el VAN y el diferencial TIR − coste de "
+        "capital, que son informativos (ADR-0017)."
     ),
     dependencia="A",
     nivel_riesgo_modificacion=PENDIENTE_DE_DEFINIR,
