@@ -69,6 +69,7 @@ def calcular_escalera(inp: AnalisisInput, params, banda_ra: str, vs_p: float,
     fila = params.seccion(f"primas_ra.{banda_ra}")
     cf50, cf80 = costes.c_f_p50, costes.c_f_p80
     detalle: dict[str, float] = {"delta_v_aplicado": 0.0}
+    f = inp.financiacion          # rama rentista (DSCR, CoC) y coste de capital (D5)
 
     if perfil["tipo"] == "venta":
         m_obj = float(perfil["m_objetivo"]) * float(fila["mult_m"])
@@ -103,7 +104,6 @@ def calcular_escalera(inp: AnalisisInput, params, banda_ra: str, vs_p: float,
 
         p_ideal, p_obj = p_de_y(y_req + 1.0), p_de_y(y_req + 0.5)
         candidatos = [p_de_y(y_req)]
-        f = inp.financiacion
         if f.tipo == "hipoteca" and f.ltv > 0:
             ts = (f.interes_anual_pct + float(params.get("financiacion.stress_tipos_pp"))) / 100
             dscr_min = float(params.get("financiacion.dscr_minimo"))
@@ -128,7 +128,6 @@ def calcular_escalera(inp: AnalisisInput, params, banda_ra: str, vs_p: float,
     # capital PROPIO. La parte financiada (LTV · P_max) ya paga su coste real como intereses
     # dentro de `c_v` (M06); antes se le cobraba además este coste. Sin hipoteca, LTV = 0 y
     # la fórmula es la de siempre.
-    f = inp.financiacion
     financiado = f.ltv * p_max if f.tipo == "hipoteca" else 0.0
     capital_propio = max(0.0, i_aprox - financiado)
     coste_capital = cc_anual * capital_propio * (costes.plazo_meses_p80 / 12.0)

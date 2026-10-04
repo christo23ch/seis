@@ -54,21 +54,40 @@ def test_en_cash_el_capital_propio_es_toda_la_inversion():
 
 
 def test_el_capital_propio_nunca_es_negativo():
-    """LTV del 100 % o más (financiación total): el coste de capital es 0, no un abono."""
+    """Financiación mayor que la inversión: el coste de capital es 0, nunca un abono.
+
+    Revisión de 5H.1-B: con LTV 1,2 el capital propio NO llega a cero en el §19 (P_max baja al
+    subir `c_v` y queda en 83.017 €), así que ese caso no ejercitaba el `max(0, …)`. Con LTV
+    3,0 sí: sin el `max`, el coste de capital saldría negativo y subiría el límite."""
     r = ejecutar_analisis(entrada_caso_19().model_copy(update={"financiacion": FinanciacionInput(
-        tipo="hipoteca", preaprobada=True, ltv=1.2, interes_anual_pct=3.5)}))
-    assert r.decision.precios.detalle["capital_propio"] >= 0
-    assert r.decision.precios.detalle["coste_capital"] >= 0
+        tipo="hipoteca", preaprobada=True, ltv=3.0, interes_anual_pct=3.5)}))
+    assert r.decision.precios.detalle["capital_propio"] == 0.0
+    assert r.decision.precios.detalle["coste_capital"] == 0.0
+
+
+def test_cash_con_ltv_informado_no_resta_nada():
+    """Solo `tipo == "hipoteca"` financia: un LTV informado en una compra al contado se ignora,
+    igual que hace M06 con los intereses (revisión de 5H.1-B)."""
+    e = ejecutar_analisis(entrada_caso_19().model_copy(update={"financiacion": FinanciacionInput(
+        tipo="cash", ltv=0.7)})).decision.precios
+    assert (e.p_limite, e.detalle["coste_capital"]) == (80022.0, 3659.05)
 
 
 def test_el_rentista_con_hipoteca_tambien_paga_solo_por_su_capital():
     """D5 es general: el rentista con hipoteca también deja de pagar por la parte financiada.
-    (Que el rentista reste o no coste de capital, §9.2, es E4 y queda fuera de la 5H.1.)"""
+    (Que el rentista reste o no coste de capital, §9.2, es E4 y queda fuera de la 5H.1.)
+
+    El P_max del rentista no queda en `detalle` sin redondear: con el redondeado al euro, la
+    base calculada aquí difiere a lo sumo en (1 + c_v + LTV) / 2 ≈ 0,9 €."""
     base = entrada_caso_19().model_copy(update={"perfil": "rentista", "rentista": RentistaInput(
         renta_mensual_estimada=950, ibi_anual=350, comunidad_mensual=60)})
-    cash = ejecutar_analisis(base).decision.precios.detalle["coste_capital"]
-    hip = ejecutar_analisis(con_hipoteca(base)).decision.precios.detalle["coste_capital"]
-    assert 0 < hip < cash
+    r = ejecutar_analisis(con_hipoteca(base))
+    e, c = r.decision.precios, r.costes
+    esperado = fiscal.inversion(e.p_max, c, c.c_f_p80) - 0.7 * e.p_max
+    assert e.detalle["capital_propio"] == pytest.approx(esperado, abs=1.0)
+    assert e.detalle["coste_capital"] == pytest.approx(
+        0.015 * e.detalle["capital_propio"] * c.plazo_meses_p80 / 12, abs=0.01)
+    assert e.detalle["coste_capital"] < ejecutar_analisis(base).decision.precios.detalle["coste_capital"]
 
 
 def test_con_mas_ltv_menos_coste_de_capital():
