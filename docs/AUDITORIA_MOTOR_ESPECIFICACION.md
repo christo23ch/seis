@@ -19,6 +19,20 @@ importes van redondeados al euro salvo que se indique. «Cambia el caso dorado»
 cambiaría algún valor que hoy fija un test (`test_golden_caso19.py`, `test_informe_coherencia.py`,
 `test_coste_capital_5g4.py`).
 
+## Estado tras la Fase 5H.1 (2026-10-04)
+
+| Punto | Estado | Commits | Decisión |
+|---|---|---|---|
+| E6 · VAN y diferencial TIR − coste de capital | ✅ Resuelto | `31dd511` | [ADR-0017](../30-Decisiones/ADR/ADR-0017-van-y-diferencial-tir-frente-al-coste-de-capital.md) |
+| E1 · D5, coste de capital solo sobre el capital propio | ✅ Resuelto (la parte del plazo de los intereses, no: ESTADO_ACTUAL, Backend 19) | `5cb0634`, `1386faa` | [ADR-0018](../30-Decisiones/ADR/ADR-0018-coste-de-capital-solo-sobre-el-capital-propio.md) |
+| E5 · Colchón de plazo | ✅ Resuelto (el coste del depósito, no) | `f2bc04a` | [ADR-0019](../30-Decisiones/ADR/ADR-0019-colchon-de-plazo.md) |
+| E7 punto 5 · §9.1 definido y §19 regenerado (E2 a, H3) | ✅ Resuelto | 5H.1-D | especificación §7.7, §9.1, §9.5 y §19 |
+| E3, E2 b, E5 depósito, E4, E8 | Pendientes (5H.2) | — | — |
+
+Medidas tras la 5H.1, caso §19: VAN al coste de capital 33.230,42 €, TIR − coste de capital
++32,37 puntos, colchón de plazo 84,8 meses a P_objetivo y 60,9 a P_max; ningún valor existente
+cambió (guarda `tests/test_invariante_5h1.py`). Caso con hipoteca: P_límite 77.100 → 78.156 €.
+
 ## Resumen
 
 | Punto | Qué pasa | ¿Cambia el caso dorado al corregirlo? | Tamaño |

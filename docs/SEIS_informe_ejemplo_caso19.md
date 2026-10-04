@@ -14,11 +14,11 @@
 | **Precio objetivo** | 60.011 € |
 | **Precio máximo recomendado** | 68.731 € |
 | **Precio límite absoluto** | 80.022 € — infranqueable |
-| ROI base (a P objetivo) | 25.0% (22.9% anualizado) |
-| TIR anual | 33.9% |
-| Margen de seguridad (caída de VS soportable) | 24.8% |
+| ROI base (a P objetivo) | 25,0 % (22,9 % anualizado) |
+| TIR anual | 33,9 % |
+| Margen de seguridad (caída de VS soportable) | 24,8 % |
 | Valor esperado (3 escenarios) | 32.361 € |
-| P. adjudicación esperado · RVC | 63.840 € · **1.08** (alcanzable) |
+| P. adjudicación esperado · RVC | 63.840 € · **1,08** (alcanzable) |
 
 **Razones principales:** ICO 64 en banda 60–74 o límites de Verde no alcanzados
 
@@ -31,16 +31,16 @@
 - (ninguno)
 
 ## 2 · Activo y subasta
-Vivienda de 82 m² en Ciudad Ejemplo (Ejemplo), estado malo. Subasta judicial_boe, valor de subasta 152.000 €, depósito 5%. Ocupación declarada: precario.
+Vivienda de 82 m² en Ciudad Ejemplo (Ejemplo), estado malo. Subasta judicial_boe, valor de subasta 152.000 €, depósito 5 %. Ocupación declarada: precario.
 
 ## 3 · Valoración
-Método comparables_ajustados con 7 comparables (CV 5.3%, confianza 76%). VM actual 135.379 € · VS de salida 188.026 € (2.293 €/m²) · δ_v aplicado 6.0% ⇒ **VS prudente 176.744 €**.
+Método comparables_ajustados con 7 comparables (CV 5,3 %, confianza 76 %). VM actual 135.379 € · VS de salida 188.026 € (2.293 €/m²) · δ_v aplicado 6,0 % ⇒ **VS prudente 176.744 €**.
 
 ## 4 · Mercado y ubicación
-ICU 66 (macro 73 · micro 62). Tendencia +3.0 %/a · DOM venta 75 d · DOM alquiler 25 d · Potencial de revalorización 58/100.
+ICU 66 (macro 73 · micro 62). Tendencia +3,0 %/a · DOM venta 75 d · DOM alquiler 25 d · Potencial de revalorización 58/100.
 
 ## 5 · Plan de obra y costes
-Reforma nivel **media**: 50.053 € (P50) / 61.064 € (P80), 3 meses de obra. c_v = 6.40% (ITP). Plazo total 13 m (P50) / 18 m (P80). Contingencia 10%.
+Reforma nivel **media**: 50.053 € (P50) / 61.064 € (P80), 3 meses de obra. c_v = 6,40 % (ITP). **Base imponible del impuesto calculada sobre la puja, como suelo: no consta valor de referencia del Catastro ni valor declarado.** La base legal es el mayor de los tres, así que el impuesto aquí es un MÍNIMO y el real puede ser mayor. Supuesto no verificado, no dato confirmado. Plazo total 13 m (P50) / 18 m (P80). Contingencia 10 %.
 
 | Partida C_F (P50) | Importe |
 |---|---|
@@ -73,16 +73,22 @@ Riesgo agregado **RA 40** (banda medio, dominancia: una_alta).
 ## 7 · Análisis financiero (a precio objetivo 60.011 €)
 | Escenario | Prob. | VS | Coste total | Beneficio | ROI | ROI anual | Plazo |
 |---|---|---|---|---|---|---|---|
-| pesimista | 25% | 160.837 € | 151.559 € | 9.278 € | 6.1% | 4.0% | 18 m |
-| base | 55% | 176.744 € | 141.396 € | 35.349 € | 25.0% | 22.9% | 13 m |
-| optimista | 20% | 186.996 € | 133.996 € | 53.000 € | 39.6% | 43.6% | 11 m |
+| pesimista | 25 % | 160.837 € | 151.559 € | 9.278 € | 6,1 % | 4,0 % | 18 m |
+| base | 55 % | 176.744 € | 141.396 € | 35.349 € | 25,0 % | 22,9 % | 13 m |
+| optimista | 20 % | 186.996 € | 133.996 € | 53.000 € | 39,6 % | 43,6 % | 11 m |
+
+El coste de capital (1,5 % anual, coste de oportunidad del capital propio) solo se descuenta del precio límite (§9.1); ROI y TIR no lo incluyen. Importe aplicado: 3.659 €.
+
+VAN al coste de capital (1,5 %): 33.230 € · TIR frente a coste de capital: +32,37 puntos
+
+Colchón de plazo: 84,8 meses a precio objetivo (60,9 a precio máximo), hasta beneficio cero por tenencia y coste de capital.
 
 ## 8 · Estrategia de puja
-Ratio histórico del segmento: 42% sobre valor de subasta.
-- Cargar límites en la interfaz antes de abrir la puja: objetivo 60,011 € · máximo 68,731 € · límite absoluto 80,022 € (infranqueable por software)
+Ratio histórico del segmento: 42 % sobre valor de subasta.
+- Cargar límites en la interfaz antes de abrir la puja: objetivo 60.011 € · máximo 68.731 € · límite absoluto 80.022 € (infranqueable por software)
 - Pujar siempre el tramo mínimo; sin pujas psicológicas redondas
 - Entrar tarde con límites precargados: la extensión automática del cierre neutraliza el sniping; la ventaja es la disciplina
-- Depósito requerido: 7,600 € (5% del valor de subasta)
+- Depósito requerido: 7.600 € (5 % del valor de subasta)
 - Si aparece información nueva durante la subasta, re-análisis exprés; si el semáforo cae, retirada
 
 **Riesgo de ejecución del proceso:**
@@ -94,6 +100,7 @@ Ratio histórico del segmento: 42% sobre valor de subasta.
 ## 9 · Checklist previo a la puja — bloqueantes pendientes
 - [ ] **[B]** Nota simple actualizada ≤ 5 días antes del cierre, cotejada con el edicto — _Antigüedad declarada: 10 días_
 - [ ] **[B]** Situación posesoria verificada según árbol §8.7.2 — _Estado declarado: precario_
+- [ ] **[B]** Tributación de la adquisición determinada (árbol §8.7.3) y aplicada en c_v — _Régimen calculado por el motor según los datos declarados; base imponible tomada de la puja por no constar valor de referencia: el impuesto es un mínimo_
 - [ ] **[B]** Depósito disponible y transferido en plazo — _7.600 €_
 
 ## 10 · Trazabilidad

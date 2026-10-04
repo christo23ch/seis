@@ -19,6 +19,61 @@ convertirse en un SaaS. Lo anterior está en el historial de git.
 
 ---
 
+## [Fase 5H.1] — Motor: VAN, coste de capital sobre el capital propio, colchón de plazo y especificación coherente — 2026-10-04
+
+Puntos de la auditoría 5G.4 que **no cambian el caso dorado** (`docs/AUDITORIA_MOTOR_ESPECIFICACION.md`,
+E1, E5, E6 y el punto 5 del orden E7), con autorización expresa para tocar `app/engine/`.
+**Guarda invariante de toda la fase:** `tests/datos/invariante_5h1.json` es la foto del
+resultado completo del §19 y del §19 con hipoteca tomada antes de empezar; el §19 no cambió ni
+una de sus 510 hojas, y el caso con hipoteca solo las cuatro que justifica D5. Cada bloque pasó
+por el agente `code-reviewer` (0 críticos, 0 altos en B y C). Suite al cerrar: 965 passed,
+18 skipped, 0 failed; CI en verde en cada bloque.
+
+### 5H.1-A · VAN y diferencial TIR frente al coste de capital (`31dd511`, ADR-0017)
+
+#### Añadido
+- M11 calcula, con los mismos flujos que la TIR (escenario base, P_objetivo),
+  `van_coste_capital` y `diferencial_tir_coste_capital` (puntos). Tasa efectiva anual llevada a
+  mensual con `(1+cc)^(1/12) − 1`, la misma equivalencia que la TIR: VAN = 0 cuando cc = TIR.
+  Informativos. §19: **33.230 € y +32,37 puntos**.
+- Informe (§7), «Métricas de decisión» y comparación de simulaciones.
+- `tests/test_golden_caso19.py`: la entrada pasa a la función `entrada_caso_19()` (mismos 52
+  assert y 14 tests) para que la guarda y sus scripts la reutilicen.
+
+### 5H.1-B · Coste de capital solo sobre el capital propio (`5cb0634`, `1386faa`, ADR-0018)
+
+#### Corregido
+- **Con hipoteca, el precio límite cobraba dos veces la parte financiada** (intereses en `c_v`
+  y coste de oportunidad sobre toda la inversión). Ahora
+  `coste_capital = cc · max(0, I(P_max, C_F^P80) − LTV·P_max) · plazo_P80/12`. Sin hipoteca,
+  idéntico. Caso con hipoteca (LTV 70 %, 3,5 %): coste de capital 3.659,05 → 2.603,76 € y
+  **P_límite 77.100 → 78.156 €**. `detalle["capital_propio"]` guarda la base.
+- `1386faa`: correcciones de la revisión de código (el test del `max(0, …)` no saturaba con
+  LTV 1,2; test de compra al contado con LTV informado; test del rentista con la fórmula).
+
+### 5H.1-C · Colchón de plazo (`f2bc04a`, ADR-0019)
+
+#### Añadido
+- §9.5: meses extra hasta beneficio base cero por tenencia, intereses del préstamo y coste de
+  oportunidad del capital propio, a P_objetivo y a P_max. Informativo. §19: **84,8 meses
+  (60,9 a P_max)**. `None` con escalera degenerada o sin coste mensual.
+- Informe, «Métricas de decisión» y comparación de simulaciones.
+
+### 5H.1-D · Especificación coherente con el motor
+
+#### Cambiado
+- Especificación: §9.1 define `coste_capital` (con D5); §7.7 añade VAN_cc y Δ_cc; §9.5 concreta
+  el colchón; **§19 regenerado con las cifras reales del motor** y un recuadro de qué cambió y
+  por qué (C_F^P80 85.060/86.800 → 87.708 €, coste de capital 3.659 €, P_límite 82.500 →
+  80.022 €, «TIR ≈ 23 %» era el ROI anualizado: ROI anualizado 22,9 % y TIR 33,9 %).
+- `docs/SEIS_informe_ejemplo_caso19.md` regenerado: era anterior a la corrección del ITP y a la
+  5G.2. Lo leen los tests del PDF (en verde).
+- `ESTADO_ACTUAL` §4: cerrada Backend 16 y la 18 en parte; nuevas Backend 19-21 y Pruebas 5.
+- Auditoría: estado punto a punto tras la 5H.1. Vault: notas `40-Fases/Fase-5G-4`,
+  `40-Fases/Fase-5H-1` y `02-Diario/2026-10-04`.
+
+---
+
 ## [Fase 5G.4] — Coste de capital, decimales en formato español y e2e en CI — 2026-10-01
 
 Decisiones del responsable D1–D5 sobre `capital.coste_capital_anual`, registradas en

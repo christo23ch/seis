@@ -10,8 +10,8 @@
 
 ## Frentes abiertos
 
-**Actualizado:** 2026-10-01 · **Rama de trabajo:** `checkpoint/5f6-simulaciones-informes` · **Suite (SQLite):** 922 passed, 18 skipped, 0 failed (9 de los omitidos son las variantes DejaVu de 5G.1/5G.2, que sí corren en CI) · **E2E:** alta y simulaciones en la CI (job `e2e`, 5G.4-C)
-**Última fase cerrada:** 5G.4 (coste de capital como coste de oportunidad, decimales en formato español, e2e en CI; ADR-0016) · **Siguiente:** 5H, preparada en `docs/AUDITORIA_MOTOR_ESPECIFICACION.md` · **Puerta: ABIERTA**
+**Actualizado:** 2026-10-04 · **Rama de trabajo:** `checkpoint/5f6-simulaciones-informes` · **Suite (SQLite):** 965 passed, 18 skipped, 0 failed (9 de los omitidos son las variantes DejaVu de 5G.1/5G.2, que sí corren en CI) · **E2E:** alta y simulaciones en la CI (job `e2e`, 5G.4-C)
+**Última fase cerrada:** 5H.1 (VAN y diferencial, coste de capital solo sobre el capital propio, colchón de plazo, especificación coherente con el motor; ADR-0017 a 0019) · **Siguiente:** 5H.2, los puntos de la auditoría que SÍ cambian el caso dorado (`docs/AUDITORIA_MOTOR_ESPECIFICACION.md` §E7) · **Puerta: ABIERTA**
 
 ### Estado a 2026-09-30
 
@@ -341,6 +341,11 @@ Los **nueve** endpoints que devuelven o crean datos de análisis filtran por
   `9c41bbe`.
 - ~~La Escalera de precios desbordaba 8 px a 390 px en Linux/macOS~~ → `b74abd0`: escalones que
   encogen por debajo de `sm`. La e2e mide ahora también con la monoespaciada ancha forzada.
+- ~~Con hipoteca, el precio límite contaba dos veces la parte financiada (Backend 16)~~ → 5H.1-B
+  (`5cb0634`, `1386faa`, ADR-0018): coste de capital solo sobre el capital propio.
+- ~~`coste_capital()` sin definir, §19 irreproducible, «TIR ≈ 23 %» mal etiquetada, colchón de
+  plazo sin implementar, sin VAN (Backend 18, en parte)~~ → 5H.1-A/C/D: VAN y diferencial
+  (ADR-0017), colchón (ADR-0019), §9.1 definido y §19 regenerado con las cifras del motor.
 - ~~El PDF oficial no lleva su id, fecha ni procedencia (deuda D5)~~ → 5G.1: cabecera, bloque
   inicial y pie con la identificación leída de la fila `Informe`; la vista previa de
   `/informe.pdf` lleva «VISTA PREVIA — NO OFICIAL».
@@ -385,17 +390,25 @@ Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VER
     conservan por diseño (Markdown congelado).
 
 15. *(Resuelta en 5G.4-B: ver «Cerrada» arriba.)*
-16. **Con hipoteca, el precio límite cuenta dos veces el coste de la parte financiada**: los
-    intereses ya están en `c_v` (M06) y el coste de capital se aplica sobre toda la inversión.
-    Decisión D5 del ADR-0016, pendiente de implementar en la **5H** (auditoría, E1).
+16. *(Resuelta en 5H.1-B: ver «Cerrada» arriba.)*
 17. **El «depósito del 5%» de la condición de la regla T2 `SEM-EJEC-01`** sale sin espacio
     antes de «%». Es texto de una regla versionada (`rules/catalogo.yaml`), no de un módulo:
     corregirlo exige una versión nueva de la regla. `test_formato_espanol_5g4.py` lo tiene
     localizado como única excepción.
-18. **Puntos del motor frente a la especificación**, sin corregir: `coste_capital()` sin
-    definir en la especificación, TIR del §19 (≈23 %) frente a la del motor (33,87 %), el
-    perfil rentista resta coste de capital y §9.2 no, y «colchón de plazo» y coste del depósito
-    sin implementar. Detalle, medidas y orden propuesto en `docs/AUDITORIA_MOTOR_ESPECIFICACION.md`.
+18. **Puntos de la auditoría que quedan para la 5H.2** (todos cambian el caso dorado o
+    necesitan decisión): calendario de la TIR con los plazos reales de M06 (E3), nueva
+    definición del precio límite (E2 b), coste del depósito (E5), perfil rentista según §9.2
+    (E4) y rentabilidad del ICO (E8). Estado punto a punto en
+    `docs/AUDITORIA_MOTOR_ESPECIFICACION.md`.
+19. **Los intereses del préstamo se calculan a plazo P50 dentro de un precio límite estresado a
+    P80** (`m06_costes.py:78`): −774 € de P_límite bruto en el caso con hipoteca si se usara P80.
+    Fuera de la 5H.1 (ADR-0018, alcance 1): cambia `c_v`, que es único para toda la escalera.
+20. **`financiacion.ltv` no tiene validación** (`contracts.py`, `ltv: float = 0.0`): acepta
+    negativos o mayores que 1. El coste de capital y el colchón ya no dan abonos (`max(0, …)`),
+    pero M06 y M09 calculan con el valor tal cual. Señalado en la revisión de código de 5H.1-B.
+21. **Supuestos revisables del colchón de plazo** (ADR-0019): beneficio base y no pesimista, y
+    sin descontar el coste de oportunidad del plazo ya previsto. Si se quiere una lectura más
+    prudente, el ADR describe la alternativa.
 
 **Frontend**
 
@@ -439,6 +452,11 @@ Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VER
    de prueba no tenía deriva de conocimiento.
 4. [VERIFICAR: qué son los 9 tests omitidos en SQLite — en septiembre eran 8, los exclusivos de
    PostgreSQL.]
+5. **Carrera en el paso 4 de `simulaciones.mjs`** (intermitente, anterior a la 5H.1): tras ver
+   «En uso» en la lista, lee el aviso de configuración sin esperar a que su consulta se
+   refresque. Falló una vez en local en la 5H.1-B y pasó al repetir. Corrección propuesta:
+   esperar con `waitForFunction` hasta que el aviso diga «Mostrando la simulación», como ya
+   hace el paso 6.
 
 **Entorno**
 
