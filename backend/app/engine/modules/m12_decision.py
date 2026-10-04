@@ -124,13 +124,21 @@ def calcular_escalera(inp: AnalisisInput, params, banda_ra: str, vs_p: float,
     p_lim_bruto = fiscal.resolver_por_tramos(
         costes, lambda c_v_ef, extra: (vs_p - cf80 - extra) / (1 + c_v_ef))
     i_aprox = fiscal.inversion(p_max, costes, cf80)
-    coste_capital = cc_anual * i_aprox * (costes.plazo_meses_p80 / 12.0)
+    # Fase 5H.1-B (ADR-0016 D5, auditoría E1): el coste de oportunidad solo se cobra al
+    # capital PROPIO. La parte financiada (LTV · P_max) ya paga su coste real como intereses
+    # dentro de `c_v` (M06); antes se le cobraba además este coste. Sin hipoteca, LTV = 0 y
+    # la fórmula es la de siempre.
+    f = inp.financiacion
+    financiado = f.ltv * p_max if f.tipo == "hipoteca" else 0.0
+    capital_propio = max(0.0, i_aprox - financiado)
+    coste_capital = cc_anual * capital_propio * (costes.plazo_meses_p80 / 12.0)
     p_lim = p_lim_bruto - coste_capital
     if perfil["tipo"] == "rentista":
         p_lim = min(p_lim, p_lim_rent) if p_lim_rent > 0 else p_lim
     # Fase 5G.4: la tasa viaja junto al importe para que el resultado explique de
     # dónde sale (informe e interfaz); es trazabilidad, no entra en ningún cálculo.
-    detalle.update({"coste_capital": round(coste_capital, 2), "coste_capital_anual": cc_anual})
+    detalle.update({"coste_capital": round(coste_capital, 2), "coste_capital_anual": cc_anual,
+                    "capital_propio": round(capital_propio, 2)})
 
     escalera = EscaleraPrecios(
         p_ideal=round(p_ideal), p_objetivo=round(p_obj), p_max=round(p_max),

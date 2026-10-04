@@ -26,7 +26,16 @@ from tests.test_golden_caso19 import entrada_caso_19
 FOTO = json.loads((Path(__file__).parent / "datos" / "invariante_5h1.json").read_text(encoding="utf-8"))
 
 # Ruta → valor nuevo. Cada entrada, con el bloque de la 5H.1 que la justifica.
-CAMBIOS_HIPOTECA: dict[str, object] = {}
+CAMBIOS_HIPOTECA: dict[str, object] = {
+    # 5H.1-B (D5, auditoría E1): el coste de capital deja de cobrarse a la parte financiada
+    # (0,7 · P_max). 3.659,05 − 2.603,76 = 1.055,29 €, y el límite sube 1.056 € al redondear.
+    "decision.precios.detalle.coste_capital": 2603.76,
+    "decision.precios.p_limite": 78156.0,
+    # 5H.1-B: los dos textos que citan el límite, y solo esa cifra.
+    "checklist[17].detalle": "Objetivo 57.812 € · Máx 66.266 € · Límite 78.156 €",
+    "puja.plan[0]": ("Cargar límites en la interfaz antes de abrir la puja: objetivo 57.812 € · "
+                     "máximo 66.266 € · límite absoluto 78.156 € (infranqueable por software)"),
+}
 
 
 def con_hipoteca(entrada: AnalisisInput) -> AnalisisInput:

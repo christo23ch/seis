@@ -370,8 +370,9 @@ PARAMETROS_FIJOS.append(ParametroCatalogo(
     descripcion=(
         "Coste de oportunidad del capital propio: lo que rendiría ese dinero en "
         "otra inversión de riesgo comparable. Se descuenta del precio límite: "
-        "coste_capital = cc_anual · inversión_aprox · plazo_p80/12 (§9.1), con la "
-        "inversión aproximada a P_max y costes P80, en interés simple."
+        "coste_capital = cc_anual · capital_propio · plazo_p80/12 (§9.1), en interés "
+        "simple, con capital_propio = inversión a P_max con costes P80 menos la parte "
+        "financiada (LTV · P_max, solo con hipoteca; ADR-0018)."
     ),
     unidad="fracción anual (0–1)",
     editable=True,
