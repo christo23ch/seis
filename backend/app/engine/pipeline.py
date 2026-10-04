@@ -111,6 +111,12 @@ def ejecutar_analisis(inp: AnalisisInput, params: Parametros | None = None,
     decision = DecisionFinal(
         semaforo=semaforo, ico=ico, ico_desglose=ico_desglose, ra=ra_res.ra, ici=ici.ici,
         icu=icu.icu, precios=escalera, margen_seguridad_valor=round(ms_valor, 4),
+        # Fase 5H.1-C (§9.5): colchón de plazo a P_objetivo y a P_max; informativo. Con la
+        # escalera degenerada no hay precios utilizables (y pueden ser ≤ 0): no se calcula.
+        colchon_plazo_meses=None if escalera.degenerada else m11_rentabilidad.colchon_plazo(
+            escalera.p_objetivo, costes, vs_p, inp, float(params.get("capital.coste_capital_anual"))),
+        colchon_plazo_meses_p_max=None if escalera.degenerada else m11_rentabilidad.colchon_plazo(
+            escalera.p_max, costes, vs_p, inp, float(params.get("capital.coste_capital_anual"))),
         rvc=puja.rvc, p_adj_esperado=puja.p_adj_esperado, vetos=vetos,
         condiciones=sorted(set(condiciones)), techos_aplicados=sorted(set(techos)),
         razones=razones, version_reglas=version_reglas, version_parametros=params.version,

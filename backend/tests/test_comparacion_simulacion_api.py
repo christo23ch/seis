@@ -21,7 +21,9 @@ CAMPOS_RESULTADO = {"semaforo", "ico", "ra", "ici", "icu", "p_ideal", "p_objetiv
                     "p_limite", "rvc", "p_adj_esperado", "margen_seguridad_valor",
                     "escalera_degenerada",
                     # Fase 5H.1-A (ADR-0017): informativos de M11.
-                    "van_coste_capital", "diferencial_tir_coste_capital"}
+                    "van_coste_capital", "diferencial_tir_coste_capital",
+                    # Fase 5H.1-C (§9.5, ADR-0019): colchón de plazo a P_objetivo.
+                    "colchon_plazo_meses"}
 _RUTA_RESULTADO = {c: ("decision", c) for c in CAMPOS_RESULTADO}
 _RUTA_RESULTADO.update({c: ("decision", "precios", c)
                         for c in ("p_ideal", "p_objetivo", "p_max", "p_limite")})

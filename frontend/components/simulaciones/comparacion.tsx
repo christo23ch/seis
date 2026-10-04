@@ -158,6 +158,8 @@ const CAMPOS: { campo: Campo; etiqueta: string; formato: (v: number) => string }
   // Fase 5H.1-A (ADR-0017): informativos; «—» si el resultado no los trae.
   { campo: "van_coste_capital", etiqueta: "VAN al coste de capital", formato: eur },
   { campo: "diferencial_tir_coste_capital", etiqueta: "TIR − coste de capital", formato: (v) => puntos(v) },
+  // Fase 5H.1-C (§9.5, ADR-0019): colchón de plazo a precio objetivo.
+  { campo: "colchon_plazo_meses", etiqueta: "Colchón de plazo", formato: (v) => `${num(v, 1)} meses` },
 ];
 
 function Resultado({ original, simulacion }: { original: ResumenResultadoComparado; simulacion: ResumenResultadoComparado }) {

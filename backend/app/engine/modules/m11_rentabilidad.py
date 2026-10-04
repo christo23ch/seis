@@ -96,6 +96,30 @@ def _van(flujos: list[float], tasa_anual: float) -> float:
     return sum(f / (1 + r) ** t for t, f in enumerate(flujos))
 
 
+def colchon_plazo(p: float, costes: CostesResultado, vs_p: float, inp: AnalisisInput,
+                  cc_anual: float) -> float | None:
+    """Colchón de plazo (§9.5, Fase 5H.1-C, ADR-0019): meses EXTRA que aguanta la operación,
+    a precio `p`, antes de que el beneficio base llegue a cero.
+
+        B(P) / (tenencia_mensual + intereses_mensuales(P) + cc · capital_propio(P) / 12)
+
+    con B(P) = VS_p − I(P, C_F^P50) (escenario base, no el pesimista), capital propio como
+    en el precio límite (D5, ADR-0018) y, con hipoteca, los intereses del préstamo que cada
+    mes de más genera. Sin beneficio ⇒ 0; sin coste mensual que lo agote ⇒ `None`.
+    Informativo: no entra en el ICO, el semáforo ni la escalera.
+    """
+    f = inp.financiacion
+    i_total = fiscal.inversion(p, costes, costes.c_f_p50)
+    beneficio = vs_p - i_total
+    financiado = f.ltv * p if f.tipo == "hipoteca" else 0.0
+    intereses = financiado * (f.interes_anual_pct / 100.0) / 12.0
+    capital_propio = max(0.0, i_total - financiado)
+    mensual = costes.tenencia_mensual + intereses + cc_anual * capital_propio / 12.0
+    if mensual <= 0:
+        return None
+    return round(max(0.0, beneficio) / mensual, 1)
+
+
 def construir_escenarios(inp: AnalisisInput, params, hechos: dict, val: ValoracionResultado,
                          costes: CostesResultado, vs_p: float, banda_ra: str,
                          potencial: int, ici: int) -> list[ParametrosEscenario]:

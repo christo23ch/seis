@@ -11,6 +11,8 @@ export interface Decision {
   precios: Precios; margen_seguridad_valor: number; rvc: number; p_adj_esperado: number;
   vetos: Veto[]; condiciones: string[]; techos_aplicados: string[]; razones: string[];
   version_reglas: string; version_parametros: string;
+  /** Fase 5H.1-C (§9.5, ADR-0019): meses hasta beneficio cero; ausentes en resultados anteriores. */
+  colchon_plazo_meses?: number | null; colchon_plazo_meses_p_max?: number | null;
 }
 
 export interface Resultado {
@@ -140,6 +142,8 @@ export interface ResumenResultadoComparado {
   escalera_degenerada: boolean | null;
   /** Fase 5H.1-A (ADR-0017): VAN al coste de capital (€) y TIR − coste de capital (puntos). */
   van_coste_capital: number | null; diferencial_tir_coste_capital: number | null;
+  /** Fase 5H.1-C (§9.5, ADR-0019): colchón de plazo a precio objetivo, en meses. */
+  colchon_plazo_meses: number | null;
 }
 
 /** `GET /analisis/{id}/simulaciones/{sid}/comparacion` (Fase 5F.7.3). */

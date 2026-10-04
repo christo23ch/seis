@@ -196,6 +196,14 @@ def construir_informe(inp: AnalisisInput, res_parciales: dict, dec: DecisionFina
         f"\n\nVAN al coste de capital ({_tasa(cc_anual)}): {_eur(van)} · "
         f"TIR frente a coste de capital: {_dec(dif, 2, signo=True)} puntos"
         if van is not None and dif is not None and cc_anual is not None else "")
+    # Fase 5H.1-C (§9.5, ADR-0019): colchón de plazo. Sin dato, nada.
+    colchon, colchon_max = (getattr(dec, "colchon_plazo_meses", None),
+                            getattr(dec, "colchon_plazo_meses_p_max", None))
+    nota_colchon = (
+        f"\n\nColchón de plazo: {_dec(colchon, 1)} meses a precio objetivo"
+        + (f" ({_dec(colchon_max, 1)} a precio máximo)" if colchon_max is not None else "")
+        + ", hasta beneficio cero por tenencia y coste de capital."
+        if colchon is not None else "")
 
     return f"""# Informe de análisis SEIS
 
@@ -254,7 +262,7 @@ Riesgo agregado **RA {dec.ra}** (banda {ra.banda}{", dominancia: " + ra.dominanc
 ## 7 · Análisis financiero (a precio objetivo {_eur(dec.precios.p_objetivo)})
 | Escenario | Prob. | VS | Coste total | Beneficio | ROI | ROI anual | Plazo |
 |---|---|---|---|---|---|---|---|
-{filas_esc}{nota_coste_capital}{nota_van}
+{filas_esc}{nota_coste_capital}{nota_van}{nota_colchon}
 
 ## 8 · Estrategia de puja
 Ratio histórico del segmento: {_pct(puja.ratio_base, 0)} sobre valor de subasta.

@@ -173,6 +173,8 @@ _RESUMEN_RESULTADO: dict[str, tuple[str, ...]] = {
     # Fase 5H.1-A (ADR-0017): informativos de M11; `null` en resultados anteriores.
     "van_coste_capital": ("rentabilidad", "van_coste_capital"),
     "diferencial_tir_coste_capital": ("rentabilidad", "diferencial_tir_coste_capital"),
+    # Fase 5H.1-C (§9.5, ADR-0019): colchón de plazo a precio objetivo; `null` si falta.
+    "colchon_plazo_meses": ("decision", "colchon_plazo_meses"),
 }
 
 

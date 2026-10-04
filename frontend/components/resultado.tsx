@@ -248,6 +248,9 @@ export function MetricasClave({ res }: { res: Resultado }) {
     ...(r.van_coste_capital != null ? [["VAN al coste de capital", eur(r.van_coste_capital)] as [string, string]] : []),
     ...(r.diferencial_tir_coste_capital != null
       ? [["TIR − coste de capital", puntos(r.diferencial_tir_coste_capital)] as [string, string]] : []),
+    // Fase 5H.1-C (§9.5, ADR-0019): meses hasta beneficio cero, a precio objetivo.
+    ...(d.colchon_plazo_meses != null
+      ? [["Colchón de plazo", `${num(d.colchon_plazo_meses, 1)} meses`] as [string, string]] : []),
   ];
   return (
     <Card>

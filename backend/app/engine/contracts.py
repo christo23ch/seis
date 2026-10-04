@@ -385,6 +385,11 @@ class DecisionFinal(BaseModel):
     razones: list[str]
     version_reglas: str
     version_parametros: str
+    # Fase 5H.1-C (§9.5, ADR-0019): meses extra hasta beneficio base cero por tenencia y
+    # coste de capital, a P_objetivo y a P_max. Informativo; `None` en resultados anteriores
+    # o si no hay ningún coste mensual que agote el beneficio.
+    colchon_plazo_meses: float | None = None
+    colchon_plazo_meses_p_max: float | None = None
 
 
 class AnalisisResult(BaseModel):

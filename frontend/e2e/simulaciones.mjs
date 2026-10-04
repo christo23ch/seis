@@ -140,6 +140,9 @@ try {
   const dif = metricas.match(/TIR − coste de capital ([+-]\d+,\d{2} puntos)/);
   comprobar(van !== null, `1. métricas: VAN al coste de capital ${van ? van[1] : "(no aparece o sin formato español)"}`);
   comprobar(dif !== null, `1. métricas: TIR − coste de capital ${dif ? dif[1] : "(no aparece o sin formato español)"}`);
+  // Fase 5H.1-C (§9.5, ADR-0019): colchón de plazo con coma decimal («84,8 meses»).
+  const colchon = metricas.match(/Colchón de plazo (\d+(?:,\d)? meses)/);
+  comprobar(colchon !== null, `1. métricas: colchón de plazo ${colchon ? colchon[1] : "(no aparece o sin formato español)"}`);
 
   // 2. Nueva simulación con coma decimal.
   await pestana(p, "Simulaciones");
