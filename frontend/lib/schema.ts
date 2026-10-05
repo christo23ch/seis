@@ -1,115 +1,155 @@
 import { z } from "zod";
+import { aNumero, limpiarVacios } from "@/lib/formulario";
 
-const num = z.coerce.number();
-const optNum = z.preprocess(
-  (v) => (v === "" || v === null || v === undefined || (typeof v === "number" && Number.isNaN(v)) ? undefined : v),
-  z.coerce.number().optional(),
-);
+/* ── campos numéricos ──────────────────────────────────────────────────────
+ * Fase 5I: TODO número del formulario pasa por `aNumero` (coma decimal, punto de
+ * miles) y nunca por `z.coerce.number()`, que convertía un campo vacío en 0 y un
+ * texto cualquiera en NaN sin avisar.
+ *
+ *   · `requerido`: obligatorio para el contrato (`AnalisisInput`) o para el
+ *     asistente. Vacío ⇒ «Campo obligatorio».
+ *   · `opcional`: vacío ⇒ `undefined` ⇒ el campo NO se envía, y el backend aplica
+ *     su valor por defecto o lo trata como dato ausente (P4/P5). Los que tienen un
+ *     valor inicial en `valoresIniciales` son opcionales igualmente: vaciarlos es
+ *     volver al valor por defecto del contrato, no un error.
+ */
+export const MENSAJES = {
+  obligatorio: "Campo obligatorio",
+  numero: "Introduzca un número",
+  entero: "Introduzca un número entero",
+  positivo: "Debe ser mayor que cero",
+  noNegativo: "No puede ser negativo",
+  porcentaje: "Debe estar entre 0 y 100",
+} as const;
+
+type Ajuste = (n: z.ZodNumber) => z.ZodNumber;
+const tal: Ajuste = (n) => n;
+const base = () => z.number({ required_error: MENSAJES.obligatorio, invalid_type_error: MENSAJES.numero });
+const requerido = (ajuste: Ajuste = tal) => z.preprocess((v) => aNumero(v), ajuste(base()));
+const opcional = (ajuste: Ajuste = tal) => z.preprocess((v) => aNumero(v), ajuste(base()).optional());
+/** Opcional en el que el punto es SIEMPRE decimal: tasas, coeficientes y
+ * coordenadas («3.500» de interés es 3,5, no 3500). Ver `aNumero`. */
+const decimal = (ajuste: Ajuste = tal) =>
+  z.preprocess((v) => aNumero(v, { puntoDeMiles: false }), ajuste(base()).optional());
+
+const positivo: Ajuste = (n) => n.positive(MENSAJES.positivo);
+const noNegativo: Ajuste = (n) => n.min(0, MENSAJES.noNegativo);
+const enteroNoNegativo: Ajuste = (n) => n.int(MENSAJES.entero).min(0, MENSAJES.noNegativo);
+const porcentaje: Ajuste = (n) => n.min(0, MENSAJES.porcentaje).max(100, MENSAJES.porcentaje);
+const indicador: Ajuste = (n) => n.min(0).max(100);
+const variacion: Ajuste = (n) => n.min(-100, "Debe estar entre -100 y 100").max(100, "Debe estar entre -100 y 100");
 
 export const esquemaAnalisis = z.object({
-  perfil: z.string().min(1),
+  perfil: z.string().min(1, MENSAJES.obligatorio),
   subasta: z.object({
-    fuente: z.string().min(1),
-    valor_subasta: num.positive("Introduzca el valor de subasta"),
-    puja_minima: optNum,
-    deposito_pct: num.min(0).max(100),
-    horas_hasta_cierre: optNum,
-    subastas_desiertas_previas: num.int().min(0),
+    fuente: z.string().min(1, MENSAJES.obligatorio),
+    valor_subasta: requerido(positivo),
+    puja_minima: opcional(positivo),
+    deposito_pct: decimal(porcentaje),
+    horas_hasta_cierre: opcional(noNegativo),
+    subastas_desiertas_previas: opcional(enteroNoNegativo),
     identificador_externo: z.string().optional(),
   }),
   activo: z.object({
     tipologia: z.string(),
-    superficie_m2: num.positive("Superficie requerida"),
+    superficie_m2: requerido(positivo),
     estado_conservacion: z.string(),
-    anio_construccion: optNum,
+    anio_construccion: opcional((n) => n.int(MENSAJES.entero).min(1500, "Año no válido").max(2100, "Año no válido")),
     es_vivienda_habitual: z.boolean(),
     vpo: z.boolean(),
-    vpo_precio_max_legal: optNum,
+    vpo_precio_max_legal: opcional(positivo),
     ref_catastral: z.string().optional(),
     finca_registral: z.string().optional(),
     direccion: z.string().optional(),
-    municipio: z.string().min(1, "Municipio requerido"),
+    municipio: z.string().trim().min(1, MENSAJES.obligatorio),
     provincia: z.string(),
-    ccaa: z.string().min(1),
-    lat: optNum,
-    lng: optNum,
+    ccaa: z.string().min(1, MENSAJES.obligatorio),
+    lat: decimal((n) => n.min(-90, "Latitud no válida").max(90, "Latitud no válida")),
+    lng: decimal((n) => n.min(-180, "Longitud no válida").max(180, "Longitud no válida")),
   }),
   cargas: z.array(z.object({
     tipo: z.string(),
-    importe: optNum,
+    importe: opcional(noNegativo),
     es_anterior: z.boolean(),
     se_purga: z.boolean(),
     verificada: z.boolean(),
     prohibicion_disponer: z.boolean(),
     condicion_resolutoria: z.boolean(),
   })),
-  ocupacion: z.object({ estado: z.string(), renta_mensual: optNum }),
+  ocupacion: z.object({ estado: z.string(), renta_mensual: opcional(noNegativo) }),
   urbanistico: z.object({
     uso_compatible: z.boolean(),
     fuera_ordenacion: z.boolean(),
     orden_demolicion: z.boolean(),
     suelo_protegido: z.boolean(),
-    cargas_urbanizacion: num.min(0),
+    cargas_urbanizacion: opcional(noNegativo),
     servidumbres_incompatibles: z.boolean(),
     zona_inundable_alta: z.boolean(),
   }),
   zona: z.object({
     macro: z.object({
-      tendencia_5a_pct: num, stock_meses: num.min(0), dom_venta_dias: num.min(1),
-      dom_alquiler_dias: num.min(1), crecimiento_pobl_5a_pct: num,
-      renta_hogar: num.min(0), y_zona_pct: num.min(0),
+      tendencia_5a_pct: decimal(variacion), stock_meses: decimal(noNegativo),
+      dom_venta_dias: opcional((n) => n.min(1, "Debe ser al menos 1")),
+      dom_alquiler_dias: opcional((n) => n.min(1, "Debe ser al menos 1")),
+      crecimiento_pobl_5a_pct: decimal(variacion),
+      renta_hogar: opcional(noNegativo), y_zona_pct: decimal(porcentaje),
     }),
     micro: z.object({
-      transporte: num, seguridad: num, sanidad: num, educacion: num, comercio: num,
-      zonas_verdes: num, pipeline_urbanistico: num, potencial_transformacion: num, entorno_construido: num,
+      transporte: decimal(indicador), seguridad: decimal(indicador), sanidad: decimal(indicador),
+      educacion: decimal(indicador), comercio: decimal(indicador), zonas_verdes: decimal(indicador),
+      pipeline_urbanistico: decimal(indicador), potencial_transformacion: decimal(indicador),
+      entorno_construido: decimal(indicador),
     }),
-    precio_m2_p85: optNum,
+    precio_m2_p85: opcional(positivo),
   }),
   comparables: z.array(z.object({
-    precio_m2: num.positive("€/m² requerido"),
+    precio_m2: requerido(positivo),
     estado: z.string(),
     origen: z.string(),
-    meses_antiguedad: num.min(0),
+    // Fase 5I: la antigüedad no puede ser negativa. El motor (M03) pondera cada
+    // comparable con 1/(1 + meses/6): con −3 meses pesaba el doble que uno de hoy
+    // y con −6 dividía por cero.
+    meses_antiguedad: opcional(noNegativo),
   })).min(1, "Añada al menos un comparable"),
   reforma: z.object({
     nivel_override: z.string().optional(),
     visita_interior: z.boolean(),
-    k_provincia: num.positive(),
-    coste_m2_override: optNum,
-    partidas_extra: num.min(0),
+    k_provincia: decimal((n) => n.positive(MENSAJES.positivo).max(5, "Debe ser como máximo 5")),
+    coste_m2_override: opcional(noNegativo),
+    partidas_extra: opcional(noNegativo),
   }),
   costes: z.object({
     regimen_fiscal: z.string(),
     transmitente_empresario: z.boolean(),
     primera_entrega: z.boolean(),
     comprador_deduce_iva: z.boolean(),
-    itp_tipo_override: optNum,          // en %
+    itp_tipo_override: decimal(porcentaje),          // en %
     // Base imponible del ITP: el mayor de (valor de referencia, declarado, puja).
     // Vacío ⇒ el motor usa la puja como suelo y lo declara como carencia.
-    valor_referencia_catastral: optNum,
-    valor_declarado: optNum,
-    atrasos_comunidad_ibi: optNum,
-    adquisicion_fija_override: optNum,
-    tenencia_mensual: optNum,
-    plusvalia_municipal_estimada: num.min(0),
+    valor_referencia_catastral: opcional(positivo),
+    valor_declarado: opcional(positivo),
+    atrasos_comunidad_ibi: opcional(noNegativo),
+    adquisicion_fija_override: opcional(noNegativo),
+    tenencia_mensual: opcional(noNegativo),
+    plusvalia_municipal_estimada: opcional(noNegativo),
   }),
   financiacion: z.object({
     tipo: z.enum(["cash", "hipoteca"]),
     preaprobada: z.boolean(),
-    ltv: num.min(0).max(100),           // en %
-    interes_anual_pct: num.min(0),
+    ltv: decimal(porcentaje),                         // en %
+    interes_anual_pct: decimal(porcentaje),
   }),
   rentista: z.object({
-    renta_mensual_estimada: num.min(0),
-    vacancia_pct: num.min(0),
-    ibi_anual: num.min(0),
-    comunidad_mensual: num.min(0),
-    seguro_anual: num.min(0),
-    mantenimiento_pct_renta: num.min(0),
-    gestion_pct_renta: num.min(0),
-  }),
+    renta_mensual_estimada: opcional(noNegativo),
+    vacancia_pct: decimal(porcentaje),
+    ibi_anual: opcional(noNegativo),
+    comunidad_mensual: opcional(noNegativo),
+    seguro_anual: opcional(noNegativo),
+    mantenimiento_pct_renta: decimal(porcentaje),
+    gestion_pct_renta: decimal(porcentaje),
+  }).optional(),     // sus campos se dan de baja al ocultarse (perfil no rentista)
   documentos: z.object({
-    nota_simple: z.boolean(), nota_simple_dias: optNum, cert_cargas: z.boolean(),
+    nota_simple: z.boolean(), nota_simple_dias: opcional(enteroNoNegativo), cert_cargas: z.boolean(),
     posesion_verificada: z.boolean(), avaluo: z.boolean(), fotos_interior_o_visita: z.boolean(),
     fotos_exterior: z.boolean(), cert_comunidad: z.boolean(), recibo_ibi: z.boolean(),
     ite_cee: z.boolean(), catastro_conciliado: z.boolean(),
@@ -117,18 +157,33 @@ export const esquemaAnalisis = z.object({
   }),
 });
 
-export type ValoresAnalisis = z.infer<typeof esquemaAnalisis>;
+/** Lo que el formulario contiene (texto tal cual lo escribe la persona). */
+export type EntradaFormulario = z.input<typeof esquemaAnalisis>;
+/** Lo que sale de validar: números ya convertidos, vacíos como `undefined`. */
+export type ValoresAnalisis = z.output<typeof esquemaAnalisis>;
 
-export const valoresIniciales: ValoresAnalisis = {
+/**
+ * Valores iniciales del asistente. Criterio (Fase 5I):
+ *   · VALOR escrito en el campo cuando es el valor por defecto del contrato y el
+ *     motor lo usaría igual si se vaciara (depósito 5 %, indicadores micro 50,
+ *     macro de referencia…): es un supuesto razonable que se ve y se corrige.
+ *   · Campo VACÍO con el valor por defecto en el texto de ayuda o en el
+ *     marcador cuando vacío significa «el motor estima» (atrasos, tenencia,
+ *     ITP, costes fijos…): escribir ahí el número cambiaría su significado, de
+ *     estimación prudente a dato declarado (P4/P5).
+ *   · Obligatorios VACÍOS (valor de subasta, superficie, €/m² del comparable):
+ *     antes valían 0, un valor falso que parecía rellenado.
+ */
+export const valoresIniciales: EntradaFormulario = {
   perfil: "flip_integral",
-  subasta: { fuente: "judicial_boe", valor_subasta: 0, puja_minima: undefined, deposito_pct: 5,
-             horas_hasta_cierre: undefined, subastas_desiertas_previas: 0, identificador_externo: "" },
-  activo: { tipologia: "vivienda", superficie_m2: 0, estado_conservacion: "regular", anio_construccion: undefined,
-            es_vivienda_habitual: false, vpo: false, vpo_precio_max_legal: undefined, ref_catastral: "",
+  subasta: { fuente: "judicial_boe", valor_subasta: "", puja_minima: "", deposito_pct: 5,
+             horas_hasta_cierre: "", subastas_desiertas_previas: 0, identificador_externo: "" },
+  activo: { tipologia: "vivienda", superficie_m2: "", estado_conservacion: "regular", anio_construccion: "",
+            es_vivienda_habitual: false, vpo: false, vpo_precio_max_legal: "", ref_catastral: "",
             finca_registral: "", direccion: "", municipio: "", provincia: "", ccaa: "madrid",
-            lat: undefined, lng: undefined },
+            lat: "", lng: "" },
   cargas: [],
-  ocupacion: { estado: "desconocida", renta_mensual: undefined },
+  ocupacion: { estado: "desconocida", renta_mensual: "" },
   urbanistico: { uso_compatible: true, fuera_ordenacion: false, orden_demolicion: false, suelo_protegido: false,
                  cargas_urbanizacion: 0, servidumbres_incompatibles: false, zona_inundable_alta: false },
   zona: {
@@ -136,18 +191,18 @@ export const valoresIniciales: ValoresAnalisis = {
              crecimiento_pobl_5a_pct: 0, renta_hogar: 30000, y_zona_pct: 5.5 },
     micro: { transporte: 50, seguridad: 50, sanidad: 50, educacion: 50, comercio: 50,
              zonas_verdes: 50, pipeline_urbanistico: 50, potencial_transformacion: 50, entorno_construido: 50 },
-    precio_m2_p85: undefined,
+    precio_m2_p85: "",
   },
-  comparables: [{ precio_m2: 0, estado: "reformado", origen: "testigo", meses_antiguedad: 0 }],
-  reforma: { nivel_override: "", visita_interior: false, k_provincia: 1, coste_m2_override: undefined, partidas_extra: 0 },
+  comparables: [{ precio_m2: "", estado: "reformado", origen: "testigo", meses_antiguedad: 0 }],
+  reforma: { nivel_override: "", visita_interior: false, k_provincia: 1, coste_m2_override: "", partidas_extra: 0 },
   costes: { regimen_fiscal: "auto", transmitente_empresario: false, primera_entrega: false, comprador_deduce_iva: false,
-            itp_tipo_override: undefined, valor_referencia_catastral: undefined, valor_declarado: undefined,
-            atrasos_comunidad_ibi: undefined, adquisicion_fija_override: undefined,
-            tenencia_mensual: undefined, plusvalia_municipal_estimada: 0 },
+            itp_tipo_override: "", valor_referencia_catastral: "", valor_declarado: "",
+            atrasos_comunidad_ibi: "", adquisicion_fija_override: "",
+            tenencia_mensual: "", plusvalia_municipal_estimada: 0 },
   financiacion: { tipo: "cash", preaprobada: false, ltv: 0, interes_anual_pct: 3.5 },
   rentista: { renta_mensual_estimada: 0, vacancia_pct: 5, ibi_anual: 0, comunidad_mensual: 0,
               seguro_anual: 300, mantenimiento_pct_renta: 5, gestion_pct_renta: 0 },
-  documentos: { nota_simple: false, nota_simple_dias: undefined, cert_cargas: false, posesion_verificada: false,
+  documentos: { nota_simple: false, nota_simple_dias: "", cert_cargas: false, posesion_verificada: false,
                 avaluo: false, fotos_interior_o_visita: false, fotos_exterior: false, cert_comunidad: false,
                 recibo_ibi: false, ite_cee: false, catastro_conciliado: false,
                 inc_superficie: false, inc_cargas: false, inc_tasacion: false },
@@ -167,7 +222,14 @@ export const PASOS: { titulo: string; descripcion: string; campos: string[] }[] 
   { titulo: "Resultado", descripcion: "Decisión del motor experto", campos: [] },
 ];
 
-export function aPayload(v: ValoresAnalisis) {
+/** `x / 100` respetando la ausencia: un porcentaje vacío sigue vacío. */
+const fraccion = (x: number | undefined) => (x === undefined ? undefined : x / 100);
+
+/**
+ * Valores ya VALIDADOS (salida de `esquemaAnalisis`) → cuerpo de `AnalisisInput`.
+ * Solo traduce unidades y forma; los vacíos los retira `prepararEnvio`.
+ */
+export function aPayload(v: ValoresAnalisis): Record<string, unknown> {
   const d = v.documentos;
   const inconsistencias = [
     d.inc_superficie && "superficie_inconsistente",
@@ -177,19 +239,16 @@ export function aPayload(v: ValoresAnalisis) {
 
   const payload: Record<string, unknown> = {
     perfil: v.perfil,
-    activo: { ...v.activo },
-    subasta: { ...v.subasta, deposito_pct: v.subasta.deposito_pct / 100 },
+    activo: v.activo,
+    subasta: { ...v.subasta, deposito_pct: fraccion(v.subasta.deposito_pct) },
     cargas: v.cargas,
     ocupacion: v.ocupacion,
     urbanistico: v.urbanistico,
     zona: v.zona,
     comparables: v.comparables,
-    reforma: { ...v.reforma, nivel_override: v.reforma.nivel_override || undefined },
-    costes: {
-      ...v.costes,
-      itp_tipo_override: v.costes.itp_tipo_override != null ? v.costes.itp_tipo_override / 100 : undefined,
-    },
-    financiacion: { ...v.financiacion, ltv: v.financiacion.ltv / 100 },
+    reforma: v.reforma,
+    costes: { ...v.costes, itp_tipo_override: fraccion(v.costes.itp_tipo_override) },
+    financiacion: { ...v.financiacion, ltv: fraccion(v.financiacion.ltv) },
     documentos: {
       nota_simple: d.nota_simple, nota_simple_dias: d.nota_simple_dias, cert_cargas: d.cert_cargas,
       posesion_verificada: d.posesion_verificada, avaluo: d.avaluo,
@@ -200,4 +259,12 @@ export function aPayload(v: ValoresAnalisis) {
   };
   if (v.perfil === "rentista") payload.rentista = v.rentista;
   return payload;
+}
+
+/**
+ * Fase 5I — el ÚNICO camino del formulario al backend: valores validados →
+ * forma del contrato → sin vacíos. Lo usan «Calcular», «Recalcular» y «Guardar».
+ */
+export function prepararEnvio(v: ValoresAnalisis): Record<string, unknown> {
+  return limpiarVacios(aPayload(v));
 }

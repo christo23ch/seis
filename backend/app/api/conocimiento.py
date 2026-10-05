@@ -113,4 +113,19 @@ def opciones(db: Session = Depends(get_db),
                               "arrendado_posterior", "arrendado_anterior", "renta_antigua"],
         "ccaa": list(params.seccion("fiscal.itp_por_ccaa").keys()),
         "perfiles": {k: v.get("nombre", k) for k, v in params.seccion("perfiles").items()},
+        # Fase 5I: lo que el motor aplica cuando un campo opcional del alta va vacío,
+        # leído del catálogo T3 vigente para que el formulario lo muestre sin copiar
+        # cifras. Solo informa: el cálculo sigue en el motor (M05, M06).
+        "valores_defecto": {
+            "itp_por_ccaa": params.seccion("fiscal.itp_por_ccaa"),
+            "tenencia_mensual": float(params.get("tenencia.mensual_defecto")),
+            "atrasos_pct_valor_subasta": float(params.get("atrasos.defecto_pct_vt")),
+            "atrasos_minimo": float(params.get("atrasos.minimo")),
+            # Misma suma que M06 (`m06_costes.py`, C_F sin override y sin hipoteca);
+            # `test_el_coste_fijo_mostrado_es_el_que_aplica_el_motor` vigila que coincidan.
+            "adquisicion_fija": float(params.get("aranceles.adquisicion_fija"))
+                                + float(params.get("aranceles.procurador")),
+            "tasacion_banco": float(params.get("financiacion.tasacion_banco")),
+            "baremos_reforma_m2": params.seccion("reforma.baremos_m2"),
+        },
     }

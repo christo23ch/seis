@@ -2,27 +2,58 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { FormProvider, useFieldArray, useFormContext, useForm } from "react-hook-form";
+import { FormProvider, useFieldArray, useFormContext, useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { api } from "@/lib/api";
-import { PASOS, aPayload, esquemaAnalisis, valoresIniciales, type ValoresAnalisis } from "@/lib/schema";
+import { PASOS, esquemaAnalisis, prepararEnvio, valoresIniciales, type EntradaFormulario, type ValoresAnalisis } from "@/lib/schema";
 import type { Opciones, Resultado } from "@/lib/types";
 import { Button, Campo, Card, CardContent, CardHeader, CardTitle, Check, ErrorBox, Input, Select, Spinner } from "@/components/ui";
 import { CondicionesVetos, EscaleraPrecios, EscenariosPanel, IcoDesglose, MetricasClave, RiesgosPanel, SemaforoHero } from "@/components/resultado";
 import { Check as CheckIcon, ChevronLeft, ChevronRight, Plus, RefreshCw, Save, Trash2 } from "lucide-react";
 import { rutaApp } from "@/lib/rutas";
+import { eur, num, tasa } from "@/lib/format";
 
 /* ── utilidades de formulario ─────────────────────────────────────────── */
 function getError(errors: any, path: string): string | undefined {
   const nodo = path.split(".").reduce((acc: any, k) => (acc ? acc[k] : undefined), errors);
   return nodo?.message ?? nodo?.root?.message;
 }
-function FIn({ name, label, tipo = "text", ayuda, step, placeholder }:
-  { name: string; label: string; tipo?: string; ayuda?: string; step?: string; placeholder?: string }) {
+function FIn({ name, label, ayuda, placeholder }:
+  { name: string; label: string; ayuda?: string; placeholder?: string }) {
   const { register, formState: { errors } } = useFormContext();
   return (
     <Campo label={label} error={getError(errors, name)} ayuda={ayuda}>
-      <Input type={tipo} step={step} placeholder={placeholder} {...register(name as never)} />
+      <Input type="text" placeholder={placeholder} {...register(name as never)} />
+    </Campo>
+  );
+}
+/** Valor inicial de un campo (`valoresIniciales`), para mostrarlo como «Por
+ * defecto» cuando el campo se vacía. `comparables.3.x` se busca en la fila 0. */
+function valorInicial(ruta: string): unknown {
+  return ruta.split(".").reduce<unknown>((nodo, k) => {
+    if (nodo == null || typeof nodo !== "object") return undefined;
+    const clave = Array.isArray(nodo) ? "0" : k;
+    return (nodo as Record<string, unknown>)[clave];
+  }, valoresIniciales);
+}
+/** Campo numérico (Fase 5I). Texto con teclado decimal, no `type="number"`:
+ * acepta la coma española («0,5», que `aNumero` convierte) y no tiene flechas
+ * ni rueda, que dejaban bajar la antigüedad de un comparable a −1, −2…
+ *   · `negativo`: el teclado decimal de iOS no tiene «-»; esos campos usan el
+ *     teclado de texto.
+ *   · `condicional`: el campo solo existe según otro (VPO, arrendado, hipoteca,
+ *     rentista). Al ocultarse se da de baja, para que un valor que ya no se ve
+ *     ni bloquee la validación ni viaje al backend.
+ *   · Sin `placeholder`, muestra «Por defecto: …» con el valor inicial, si lo hay. */
+function FNum({ name, label, ayuda, placeholder, negativo, condicional }:
+  { name: string; label: string; ayuda?: string; placeholder?: string; negativo?: boolean; condicional?: boolean }) {
+  const { register, formState: { errors } } = useFormContext();
+  const inicial = valorInicial(name);
+  const marcador = placeholder ?? (typeof inicial === "number" ? `Por defecto: ${num(inicial, 2)}` : undefined);
+  return (
+    <Campo label={label} error={getError(errors, name)} ayuda={ayuda}>
+      <Input type="text" inputMode={negativo ? "text" : "decimal"} autoComplete="off" placeholder={marcador}
+        {...register(name as never, { shouldUnregister: condicional })} />
     </Campo>
   );
 }
@@ -64,11 +95,11 @@ function Paso1({ op }: { op?: Opciones }) {
       <FSel name="perfil" label="Perfil de inversión"
         opciones={Object.entries(op?.perfiles ?? { flip_integral: "Reforma integral + venta" }).map(([v, t]) => ({ v, t }))} />
       <FSel name="subasta.fuente" label="Fuente de la subasta" opciones={aOps(op?.fuentes ?? ["judicial_boe"])} />
-      <FIn name="subasta.valor_subasta" label="Valor de subasta / tasación (€)" tipo="number" step="any" />
-      <FIn name="subasta.puja_minima" label="Puja mínima (€, opcional)" tipo="number" step="any" />
-      <FIn name="subasta.deposito_pct" label="Depósito (%)" tipo="number" step="0.5" />
-      <FIn name="subasta.horas_hasta_cierre" label="Horas hasta el cierre (opcional)" tipo="number" step="1" />
-      <FIn name="subasta.subastas_desiertas_previas" label="Subastas previas desiertas" tipo="number" step="1" />
+      <FNum name="subasta.valor_subasta" label="Valor de subasta / tasación (€)" placeholder="p. ej. 152.000" />
+      <FNum name="subasta.puja_minima" label="Puja mínima (€, opcional)" placeholder="Sin puja mínima" />
+      <FNum name="subasta.deposito_pct" label="Depósito (%)" />
+      <FNum name="subasta.horas_hasta_cierre" label="Horas hasta el cierre (opcional)" placeholder="No consta" />
+      <FNum name="subasta.subastas_desiertas_previas" label="Subastas previas desiertas" />
       <FIn name="subasta.identificador_externo" label="Identificador / expediente (opcional)" />
     </div>
   );
@@ -79,20 +110,20 @@ function Paso2({ op }: { op?: Opciones }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <FSel name="activo.tipologia" label="Tipología" opciones={aOps(op?.tipologias ?? ["vivienda"])} />
-      <FIn name="activo.superficie_m2" label="Superficie construida (m²)" tipo="number" step="any" />
+      <FNum name="activo.superficie_m2" label="Superficie construida (m²)" placeholder="p. ej. 82" />
       <FSel name="activo.estado_conservacion" label="Estado de conservación"
         opciones={aOps(op?.estados_conservacion ?? ["regular"])} />
-      <FIn name="activo.anio_construccion" label="Año de construcción (opcional)" tipo="number" step="1" />
+      <FNum name="activo.anio_construccion" label="Año de construcción (opcional)" placeholder="No consta" />
       <div className="space-y-2.5 sm:col-span-2">
         <FCheck name="activo.es_vivienda_habitual" label="Vivienda habitual del ejecutado (plazos posesorios reforzados)" />
         <FCheck name="activo.vpo" label="Vivienda de protección oficial (VPO)" />
       </div>
-      {vpo && <FIn name="activo.vpo_precio_max_legal" label="Precio máximo legal VPO (€)" tipo="number" step="any" />}
+      {vpo && <FNum name="activo.vpo_precio_max_legal" condicional label="Precio máximo legal VPO (€)" />}
     </div>
   );
 }
 function Paso3() {
-  const { control, watch } = useFormContext<ValoresAnalisis>();
+  const { control, watch } = useFormContext<EntradaFormulario>();
   const { fields, append, remove } = useFieldArray({ control, name: "cargas" });
   const estadoOcu = watch("ocupacion.estado");
   return (
@@ -105,8 +136,8 @@ function Paso3() {
         <div className="mb-2 flex items-center justify-between">
           <h4 className="text-sm font-semibold text-slate-700">Cargas registrales</h4>
           <Button type="button" variante="secundario" onClick={() =>
-            append({ tipo: "embargo", importe: undefined, es_anterior: false, se_purga: true,
-                     verificada: false, prohibicion_disponer: false, condicion_resolutoria: false } as never)}>
+            append({ tipo: "embargo", importe: "", es_anterior: false, se_purga: true,
+                     verificada: false, prohibicion_disponer: false, condicion_resolutoria: false })}>
             <Plus className="h-4 w-4" /> Añadir carga
           </Button>
         </div>
@@ -117,7 +148,7 @@ function Paso3() {
               <div className="grid gap-3 sm:grid-cols-3">
                 <FSel name={`cargas.${i}.tipo`} label="Tipo"
                   opciones={aOps(["embargo", "hipoteca", "afeccion_fiscal", "anotacion", "servidumbre", "otro"])} />
-                <FIn name={`cargas.${i}.importe`} label="Importe (€) — vacío si indeterminado" tipo="number" step="any" />
+                <FNum name={`cargas.${i}.importe`} label="Importe (€) — vacío si indeterminado" placeholder="Indeterminado" />
                 <div className="flex items-end justify-end">
                   <Button type="button" variante="fantasma" onClick={() => remove(i)}><Trash2 className="h-4 w-4" /> Quitar</Button>
                 </div>
@@ -138,7 +169,7 @@ function Paso3() {
           opciones={aOps(["desconocida", "vacio", "propietario", "precario", "arrendado_posterior", "arrendado_anterior", "renta_antigua"])}
           ayuda="Si es desconocida, el motor asume precario (prudencia P5) y exige verificación in situ." />
         {estadoOcu.startsWith("arrendado") || estadoOcu === "renta_antigua" ? (
-          <FIn name="ocupacion.renta_mensual" label="Renta mensual actual (€)" tipo="number" step="any" />
+          <FNum name="ocupacion.renta_mensual" condicional label="Renta mensual actual (€)" />
         ) : null}
       </div>
     </div>
@@ -154,7 +185,7 @@ function Paso4() {
       <FCheck name="urbanistico.servidumbres_incompatibles" label="Servidumbres incompatibles con la estrategia" />
       <FCheck name="urbanistico.zona_inundable_alta" label="Zona inundable de alta probabilidad (SNCZI)" />
       <div className="max-w-xs pt-1">
-        <FIn name="urbanistico.cargas_urbanizacion" label="Cargas de urbanización pendientes (€)" tipo="number" step="any" />
+        <FNum name="urbanistico.cargas_urbanizacion" label="Cargas de urbanización pendientes (€)" />
       </div>
     </div>
   );
@@ -167,8 +198,8 @@ function Paso5({ op }: { op?: Opciones }) {
         <FIn name="activo.municipio" label="Municipio" />
         <FIn name="activo.provincia" label="Provincia" />
         <FSel name="activo.ccaa" label="Comunidad autónoma (fiscalidad T3)" opciones={aOps(op?.ccaa ?? ["madrid"])} />
-        <FIn name="activo.lat" label="Latitud (opcional)" tipo="number" step="any" placeholder="40.4168" />
-        <FIn name="activo.lng" label="Longitud (opcional)" tipo="number" step="any" placeholder="-3.7038" />
+        <FNum name="activo.lat" negativo label="Latitud (opcional)" placeholder="p. ej. 40,4168" />
+        <FNum name="activo.lng" negativo label="Longitud (opcional)" placeholder="p. ej. -3,7038" />
       </div>
       <div>
         <h4 className="mb-3 text-sm font-semibold text-slate-700">Indicadores micro de la ubicación (0–100)</h4>
@@ -188,7 +219,7 @@ function Paso5({ op }: { op?: Opciones }) {
   );
 }
 function Paso6() {
-  const { control, formState: { errors } } = useFormContext<ValoresAnalisis>();
+  const { control, formState: { errors } } = useFormContext<EntradaFormulario>();
   const { fields, append, remove } = useFieldArray({ control, name: "comparables" });
   const errRaiz = (errors.comparables as any)?.message ?? (errors.comparables as any)?.root?.message;
   return (
@@ -197,7 +228,7 @@ function Paso6() {
         <div className="mb-2 flex items-center justify-between">
           <h4 className="text-sm font-semibold text-slate-700">Comparables de salida (€/m²)</h4>
           <Button type="button" variante="secundario" onClick={() =>
-            append({ precio_m2: 0, estado: "reformado", origen: "testigo", meses_antiguedad: 0 } as never)}>
+            append({ precio_m2: "", estado: "reformado", origen: "testigo", meses_antiguedad: 0 })}>
             <Plus className="h-4 w-4" /> Añadir comparable
           </Button>
         </div>
@@ -205,10 +236,10 @@ function Paso6() {
         <div className="space-y-2">
           {fields.map((f, i) => (
             <div key={f.id} className="grid items-end gap-3 rounded-md border border-slate-200 p-3 sm:grid-cols-5">
-              <FIn name={`comparables.${i}.precio_m2`} label="€/m²" tipo="number" step="any" />
+              <FNum name={`comparables.${i}.precio_m2`} label="€/m²" placeholder="p. ej. 2.293" />
               <FSel name={`comparables.${i}.estado`} label="Estado" opciones={aOps(["reformado", "bueno", "regular", "malo", "ruina"])} />
               <FSel name={`comparables.${i}.origen`} label="Origen" opciones={aOps(["testigo", "portal_oferta", "notarial", "registro"])} />
-              <FIn name={`comparables.${i}.meses_antiguedad`} label="Antigüedad (meses)" tipo="number" step="1" />
+              <FNum name={`comparables.${i}.meses_antiguedad`} label="Antigüedad (meses)" />
               <Button type="button" variante="fantasma" onClick={() => remove(i)}><Trash2 className="h-4 w-4" /> Quitar</Button>
             </div>
           ))}
@@ -218,31 +249,37 @@ function Paso6() {
       <div>
         <h4 className="mb-3 text-sm font-semibold text-slate-700">Mercado macro de la zona</h4>
         <div className="grid gap-4 sm:grid-cols-3">
-          <FIn name="zona.macro.tendencia_5a_pct" label="Tendencia precio 5a (%/año)" tipo="number" step="any" />
-          <FIn name="zona.macro.stock_meses" label="Stock (meses de absorción)" tipo="number" step="any" />
-          <FIn name="zona.macro.dom_venta_dias" label="DOM venta (días)" tipo="number" step="1" />
-          <FIn name="zona.macro.dom_alquiler_dias" label="DOM alquiler (días)" tipo="number" step="1" />
-          <FIn name="zona.macro.crecimiento_pobl_5a_pct" label="Crecimiento población 5a (%)" tipo="number" step="any" />
-          <FIn name="zona.macro.renta_hogar" label="Renta media hogar (€)" tipo="number" step="any" />
-          <FIn name="zona.macro.y_zona_pct" label="Yield neta zona (%)" tipo="number" step="any" />
-          <FIn name="zona.precio_m2_p85" label="€/m² percentil 85 zona (opcional)" tipo="number" step="any" />
+          <FNum name="zona.macro.tendencia_5a_pct" negativo label="Tendencia precio 5a (%/año)" />
+          <FNum name="zona.macro.stock_meses" label="Stock (meses de absorción)" />
+          <FNum name="zona.macro.dom_venta_dias" label="DOM venta (días)" />
+          <FNum name="zona.macro.dom_alquiler_dias" label="DOM alquiler (días)" />
+          <FNum name="zona.macro.crecimiento_pobl_5a_pct" negativo label="Crecimiento población 5a (%)" />
+          <FNum name="zona.macro.renta_hogar" label="Renta media hogar (€)" />
+          <FNum name="zona.macro.y_zona_pct" label="Yield neta zona (%)" />
+          <FNum name="zona.precio_m2_p85" label="€/m² percentil 85 zona (opcional)" placeholder="No consta" />
         </div>
       </div>
     </div>
   );
 }
-function Paso7() {
+function Paso7({ op }: { op?: Opciones }) {
+  const { watch } = useFormContext();
+  const ccaa = watch("activo.ccaa") as string;
+  const d = op?.valores_defecto;
+  const itpTabla = d?.itp_por_ccaa?.[ccaa];
   return (
     <div className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-3">
         <FSel name="costes.regimen_fiscal" label="Régimen fiscal" opciones={aOps(["auto", "itp", "iva"])}
           ayuda="Auto: el motor aplica el árbol §8.7.3 con los datos declarados." />
-        <FIn name="costes.itp_tipo_override" label="ITP manual (%) — opcional" tipo="number" step="any"
+        <FNum name="costes.itp_tipo_override" label="ITP manual (%) — opcional"
+          placeholder={itpTabla != null ? `Tabla T3: ${tasa(itpTabla)}` : undefined}
           ayuda="Si se deja vacío se usa la tabla T3 de la CCAA." />
-        <FIn name="costes.plusvalia_municipal_estimada" label="Plusvalía municipal estimada (€)" tipo="number" step="any" />
-        <FIn name="costes.valor_referencia_catastral" label="Valor de referencia del Catastro (€) — opcional" tipo="number" step="any"
+        <FNum name="costes.plusvalia_municipal_estimada" label="Plusvalía municipal estimada (€)" />
+        <FNum name="costes.valor_referencia_catastral" label="Valor de referencia del Catastro (€) — opcional"
+          placeholder="No consta"
           ayuda="El ITP se liquida sobre el MAYOR de (valor de referencia, valor declarado, precio de remate). Si se deja vacío el motor usa el remate como suelo y avisa de que el impuesto es un mínimo." />
-        <FIn name="costes.valor_declarado" label="Valor declarado en escritura (€) — opcional" tipo="number" step="any"
+        <FNum name="costes.valor_declarado" label="Valor declarado en escritura (€) — opcional" placeholder="Igual al remate"
           ayuda="Solo si difiere del precio de remate." />
       </div>
       <div className="space-y-2.5">
@@ -251,25 +288,35 @@ function Paso7() {
         <FCheck name="costes.comprador_deduce_iva" label="El comprador puede deducir IVA (inversión del sujeto pasivo)" />
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
-        <FIn name="costes.atrasos_comunidad_ibi" label="Atrasos comunidad/IBI conocidos (€)" tipo="number" step="any"
-          ayuda="Vacío ⇒ estimación prudente al alza (P5)." />
-        <FIn name="costes.tenencia_mensual" label="Coste de tenencia mensual (€)" tipo="number" step="any"
+        <FNum name="costes.atrasos_comunidad_ibi" label="Atrasos comunidad/IBI conocidos (€)"
+          placeholder="Estimación prudente"
+          ayuda={d ? `Vacío ⇒ estimación prudente al alza (P5): ${tasa(d.atrasos_pct_valor_subasta)} del valor de subasta, mínimo ${eur(d.atrasos_minimo)}.`
+                   : "Vacío ⇒ estimación prudente al alza (P5)."} />
+        <FNum name="costes.tenencia_mensual" label="Coste de tenencia mensual (€)"
+          placeholder={d ? `Por defecto: ${eur(d.tenencia_mensual)}/mes` : undefined}
           ayuda="IBI/12 + comunidad + seguro + suministros. Vacío ⇒ valor por defecto T3." />
-        <FIn name="costes.adquisicion_fija_override" label="Costes fijos de adquisición (€)" tipo="number" step="any"
-          ayuda="Notaría + registro + gestoría + procurador. Vacío ⇒ estimación T3." />
+        <FNum name="costes.adquisicion_fija_override" label="Costes fijos de adquisición (€)"
+          placeholder={d ? `Por defecto: ${eur(d.adquisicion_fija)}` : undefined}
+          ayuda={d ? `Notaría + registro + gestoría + procurador. Vacío ⇒ estimación T3 (con hipoteca, más ${eur(d.tasacion_banco)} de tasación).`
+                   : "Notaría + registro + gestoría + procurador. Vacío ⇒ estimación T3."} />
       </div>
     </div>
   );
 }
-function Paso8() {
+function Paso8({ op }: { op?: Opciones }) {
+  const baremos = op?.valores_defecto?.baremos_reforma_m2;
+  const textoBaremos = baremos
+    ? Object.entries(baremos).filter(([, v]) => v > 0).map(([k, v]) => `${k} ${num(v)}`).join(" · ")
+    : undefined;
   return (
     <div className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-3">
         <FSel name="reforma.nivel_override" label="Nivel de reforma (vacío = automático por estado)"
           opciones={[{ v: "", t: "Automático" }, ...aOps(["ninguna", "refresco", "ligera", "media", "integral", "estructural"])]} />
-        <FIn name="reforma.k_provincia" label="Coeficiente provincial de costes" tipo="number" step="0.01" />
-        <FIn name="reforma.coste_m2_override" label="€/m² manual (opcional)" tipo="number" step="any" />
-        <FIn name="reforma.partidas_extra" label="Partidas extra conocidas (€)" tipo="number" step="any"
+        <FNum name="reforma.k_provincia" label="Coeficiente provincial de costes" />
+        <FNum name="reforma.coste_m2_override" label="€/m² manual (opcional)" placeholder="Baremo T3 del nivel"
+          ayuda={textoBaremos ? `Vacío ⇒ baremo T3 (€/m²): ${textoBaremos}.` : "Vacío ⇒ baremo T3 del nivel."} />
+        <FNum name="reforma.partidas_extra" label="Partidas extra conocidas (€)"
           ayuda="Derramas, amianto, refuerzos… importes ya identificados." />
       </div>
       <FCheck name="reforma.visita_interior" label="Se ha visitado el interior (reduce el spread P80 del presupuesto)" />
@@ -286,8 +333,8 @@ function Paso9() {
         <FSel name="financiacion.tipo" label="Estructura de pago" opciones={[{ v: "cash", t: "100 % equity (cash)" }, { v: "hipoteca", t: "Con hipoteca" }]} />
         {tipo === "hipoteca" && (
           <>
-            <FIn name="financiacion.ltv" label="LTV (%)" tipo="number" step="1" />
-            <FIn name="financiacion.interes_anual_pct" label="Interés anual (%)" tipo="number" step="0.1" />
+            <FNum name="financiacion.ltv" condicional label="LTV (%)" />
+            <FNum name="financiacion.interes_anual_pct" condicional label="Interés anual (%)" />
             <div className="sm:col-span-3">
               <FCheck name="financiacion.preaprobada" label="Financiación preaprobada en firme (sin preaprobación ⇒ VETO-FIN-01)" />
             </div>
@@ -298,12 +345,12 @@ function Paso9() {
         <div>
           <h4 className="mb-3 text-sm font-semibold text-slate-700">Explotación en alquiler (perfil rentista)</h4>
           <div className="grid gap-4 sm:grid-cols-3">
-            <FIn name="rentista.renta_mensual_estimada" label="Renta mensual de mercado (€)" tipo="number" step="any" />
-            <FIn name="rentista.vacancia_pct" label="Vacancia (%)" tipo="number" step="any" />
-            <FIn name="rentista.ibi_anual" label="IBI anual (€)" tipo="number" step="any" />
-            <FIn name="rentista.comunidad_mensual" label="Comunidad mensual (€)" tipo="number" step="any" />
-            <FIn name="rentista.seguro_anual" label="Seguro anual (€)" tipo="number" step="any" />
-            <FIn name="rentista.mantenimiento_pct_renta" label="Mantenimiento (% renta)" tipo="number" step="any" />
+            <FNum condicional name="rentista.renta_mensual_estimada" label="Renta mensual de mercado (€)" />
+            <FNum condicional name="rentista.vacancia_pct" label="Vacancia (%)" />
+            <FNum condicional name="rentista.ibi_anual" label="IBI anual (€)" />
+            <FNum condicional name="rentista.comunidad_mensual" label="Comunidad mensual (€)" />
+            <FNum condicional name="rentista.seguro_anual" label="Seguro anual (€)" />
+            <FNum condicional name="rentista.mantenimiento_pct_renta" label="Mantenimiento (% renta)" />
           </div>
         </div>
       )}
@@ -332,7 +379,7 @@ function Paso10() {
       </div>
       {nota && (
         <div className="max-w-xs">
-          <FIn name="documentos.nota_simple_dias" label="Antigüedad de la nota simple (días)" tipo="number" step="1" />
+          <FNum name="documentos.nota_simple_dias" condicional label="Antigüedad de la nota simple (días)" placeholder="No consta" />
         </div>
       )}
       <div>
@@ -375,6 +422,11 @@ function PasoResultado({ res, cargando, error, onRecalcular, onGuardar, guardand
 }
 
 /* ── página ───────────────────────────────────────────────────────────── */
+/** `zodResolver` (v3.10) declara que devuelve el tipo de ENTRADA, pero en
+ * ejecución entrega la SALIDA de Zod (números ya convertidos, sin `raw: true`).
+ * El tipo se ajusta a lo que hace; `tests/schema.test.ts` prueba esa salida. */
+const resolutor = zodResolver(esquemaAnalisis) as unknown as Resolver<EntradaFormulario, unknown, ValoresAnalisis>;
+
 function AsistenteNuevaInversion() {
   const router = useRouter();
   // Fase 1 — puente captación → análisis: `?subasta=<id>` llega desde el botón
@@ -385,8 +437,11 @@ function AsistenteNuevaInversion() {
   const { data: subastasCaptadas } = useQuery({
     queryKey: ["subastas"], queryFn: () => api.subastas(), enabled: !!subastaId,
   });
-  const form = useForm<ValoresAnalisis>({
-    resolver: zodResolver(esquemaAnalisis), defaultValues: valoresIniciales, mode: "onBlur",
+  // Tres tipos: lo que se escribe (texto), el contexto y lo que sale de validar
+  // (números). `handleSubmit` entrega lo segundo; `getValues` daría lo primero,
+  // que es lo que se enviaba antes y provocaba el 422.
+  const form = useForm<EntradaFormulario, unknown, ValoresAnalisis>({
+    resolver: resolutor, defaultValues: valoresIniciales, mode: "onBlur",
   });
   const [paso, setPaso] = useState(0);
   const [resultado, setResultado] = useState<Resultado | null>(null);
@@ -418,26 +473,45 @@ function AsistenteNuevaInversion() {
     onSuccess: (r) => router.push(rutaApp(`/inversiones/${r.id}`)),
   });
 
+  const [pendientes, setPendientes] = useState(false);
+  // Entre la validación (asíncrona) y el cambio de paso, «Siguiente» queda
+  // deshabilitado: dos clics seguidos en el paso 10 lanzaban dos cálculos.
+  const [validando, setValidando] = useState(false);
+  const irA = (i: number) => { setPendientes(false); setPaso(i); };
+  /** Valida TODO el formulario y, si es correcto, entrega el cuerpo listo para el
+   * backend. Nunca `getValues()`: daría el texto crudo de los campos. */
+  const conEnvio = (accion: (cuerpo: Record<string, unknown>) => void) =>
+    form.handleSubmit(
+      (validos) => { setPendientes(false); accion(prepararEnvio(validos)); },
+      () => setPendientes(true),
+    )();
+
   async function siguiente() {
-    const campos = PASOS[paso].campos;
-    const ok = campos.length ? await form.trigger(campos as never) : true;
-    if (!ok) return;
-    const nuevo = Math.min(paso + 1, PASOS.length - 1);
-    setPaso(nuevo);
-    if (nuevo === PASOS.length - 1) {
-      setResultado(null);
-      simular.mutate(aPayload(form.getValues()));
+    if (validando) return;
+    setValidando(true);
+    try {
+      const campos = PASOS[paso].campos;
+      const ok = campos.length ? await form.trigger(campos as never) : true;
+      if (!ok) return;
+      const nuevo = Math.min(paso + 1, PASOS.length - 1);
+      if (nuevo === PASOS.length - 1) {
+        await conEnvio((cuerpo) => { irA(nuevo); setResultado(null); simular.mutate(cuerpo); });
+        return;
+      }
+      irA(nuevo);
+    } finally {
+      setValidando(false);
     }
   }
-  const recalcular = () => { setResultado(null); simular.mutate(aPayload(form.getValues())); };
+  const recalcular = () => conEnvio((cuerpo) => { setResultado(null); simular.mutate(cuerpo); });
 
   const contenido = [
     <Paso1 key={0} op={opciones} />, <Paso2 key={1} op={opciones} />, <Paso3 key={2} />, <Paso4 key={3} />,
-    <Paso5 key={4} op={opciones} />, <Paso6 key={5} />, <Paso7 key={6} />, <Paso8 key={7} />,
+    <Paso5 key={4} op={opciones} />, <Paso6 key={5} />, <Paso7 key={6} op={opciones} />, <Paso8 key={7} op={opciones} />,
     <Paso9 key={8} />, <Paso10 key={9} />,
     <PasoResultado key={10} res={resultado} cargando={simular.isPending}
       error={simular.isError ? (simular.error as Error).message : undefined}
-      onRecalcular={recalcular} onGuardar={() => guardar.mutate(aPayload(form.getValues()))}
+      onRecalcular={recalcular} onGuardar={() => conEnvio((cuerpo) => guardar.mutate(cuerpo))}
       guardando={guardar.isPending} />,
   ];
 
@@ -462,7 +536,7 @@ function AsistenteNuevaInversion() {
               return (
                 <li key={p.titulo}>
                   <button type="button" disabled={i > paso}
-                    onClick={() => i < paso && setPaso(i)}
+                    onClick={() => i < paso && irA(i)}
                     className={`flex w-full items-start gap-2.5 rounded-md px-2.5 py-2 text-left
                       ${estado === "actual" ? "bg-primario-tenue" : i < paso ? "hover:bg-slate-100" : "opacity-50"}`}>
                     <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold
@@ -486,21 +560,26 @@ function AsistenteNuevaInversion() {
                 <CardTitle>Paso {paso + 1} de 11 — {PASOS[paso].titulo}</CardTitle>
                 {guardar.isError && <span className="text-[12px] text-sem-rojo">{(guardar.error as Error).message}</span>}
               </CardHeader>
-              <CardContent>{contenido[paso]}</CardContent>
+              <CardContent>
+                {pendientes && (
+                  <div className="mb-4"><ErrorBox mensaje="Hay datos pendientes o no válidos en pasos anteriores. Revíselos antes de calcular." /></div>
+                )}
+                {contenido[paso]}
+              </CardContent>
             </Card>
             {paso < PASOS.length - 1 && (
               <div className="mt-4 flex justify-between">
-                <Button variante="secundario" onClick={() => setPaso(Math.max(0, paso - 1))} disabled={paso === 0}>
+                <Button variante="secundario" onClick={() => irA(Math.max(0, paso - 1))} disabled={paso === 0}>
                   <ChevronLeft className="h-4 w-4" /> Atrás
                 </Button>
-                <Button onClick={siguiente}>
+                <Button onClick={siguiente} disabled={validando || simular.isPending}>
                   {paso === PASOS.length - 2 ? "Calcular decisión" : "Siguiente"} <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
             )}
             {paso === PASOS.length - 1 && (
               <div className="mt-4">
-                <Button variante="secundario" onClick={() => setPaso(paso - 1)}><ChevronLeft className="h-4 w-4" /> Volver a Validación</Button>
+                <Button variante="secundario" onClick={() => irA(paso - 1)}><ChevronLeft className="h-4 w-4" /> Volver a Validación</Button>
               </div>
             )}
           </FormProvider>

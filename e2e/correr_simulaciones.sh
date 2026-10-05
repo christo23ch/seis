@@ -108,9 +108,13 @@ echo
 # `playwright` desde la carpeta del fichero, y es devDependency del frontend.
 node "$RAIZ/frontend/e2e/simulaciones.mjs"; navegador=$?
 cd "$RAIZ/backend" && "$PY" "$RAIZ/e2e/comprobar_simulaciones.py"; base=$?
+# Fase 5I: el alta de una inversión POR EL FORMULARIO, con solo los obligatorios.
+# Aprovecha esta pila (mismo administrador, misma compilación) en vez de levantar
+# otra: la de alta (`correr.sh`) es la del registro de usuarios, no la del análisis.
+node "$RAIZ/frontend/e2e/nueva-inversion.mjs"; alta_inversion=$?
 
-if [ $navegador -ne 0 ] || [ $base -ne 0 ]; then
-  echo "E2E: FALLÓ (navegador=$navegador base=$base). Registros en $E2E_DIR (usar E2E_CONSERVAR=1 para verlos)."
+if [ $navegador -ne 0 ] || [ $base -ne 0 ] || [ $alta_inversion -ne 0 ]; then
+  echo "E2E: FALLÓ (navegador=$navegador base=$base alta_inversion=$alta_inversion). Registros en $E2E_DIR (usar E2E_CONSERVAR=1 para verlos)."
   exit 1
 fi
-echo "E2E: simulaciones e informes oficiales de punta a punta, correctos."
+echo "E2E: simulaciones, informes oficiales y alta de inversión de punta a punta, correctos."
