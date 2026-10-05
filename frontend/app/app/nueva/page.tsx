@@ -1,11 +1,12 @@
 "use client";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { FormProvider, useFieldArray, useFormContext, useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { api } from "@/lib/api";
-import { PASOS, esquemaAnalisis, prepararEnvio, valoresIniciales, type EntradaFormulario, type ValoresAnalisis } from "@/lib/schema";
+import { ApiError, api } from "@/lib/api";
+import { primerPasoConError, rutasConError, traducir422 } from "@/lib/errores-validacion";
+import { PASOS, RUTAS_EN_FRACCION, esquemaAnalisis, pasoDeRuta, prepararEnvio, valoresIniciales, type EntradaFormulario, type ValoresAnalisis } from "@/lib/schema";
 import type { Opciones, Resultado } from "@/lib/types";
 import { Button, Campo, Card, CardContent, CardHeader, CardTitle, Check, ErrorBox, Input, Select, Spinner } from "@/components/ui";
 import { CondicionesVetos, EscaleraPrecios, EscenariosPanel, IcoDesglose, MetricasClave, RiesgosPanel, SemaforoHero } from "@/components/resultado";
@@ -18,12 +19,25 @@ function getError(errors: any, path: string): string | undefined {
   const nodo = path.split(".").reduce((acc: any, k) => (acc ? acc[k] : undefined), errors);
   return nodo?.message ?? nodo?.root?.message;
 }
-function FIn({ name, label, ayuda, placeholder }:
-  { name: string; label: string; ayuda?: string; placeholder?: string }) {
-  const { register, formState: { errors } } = useFormContext();
+/** `register` de un campo de texto o número. Fase 5I-B: si el campo YA tiene un
+ * error, se revalida con cada pulsación (el modo general es `onBlur`). Así el
+ * mensaje desaparece mientras se corrige y no al perder el foco: si desaparecía
+ * al pulsar «Siguiente», el botón subía 22 px entre `mousedown` y `mouseup` y el
+ * clic se perdía (medido en la e2e de validación). */
+function useRegistro(name: string, opciones: { shouldUnregister?: boolean } = {}) {
+  const { register, getFieldState, trigger } = useFormContext();
+  return register(name as never, {
+    ...opciones,
+    onChange: () => { if (getFieldState(name as never).error) void trigger(name as never); },
+  });
+}
+function FIn({ name, label, ayuda, placeholder, obligatorio }:
+  { name: string; label: string; ayuda?: string; placeholder?: string; obligatorio?: boolean }) {
+  const { formState: { errors } } = useFormContext();
+  const registro = useRegistro(name);
   return (
-    <Campo label={label} error={getError(errors, name)} ayuda={ayuda}>
-      <Input type="text" placeholder={placeholder} {...register(name as never)} />
+    <Campo label={label} error={getError(errors, name)} ayuda={ayuda} obligatorio={obligatorio}>
+      <Input type="text" placeholder={placeholder} {...registro} />
     </Campo>
   );
 }
@@ -45,15 +59,17 @@ function valorInicial(ruta: string): unknown {
  *     rentista). Al ocultarse se da de baja, para que un valor que ya no se ve
  *     ni bloquee la validación ni viaje al backend.
  *   · Sin `placeholder`, muestra «Por defecto: …» con el valor inicial, si lo hay. */
-function FNum({ name, label, ayuda, placeholder, negativo, condicional }:
-  { name: string; label: string; ayuda?: string; placeholder?: string; negativo?: boolean; condicional?: boolean }) {
-  const { register, formState: { errors } } = useFormContext();
+function FNum({ name, label, ayuda, placeholder, negativo, condicional, obligatorio }:
+  { name: string; label: string; ayuda?: string; placeholder?: string; negativo?: boolean;
+    condicional?: boolean; obligatorio?: boolean }) {
+  const { formState: { errors } } = useFormContext();
+  const registro = useRegistro(name, { shouldUnregister: condicional });
   const inicial = valorInicial(name);
   const marcador = placeholder ?? (typeof inicial === "number" ? `Por defecto: ${num(inicial, 2)}` : undefined);
   return (
-    <Campo label={label} error={getError(errors, name)} ayuda={ayuda}>
+    <Campo label={label} error={getError(errors, name)} ayuda={ayuda} obligatorio={obligatorio}>
       <Input type="text" inputMode={negativo ? "text" : "decimal"} autoComplete="off" placeholder={marcador}
-        {...register(name as never, { shouldUnregister: condicional })} />
+        {...registro} />
     </Campo>
   );
 }
@@ -95,7 +111,7 @@ function Paso1({ op }: { op?: Opciones }) {
       <FSel name="perfil" label="Perfil de inversión"
         opciones={Object.entries(op?.perfiles ?? { flip_integral: "Reforma integral + venta" }).map(([v, t]) => ({ v, t }))} />
       <FSel name="subasta.fuente" label="Fuente de la subasta" opciones={aOps(op?.fuentes ?? ["judicial_boe"])} />
-      <FNum name="subasta.valor_subasta" label="Valor de subasta / tasación (€)" placeholder="p. ej. 152.000" />
+      <FNum name="subasta.valor_subasta" obligatorio label="Valor de subasta / tasación (€)" placeholder="p. ej. 152.000" />
       <FNum name="subasta.puja_minima" label="Puja mínima (€, opcional)" placeholder="Sin puja mínima" />
       <FNum name="subasta.deposito_pct" label="Depósito (%)" />
       <FNum name="subasta.horas_hasta_cierre" label="Horas hasta el cierre (opcional)" placeholder="No consta" />
@@ -110,7 +126,7 @@ function Paso2({ op }: { op?: Opciones }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <FSel name="activo.tipologia" label="Tipología" opciones={aOps(op?.tipologias ?? ["vivienda"])} />
-      <FNum name="activo.superficie_m2" label="Superficie construida (m²)" placeholder="p. ej. 82" />
+      <FNum name="activo.superficie_m2" obligatorio label="Superficie construida (m²)" placeholder="p. ej. 82" />
       <FSel name="activo.estado_conservacion" label="Estado de conservación"
         opciones={aOps(op?.estados_conservacion ?? ["regular"])} />
       <FNum name="activo.anio_construccion" label="Año de construcción (opcional)" placeholder="No consta" />
@@ -195,7 +211,7 @@ function Paso5({ op }: { op?: Opciones }) {
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2">
         <FIn name="activo.direccion" label="Dirección" />
-        <FIn name="activo.municipio" label="Municipio" />
+        <FIn name="activo.municipio" obligatorio label="Municipio" />
         <FIn name="activo.provincia" label="Provincia" />
         <FSel name="activo.ccaa" label="Comunidad autónoma (fiscalidad T3)" opciones={aOps(op?.ccaa ?? ["madrid"])} />
         <FNum name="activo.lat" negativo label="Latitud (opcional)" placeholder="p. ej. 40,4168" />
@@ -232,11 +248,11 @@ function Paso6() {
             <Plus className="h-4 w-4" /> Añadir comparable
           </Button>
         </div>
-        {errRaiz && <p className="mb-2 text-[12px] text-sem-rojo">{errRaiz}</p>}
+        {errRaiz && <p className="mb-2 text-[12px] text-sem-rojo" data-error-campo="" tabIndex={-1}>{errRaiz}</p>}
         <div className="space-y-2">
           {fields.map((f, i) => (
             <div key={f.id} className="grid items-end gap-3 rounded-md border border-slate-200 p-3 sm:grid-cols-5">
-              <FNum name={`comparables.${i}.precio_m2`} label="€/m²" placeholder="p. ej. 2.293" />
+              <FNum name={`comparables.${i}.precio_m2`} obligatorio label="€/m²" placeholder="p. ej. 2.293" />
               <FSel name={`comparables.${i}.estado`} label="Estado" opciones={aOps(["reformado", "bueno", "regular", "malo", "ruina"])} />
               <FSel name={`comparables.${i}.origen`} label="Origen" opciones={aOps(["testigo", "portal_oferta", "notarial", "registro"])} />
               <FNum name={`comparables.${i}.meses_antiguedad`} label="Antigüedad (meses)" />
@@ -422,6 +438,12 @@ function PasoResultado({ res, cargando, error, onRecalcular, onGuardar, guardand
 }
 
 /* ── página ───────────────────────────────────────────────────────────── */
+/** `onMouseDown` de los botones de navegación (Fase 5I-B): no roban el foco, así
+ * que el campo activo no se valida por `blur` justo antes del clic. Esa
+ * validación pintaba o borraba un mensaje, movía el botón entre `mousedown` y
+ * `mouseup`, y el clic se perdía (medido en la e2e de validación). El paso lo
+ * valida `siguiente`; el teclado no se ve afectado. */
+const sinRobarFoco = (e: React.MouseEvent) => e.preventDefault();
 /** `zodResolver` (v3.10) declara que devuelve el tipo de ENTRADA, pero en
  * ejecución entrega la SALIDA de Zod (números ya convertidos, sin `raw: true`).
  * El tipo se ajusta a lo que hace; `tests/schema.test.ts` prueba esa salida. */
@@ -467,23 +489,86 @@ function AsistenteNuevaInversion() {
     setSubastaPrellenada(true);
   }, [subastaId, subastaPrellenada, subastasCaptadas, form]);
 
-  const simular = useMutation({ mutationFn: (p: unknown) => api.simular(p), onSuccess: setResultado });
-  const guardar = useMutation({
-    mutationFn: (p: unknown) => api.crear(p, subastaId ?? undefined),
-    onSuccess: (r) => router.push(rutaApp(`/inversiones/${r.id}`)),
-  });
-
-  const [pendientes, setPendientes] = useState(false);
+  /* ── validación guiada (Fase 5I-B) ──────────────────────────────────────
+   * Ante datos pendientes o no válidos —al avanzar, al calcular o porque el
+   * backend responda 422— el asistente va al PRIMER paso con errores, cada campo
+   * afectado muestra su mensaje en rojo, y el foco y el desplazamiento van al
+   * primero de ellos. `aviso` resume el problema en lo alto del paso. */
+  const [aviso, setAviso] = useState<{ texto: string; detalles: string[] } | null>(null);
+  const [focoError, setFocoError] = useState(0);
+  // El foco se mueve SOLO cuando se pide (al fallar una validación), una vez: no
+  // al volver «Atrás» ni al cambiar de paso, aunque queden campos en rojo.
+  const focoPendiente = useRef(false);
+  const contenedor = useRef<HTMLDivElement>(null);
+  const cajaAviso = useRef<HTMLDivElement>(null);
+  const pedirFoco = () => { focoPendiente.current = true; setFocoError((n) => n + 1); };
   // Entre la validación (asíncrona) y el cambio de paso, «Siguiente» queda
   // deshabilitado: dos clics seguidos en el paso 10 lanzaban dos cálculos.
   const [validando, setValidando] = useState(false);
-  const irA = (i: number) => { setPendientes(false); setPaso(i); };
+  const irA = (i: number) => { setAviso(null); setPaso(i); };
+
+  useEffect(() => {
+    if (!focoPendiente.current) return;
+    // Tras pintar el paso: el primer control marcado, en el orden del paso; si no
+    // hay ninguno (error de lista, o solo errores generales), el propio aviso.
+    const id = requestAnimationFrame(() => {
+      focoPendiente.current = false;
+      const raiz = contenedor.current;
+      const el = raiz?.querySelector<HTMLElement>('[aria-invalid="true"]')
+        ?? raiz?.querySelector<HTMLElement>("[data-error-campo]") ?? cajaAviso.current;
+      if (!el) return;
+      el.scrollIntoView({ block: "center" });
+      el.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [focoError]);
+
+  /** Muestra los errores: va al primer paso afectado (o se queda) y enfoca. */
+  const mostrarErrores = (rutas: string[], texto: string, detalles: string[] = []) => {
+    const destino = primerPasoConError(rutas);
+    if (destino !== undefined) setPaso(destino);
+    setAviso({ texto, detalles });
+    pedirFoco();
+  };
+  const AVISO_PENDIENTES = "Faltan datos o hay datos no válidos. Revise los campos marcados en rojo.";
+
+  /** 422 del backend: cada error a su campo, en español; el resto, en el aviso. */
+  const alFallarEnvio = (e: unknown) => {
+    if (!(e instanceof ApiError) || e.status !== 422) return;
+    // Solo cuentan como campo las hojas de un paso (no `activo` entero, ni un
+    // campo oculto y dado de baja): lo demás va al aviso general.
+    const esCampo = (ruta: string) => {
+      const v = form.getValues(ruta as never) as unknown;
+      return pasoDeRuta(ruta) !== undefined && v !== undefined && (v === null || typeof v !== "object");
+    };
+    const t = traducir422(e.detalle, esCampo, RUTAS_EN_FRACCION);
+    for (const [ruta, mensaje] of Object.entries(t.campos)) {
+      form.setError(ruta as never, { type: "server", message: mensaje });
+    }
+    const rutas = Object.keys(t.campos);
+    mostrarErrores(rutas, rutas.length
+      ? "El servidor no ha aceptado algunos datos. Revise los campos marcados en rojo."
+      : "El servidor no ha aceptado los datos del análisis.", t.generales);
+  };
+  /** Texto de un error de envío. Un 422 no tiene texto propio: ya lo explica el
+   * aviso, campo a campo (nunca el texto de Pydantic en bruto). */
+  const textoError = (e: unknown) =>
+    e instanceof ApiError && e.status === 422 ? undefined : (e as Error).message;
+
+  const simular = useMutation({ mutationFn: (p: unknown) => api.simular(p), onSuccess: setResultado,
+                                onError: alFallarEnvio });
+  const guardar = useMutation({
+    mutationFn: (p: unknown) => api.crear(p, subastaId ?? undefined),
+    onSuccess: (r) => router.push(rutaApp(`/inversiones/${r.id}`)),
+    onError: alFallarEnvio,
+  });
+
   /** Valida TODO el formulario y, si es correcto, entrega el cuerpo listo para el
    * backend. Nunca `getValues()`: daría el texto crudo de los campos. */
   const conEnvio = (accion: (cuerpo: Record<string, unknown>) => void) =>
     form.handleSubmit(
-      (validos) => { setPendientes(false); accion(prepararEnvio(validos)); },
-      () => setPendientes(true),
+      (validos) => { setAviso(null); accion(prepararEnvio(validos)); },
+      (errores) => mostrarErrores(rutasConError(errores), AVISO_PENDIENTES),
     )();
 
   async function siguiente() {
@@ -492,7 +577,11 @@ function AsistenteNuevaInversion() {
     try {
       const campos = PASOS[paso].campos;
       const ok = campos.length ? await form.trigger(campos as never) : true;
-      if (!ok) return;
+      if (!ok) {
+        setAviso({ texto: AVISO_PENDIENTES, detalles: [] });
+        pedirFoco();
+        return;
+      }
       const nuevo = Math.min(paso + 1, PASOS.length - 1);
       if (nuevo === PASOS.length - 1) {
         await conEnvio((cuerpo) => { irA(nuevo); setResultado(null); simular.mutate(cuerpo); });
@@ -505,12 +594,18 @@ function AsistenteNuevaInversion() {
   }
   const recalcular = () => conEnvio((cuerpo) => { setResultado(null); simular.mutate(cuerpo); });
 
+  const rutasError = rutasConError(form.formState.errors);
+  const pasosConError = new Set(rutasError.map(pasoDeRuta));
+  // El aviso se deriva del estado: si ya no queda ningún campo en rojo (se
+  // corrigieron), desaparece; los errores generales del servidor se mantienen.
+  const avisoVigente = aviso && (rutasError.length > 0 || aviso.detalles.length > 0) ? aviso : null;
+
   const contenido = [
     <Paso1 key={0} op={opciones} />, <Paso2 key={1} op={opciones} />, <Paso3 key={2} />, <Paso4 key={3} />,
     <Paso5 key={4} op={opciones} />, <Paso6 key={5} />, <Paso7 key={6} op={opciones} />, <Paso8 key={7} op={opciones} />,
     <Paso9 key={8} />, <Paso10 key={9} />,
     <PasoResultado key={10} res={resultado} cargando={simular.isPending}
-      error={simular.isError ? (simular.error as Error).message : undefined}
+      error={simular.isError ? textoError(simular.error) : undefined}
       onRecalcular={recalcular} onGuardar={() => conEnvio((cuerpo) => guardar.mutate(cuerpo))}
       guardando={guardar.isPending} />,
   ];
@@ -533,10 +628,11 @@ function AsistenteNuevaInversion() {
           <ol className="space-y-0.5">
             {PASOS.map((p, i) => {
               const estado = i < paso ? "hecho" : i === paso ? "actual" : "pendiente";
+              const conError = pasosConError.has(i);
               return (
                 <li key={p.titulo}>
                   <button type="button" disabled={i > paso}
-                    onClick={() => i < paso && irA(i)}
+                    onClick={() => i < paso && irA(i)} onMouseDown={sinRobarFoco}
                     className={`flex w-full items-start gap-2.5 rounded-md px-2.5 py-2 text-left
                       ${estado === "actual" ? "bg-primario-tenue" : i < paso ? "hover:bg-slate-100" : "opacity-50"}`}>
                     <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold
@@ -544,7 +640,9 @@ function AsistenteNuevaInversion() {
                       {estado === "hecho" ? <CheckIcon className="h-3 w-3" /> : i + 1}
                     </span>
                     <span>
-                      <span className={`block text-[13px] font-medium ${estado === "actual" ? "text-primario" : "text-slate-700"}`}>{p.titulo}</span>
+                      <span className={`block text-[13px] font-medium ${conError ? "text-sem-rojo" : estado === "actual" ? "text-primario" : "text-slate-700"}`}>
+                        {p.titulo}{conError && <span className="sr-only"> (con datos pendientes)</span>}
+                      </span>
                       <span className="block text-[11px] text-slate-400">{p.descripcion}</span>
                     </span>
                   </button>
@@ -555,28 +653,46 @@ function AsistenteNuevaInversion() {
         </aside>
         <div className="min-w-0 flex-1">
           <FormProvider {...form}>
+            <div ref={contenedor}>
             <Card>
               <CardHeader className="flex items-center justify-between">
                 <CardTitle>Paso {paso + 1} de 11 — {PASOS[paso].titulo}</CardTitle>
-                {guardar.isError && <span className="text-[12px] text-sem-rojo">{(guardar.error as Error).message}</span>}
+                {guardar.isError && textoError(guardar.error) && (
+                  <span role="alert" className="text-[12px] text-sem-rojo">{textoError(guardar.error)}</span>
+                )}
               </CardHeader>
               <CardContent>
-                {pendientes && (
-                  <div className="mb-4"><ErrorBox mensaje="Hay datos pendientes o no válidos en pasos anteriores. Revíselos antes de calcular." /></div>
+                {avisoVigente && (
+                  <div className="mb-4">
+                    {/* `key`: cada intento fallido remonta la caja y el lector la vuelve a anunciar. */}
+                    <ErrorBox key={focoError} ref={cajaAviso} tabIndex={-1} mensaje={avisoVigente.texto}>
+                      {avisoVigente.detalles.length > 0 && (
+                        <ul className="mt-1.5 list-disc space-y-0.5 pl-5 text-[13px]">
+                          {avisoVigente.detalles.map((d) => <li key={d}>{d}</li>)}
+                        </ul>
+                      )}
+                    </ErrorBox>
+                  </div>
+                )}
+                {paso < PASOS.length - 1 && (
+                  <p className="mb-3 text-[12px] text-slate-500"><span className="text-sem-rojo" aria-hidden="true">*</span> Campo obligatorio</p>
                 )}
                 {contenido[paso]}
               </CardContent>
             </Card>
             {paso < PASOS.length - 1 && (
               <div className="mt-4 flex justify-between">
-                <Button variante="secundario" onClick={() => irA(Math.max(0, paso - 1))} disabled={paso === 0}>
+                <Button variante="secundario" onClick={() => irA(Math.max(0, paso - 1))} disabled={paso === 0}
+                  onMouseDown={sinRobarFoco}>
                   <ChevronLeft className="h-4 w-4" /> Atrás
                 </Button>
-                <Button onClick={siguiente} disabled={validando || simular.isPending}>
+                <Button onClick={siguiente} disabled={validando || simular.isPending}
+                  onMouseDown={sinRobarFoco}>
                   {paso === PASOS.length - 2 ? "Calcular decisión" : "Siguiente"} <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
             )}
+            </div>
             {paso === PASOS.length - 1 && (
               <div className="mt-4">
                 <Button variante="secundario" onClick={() => irA(paso - 1)}><ChevronLeft className="h-4 w-4" /> Volver a Validación</Button>

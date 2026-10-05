@@ -222,6 +222,10 @@ export const PASOS: { titulo: string; descripcion: string; campos: string[] }[] 
   { titulo: "Resultado", descripcion: "Decisión del motor experto", campos: [] },
 ];
 
+/** Rutas que se escriben en % y viajan en fracción (ver `aPayload`). */
+export const RUTAS_EN_FRACCION: ReadonlySet<string> =
+  new Set(["subasta.deposito_pct", "costes.itp_tipo_override", "financiacion.ltv"]);
+
 /** `x / 100` respetando la ausencia: un porcentaje vacío sigue vacío. */
 const fraccion = (x: number | undefined) => (x === undefined ? undefined : x / 100);
 
@@ -267,4 +271,14 @@ export function aPayload(v: ValoresAnalisis): Record<string, unknown> {
  */
 export function prepararEnvio(v: ValoresAnalisis): Record<string, unknown> {
   return limpiarVacios(aPayload(v));
+}
+
+/**
+ * Fase 5I-B — paso del asistente al que pertenece la ruta de un campo
+ * («comparables.1.precio_m2» → 5), para llevar a la persona al primer campo
+ * pendiente aunque esté en otro paso. `undefined` si no es de ningún paso.
+ */
+export function pasoDeRuta(ruta: string): number | undefined {
+  const i = PASOS.findIndex((p) => p.campos.some((c) => ruta === c || ruta.startsWith(`${c}.`)));
+  return i === -1 ? undefined : i;
 }

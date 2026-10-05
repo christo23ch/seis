@@ -112,6 +112,9 @@ cd "$RAIZ/backend" && "$PY" "$RAIZ/e2e/comprobar_simulaciones.py"; base=$?
 # Aprovecha esta pila (mismo administrador, misma compilación) en vez de levantar
 # otra: la de alta (`correr.sh`) es la del registro de usuarios, no la del análisis.
 node "$RAIZ/frontend/e2e/nueva-inversion.mjs"; alta_inversion=$?
+# Fase 5I-B: validación guiada (mensajes por campo, foco, 422 traducido, 390 px).
+node "$RAIZ/frontend/e2e/validacion-alta.mjs"; validacion=$?
+alta_inversion=$((alta_inversion + validacion))
 
 if [ $navegador -ne 0 ] || [ $base -ne 0 ] || [ $alta_inversion -ne 0 ]; then
   echo "E2E: FALLÓ (navegador=$navegador base=$base alta_inversion=$alta_inversion). Registros en $E2E_DIR (usar E2E_CONSERVAR=1 para verlos)."
