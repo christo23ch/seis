@@ -45,10 +45,24 @@ export const esquemaAnalisis = z.object({
     fuente: z.string().min(1, MENSAJES.obligatorio),
     valor_subasta: requerido(positivo),
     puja_minima: opcional(positivo),
+    // Fase 5I-C: el depósito se conoce a menudo como importe, no como %.
+    deposito_modo: z.enum(["porcentaje", "importe"]),
     deposito_pct: decimal(porcentaje),
+    deposito_importe: opcional(positivo),
     horas_hasta_cierre: opcional(noNegativo),
     subastas_desiertas_previas: opcional(enteroNoNegativo),
     identificador_externo: z.string().optional(),
+  // Zod 3 no ejecuta este refinamiento mientras otro campo de `subasta` falle (p.
+  // ej. el valor vacío): el error del importe aparece en un segundo intento. Se
+  // acepta: el primero que se ve es el que hay que corregir antes.
+  }).superRefine((s, ctx) => {
+    if (s.deposito_modo !== "importe") return;
+    if (s.deposito_importe === undefined) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["deposito_importe"], message: MENSAJES.obligatorio });
+    } else if (s.valor_subasta !== undefined && s.deposito_importe > s.valor_subasta) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["deposito_importe"],
+                     message: "No puede superar el valor de subasta" });
+    }
   }),
   activo: z.object({
     tipologia: z.string(),
@@ -176,7 +190,8 @@ export type ValoresAnalisis = z.output<typeof esquemaAnalisis>;
  */
 export const valoresIniciales: EntradaFormulario = {
   perfil: "flip_integral",
-  subasta: { fuente: "judicial_boe", valor_subasta: "", puja_minima: "", deposito_pct: 5,
+  subasta: { fuente: "judicial_boe", valor_subasta: "", puja_minima: "",
+             deposito_modo: "porcentaje", deposito_pct: 5, deposito_importe: "",
              horas_hasta_cierre: "", subastas_desiertas_previas: 0, identificador_externo: "" },
   activo: { tipologia: "vivienda", superficie_m2: "", estado_conservacion: "regular", anio_construccion: "",
             es_vivienda_habitual: false, vpo: false, vpo_precio_max_legal: "", ref_catastral: "",
@@ -230,6 +245,20 @@ export const RUTAS_EN_FRACCION: ReadonlySet<string> =
 const fraccion = (x: number | undefined) => (x === undefined ? undefined : x / 100);
 
 /**
+ * Fase 5I-C — el ÚNICO sitio que convierte el depósito a lo que lee el motor:
+ * `deposito_pct` como fracción del valor de subasta. Con importe, importe / valor;
+ * con porcentaje, % / 100. `undefined` si falta el dato (el contrato aplica 5 %).
+ * Lo usan `aPayload` y el equivalente que muestra el formulario («7.600 € = 5 %»).
+ */
+export function depositoFraccion(s: {
+  deposito_modo: "porcentaje" | "importe"; deposito_pct?: number; deposito_importe?: number; valor_subasta?: number;
+}): number | undefined {
+  if (s.deposito_modo === "porcentaje") return fraccion(s.deposito_pct);
+  if (s.deposito_importe === undefined || !s.valor_subasta) return undefined;
+  return s.deposito_importe / s.valor_subasta;
+}
+
+/**
  * Valores ya VALIDADOS (salida de `esquemaAnalisis`) → cuerpo de `AnalisisInput`.
  * Solo traduce unidades y forma; los vacíos los retira `prepararEnvio`.
  */
@@ -244,7 +273,13 @@ export function aPayload(v: ValoresAnalisis): Record<string, unknown> {
   const payload: Record<string, unknown> = {
     perfil: v.perfil,
     activo: v.activo,
-    subasta: { ...v.subasta, deposito_pct: fraccion(v.subasta.deposito_pct) },
+    subasta: {
+      ...v.subasta,
+      deposito_modo: undefined,                         // solo del formulario
+      deposito_pct: depositoFraccion(v.subasta),
+      // El importe escrito viaja solo para conservarlo (no lo lee el motor).
+      deposito_importe: v.subasta.deposito_modo === "importe" ? v.subasta.deposito_importe : undefined,
+    },
     cargas: v.cargas,
     ocupacion: v.ocupacion,
     urbanistico: v.urbanistico,
@@ -281,4 +316,46 @@ export function prepararEnvio(v: ValoresAnalisis): Record<string, unknown> {
 export function pasoDeRuta(ruta: string): number | undefined {
   const i = PASOS.findIndex((p) => p.campos.some((c) => ruta === c || ruta.startsWith(`${c}.`)));
   return i === -1 ? undefined : i;
+}
+
+/** Estados de ocupación en los que el formulario pide la renta actual. */
+export const ocupacionConRenta = (estado: string | undefined) =>
+  (estado ?? "").startsWith("arrendado") || estado === "renta_antigua";
+
+/**
+ * Fase 5I — campos que solo existen según otro (modo del depósito, VPO, renta,
+ * hipoteca, nota simple, perfil rentista): rutas de los que están OCULTOS ahora.
+ * Única fuente de esa condición: la usan `descartarOcultos` (antes de validar),
+ * la limpieza de errores al ocultarse un campo y el traductor de 422 (un error de
+ * un campo oculto no se pinta en un campo que no se ve).
+ */
+export function rutasOcultas(v: EntradaFormulario): string[] {
+  return [
+    v.subasta.deposito_modo === "importe" ? "subasta.deposito_pct" : "subasta.deposito_importe",
+    ...(v.activo.vpo ? [] : ["activo.vpo_precio_max_legal"]),
+    ...(ocupacionConRenta(v.ocupacion.estado) ? [] : ["ocupacion.renta_mensual"]),
+    ...(v.financiacion.tipo === "hipoteca" ? [] : ["financiacion.ltv", "financiacion.interes_anual_pct"]),
+    ...(v.documentos.nota_simple ? [] : ["documentos.nota_simple_dias"]),
+    ...(v.perfil === "rentista" ? [] : ["rentista"]),
+  ];
+}
+
+/** ¿La ruta es una de las ocultas o está dentro de una (`rentista.vacancia_pct`)? */
+export const estaOculta = (ruta: string, ocultas: readonly string[]) =>
+  ocultas.some((o) => ruta === o || ruta.startsWith(`${o}.`));
+
+/**
+ * Antes de validar, vacía los campos ocultos (`rutasOcultas`): un valor que ya no
+ * se ve ni bloquea la validación ni viaja al backend. Los visibles se conservan
+ * aunque su paso no esté en pantalla (`shouldUnregister` no servía: los pasos se
+ * desmontan al navegar y se perdían). Devuelve una copia; no modifica la entrada.
+ */
+export function descartarOcultos(v: EntradaFormulario): EntradaFormulario {
+  const copia = structuredClone(v) as Record<string, unknown>;
+  for (const ruta of rutasOcultas(v)) {
+    const [grupo, campo] = ruta.split(".");
+    if (campo === undefined) copia[grupo] = undefined;
+    else copia[grupo] = { ...(copia[grupo] as Record<string, unknown>), [campo]: "" };
+  }
+  return copia as EntradaFormulario;
 }

@@ -43,6 +43,11 @@ class SubastaInput(BaseModel):
     puja_minima: float | None = None
     tramo: float | None = None
     deposito_pct: float = 0.05
+    # Fase 5I-C: importe del depósito tal como se escribió, si se dio en euros. Solo
+    # se conserva para trazabilidad, en la entrada guardada del análisis (no en la
+    # tabla `subasta`): el formulario lo convierte a `deposito_pct` y NINGÚN módulo
+    # lo lee (`tests/test_deposito_importe_5i.py` lo vigila).
+    deposito_importe: float | None = Field(default=None, gt=0, allow_inf_nan=False)
     fecha_cierre: date | None = None
     horas_hasta_cierre: float | None = None            # si se conoce con precisión
     subastas_desiertas_previas: int = 0

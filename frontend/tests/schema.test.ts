@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MENSAJES, esquemaAnalisis, prepararEnvio, valoresIniciales, type EntradaFormulario } from "@/lib/schema";
+import { MENSAJES, depositoFraccion, descartarOcultos, esquemaAnalisis, estaOculta, rutasOcultas, prepararEnvio, valoresIniciales, type EntradaFormulario } from "@/lib/schema";
 
 /** Valores iniciales con SOLO los obligatorios rellenados, como los escribe una persona. */
 function soloObligatorios(): EntradaFormulario {
@@ -100,5 +100,111 @@ describe("esquemaAnalisis: mensajes en español", () => {
     const v = soloObligatorios();
     v.comparables = [{ ...v.comparables[0], meses_antiguedad: "-1" }];
     expect(errores(v)["comparables.0.meses_antiguedad"]).toBe(MENSAJES.noNegativo);
+  });
+});
+
+describe("depósito como importe o porcentaje (5I-C)", () => {
+  const conDeposito = (subasta: Partial<EntradaFormulario["subasta"]>) => {
+    const v = soloObligatorios();
+    return { ...v, subasta: { ...v.subasta, ...subasta } };
+  };
+
+  it("convierte el importe a fracción del valor de subasta en un solo sitio", () => {
+    expect(depositoFraccion({ deposito_modo: "importe", deposito_importe: 7600, deposito_pct: undefined, valor_subasta: 152000 }))
+      .toBeCloseTo(0.05, 12);
+    expect(depositoFraccion({ deposito_modo: "porcentaje", deposito_importe: 7600, deposito_pct: 3, valor_subasta: 152000 }))
+      .toBeCloseTo(0.03, 12);
+    expect(depositoFraccion({ deposito_modo: "importe", deposito_importe: undefined, deposito_pct: 5, valor_subasta: 152000 }))
+      .toBeUndefined();
+  });
+
+  it("con importe envía deposito_pct (lo que lee el motor) y el importe escrito", () => {
+    const cuerpo = prepararEnvio(esquemaAnalisis.parse(conDeposito({ deposito_modo: "importe", deposito_importe: "7.600" }))) as any;
+    expect(cuerpo.subasta.deposito_pct).toBeCloseTo(0.05, 12);
+    expect(cuerpo.subasta.deposito_importe).toBe(7600);
+    expect("deposito_modo" in cuerpo.subasta).toBe(false);
+  });
+
+  it("con porcentaje no envía importe aunque quedara uno escrito", () => {
+    const cuerpo = prepararEnvio(esquemaAnalisis.parse(conDeposito({ deposito_modo: "porcentaje", deposito_importe: "7.600" }))) as any;
+    expect(cuerpo.subasta.deposito_pct).toBeCloseTo(0.05, 12);
+    expect("deposito_importe" in cuerpo.subasta).toBe(false);
+  });
+
+  it("valida el importe: obligatorio en ese modo, mayor que cero y no mayor que el valor de subasta", () => {
+    const err = (s: Partial<EntradaFormulario["subasta"]>) => {
+      const r = esquemaAnalisis.safeParse(conDeposito(s));
+      return r.success ? undefined : r.error.issues.find((i) => i.path.join(".") === "subasta.deposito_importe")?.message;
+    };
+    expect(err({ deposito_modo: "importe", deposito_importe: "" })).toBe(MENSAJES.obligatorio);
+    expect(err({ deposito_modo: "importe", deposito_importe: "0" })).toBe(MENSAJES.positivo);
+    expect(err({ deposito_modo: "importe", deposito_importe: "152.001" })).toBe("No puede superar el valor de subasta");
+    expect(err({ deposito_modo: "importe", deposito_importe: "152.000" })).toBeUndefined();
+    expect(err({ deposito_modo: "porcentaje", deposito_importe: "" })).toBeUndefined();
+  });
+});
+
+describe("descartarOcultos: lo que no se ve no se valida ni se envía, y lo que se ve se conserva", () => {
+  it("vacía los campos cuya condición no se cumple", () => {
+    const v = soloObligatorios();
+    const r = descartarOcultos({
+      ...v,
+      activo: { ...v.activo, vpo: false, vpo_precio_max_legal: "abc" },
+      ocupacion: { estado: "vacio", renta_mensual: "-5" },
+      financiacion: { ...v.financiacion, tipo: "cash", ltv: "xx" },
+      documentos: { ...v.documentos, nota_simple: false, nota_simple_dias: "zz" },
+      subasta: { ...v.subasta, deposito_modo: "porcentaje", deposito_importe: "0" },
+    });
+    expect(r.activo.vpo_precio_max_legal).toBe("");
+    expect(r.ocupacion.renta_mensual).toBe("");
+    expect(r.financiacion.ltv).toBe("");
+    expect(r.documentos.nota_simple_dias).toBe("");
+    expect(r.subasta.deposito_importe).toBe("");
+    expect(r.rentista).toBeUndefined();                  // perfil no rentista
+    expect(esquemaAnalisis.safeParse(r).success).toBe(true);
+  });
+
+  it("conserva los campos visibles aunque su paso no esté en pantalla", () => {
+    const v = soloObligatorios();
+    const r = descartarOcultos({
+      ...v,
+      perfil: "rentista",
+      activo: { ...v.activo, vpo: true, vpo_precio_max_legal: "90.000" },
+      ocupacion: { estado: "arrendado_anterior", renta_mensual: "650" },
+      financiacion: { ...v.financiacion, tipo: "hipoteca", ltv: "70", interes_anual_pct: "3,2" },
+      documentos: { ...v.documentos, nota_simple: true, nota_simple_dias: "3" },
+      subasta: { ...v.subasta, deposito_modo: "importe", deposito_importe: "7.600" },
+      rentista: { ...v.rentista!, renta_mensual_estimada: "900" },
+    });
+    const cuerpo = prepararEnvio(esquemaAnalisis.parse(r)) as any;
+    expect(cuerpo.activo.vpo_precio_max_legal).toBe(90000);
+    expect(cuerpo.ocupacion.renta_mensual).toBe(650);
+    expect(cuerpo.financiacion.ltv).toBeCloseTo(0.7);
+    expect(cuerpo.financiacion.interes_anual_pct).toBe(3.2);
+    expect(cuerpo.documentos.nota_simple_dias).toBe(3);
+    expect(cuerpo.subasta.deposito_importe).toBe(7600);
+    expect(cuerpo.rentista.renta_mensual_estimada).toBe(900);
+  });
+});
+
+describe("rutasOcultas: única fuente de los campos ocultos por su condición", () => {
+  it("lista exactamente lo que descartarOcultos vacía", () => {
+    const v = soloObligatorios();
+    expect(rutasOcultas(v).sort()).toEqual([
+      "activo.vpo_precio_max_legal", "documentos.nota_simple_dias", "financiacion.interes_anual_pct",
+      "financiacion.ltv", "ocupacion.renta_mensual", "rentista", "subasta.deposito_importe",
+    ]);
+    const visibles = { ...v, perfil: "rentista", subasta: { ...v.subasta, deposito_modo: "importe" as const },
+                       activo: { ...v.activo, vpo: true }, ocupacion: { ...v.ocupacion, estado: "renta_antigua" },
+                       financiacion: { ...v.financiacion, tipo: "hipoteca" as const },
+                       documentos: { ...v.documentos, nota_simple: true } };
+    expect(rutasOcultas(visibles)).toEqual(["subasta.deposito_pct"]);
+  });
+
+  it("estaOculta reconoce la ruta y sus hijas", () => {
+    const ocultas = rutasOcultas(soloObligatorios());
+    expect(estaOculta("rentista.vacancia_pct", ocultas)).toBe(true);
+    expect(estaOculta("activo.vpo_precio_max_legal", ocultas)).toBe(true);
+    expect(estaOculta("activo.superficie_m2", ocultas)).toBe(false);
   });
 });

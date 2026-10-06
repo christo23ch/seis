@@ -14,6 +14,8 @@
  *   · Coma decimal y punto de miles («82,5», «152.000», «2.293»).
  *   · La antigüedad de un comparable no baja de 0 con la flecha ↓ (punto 3 de la
  *     prueba manual: con `type="number"` sin mínimo, ↓ o la rueda daban −1, −2…).
+ *   · El depósito como importe (5I-C): equivalente visible y guardado como % más
+ *     el importe escrito.
  *
  * Uso: lo ejecuta `e2e/correr_simulaciones.sh`, con su backend y su frontend propios.
  *
@@ -63,8 +65,14 @@ try {
   await pagina.waitForURL((u) => u.pathname.startsWith("/app"), { timeout: 20000 });
   await pagina.goto(`${FRONTEND}/app/nueva`, { waitUntil: "networkidle" });
 
-  // 1 · Datos generales: solo el valor de subasta, con punto de miles.
+  // 1 · Datos generales: el valor de subasta, con punto de miles, y (5I-C) el
+  // depósito como importe, que el formulario muestra en su equivalente en %.
   await campo(pagina, "subasta.valor_subasta").fill("152.000");
+  await campo(pagina, "subasta.deposito_modo").selectOption("importe");
+  await campo(pagina, "subasta.deposito_importe").fill("7.600");
+  const equivalente = pagina.getByText("7.600 € = 5 % del valor de subasta");
+  await equivalente.waitFor({ timeout: 5000 }).catch(() => {});
+  comprobar(await equivalente.count() === 1, "el depósito en euros muestra su equivalente: «7.600 € = 5 %»");
   await siguiente();
   // 2 · Tipo de activo: solo la superficie, con coma decimal.
   await campo(pagina, "activo.superficie_m2").fill("82,5");
@@ -123,6 +131,10 @@ try {
     `superficie guardada como 82,5 (es ${det.entrada?.activo?.superficie_m2})`);
   comprobar(det.entrada?.subasta?.valor_subasta === 152000,
     `valor de subasta guardado como 152.000 (es ${det.entrada?.subasta?.valor_subasta})`);
+  comprobar(Math.abs((det.entrada?.subasta?.deposito_pct ?? 0) - 0.05) < 1e-12
+            && det.entrada?.subasta?.deposito_importe === 7600,
+    `depósito guardado como 5 % con el importe escrito (pct ${det.entrada?.subasta?.deposito_pct}, `
+    + `importe ${det.entrada?.subasta?.deposito_importe})`);
 } catch (e) {
   console.log(`  ✗ excepción: ${e.message}`);
   fallos.push(e.message);

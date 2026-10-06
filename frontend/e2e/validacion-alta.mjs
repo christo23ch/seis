@@ -104,6 +104,18 @@ try {
   comprobar(await p.locator("label", { hasText: "Valor de subasta" }).locator("text=*").count() === 1,
     "el obligatorio está marcado con «*»");
   await campo(p, "subasta.valor_subasta").fill("152.000");
+  // Depósito en euros sin importe: error; al volver a «Porcentaje», el campo se
+  // oculta y su error se retira (sin aviso «fantasma» ni paso bloqueado).
+  await campo(p, "subasta.deposito_modo").selectOption("importe");
+  await siguiente(p);
+  await esperarInvalido(p, "subasta.deposito_importe");
+  comprobar(await errorDe(p, "subasta.deposito_importe") === "Campo obligatorio",
+    "en modo importe, el importe del depósito es obligatorio");
+  await campo(p, "subasta.deposito_modo").selectOption("porcentaje");
+  await p.locator('[role="alert"]', { hasText: "Revise los campos marcados" }).waitFor({ state: "detached", timeout: 5000 })
+    .catch(() => {});
+  comprobar(await p.locator('[role="alert"]', { hasText: "Revise los campos marcados" }).count() === 0,
+    "al ocultarse el importe, su error y el aviso desaparecen");
   await avanzarA(p, 2);
 
   // Texto que no es un número.

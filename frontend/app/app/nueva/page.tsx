@@ -2,11 +2,12 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { FormProvider, useFieldArray, useFormContext, useForm, type Resolver } from "react-hook-form";
+import { FormProvider, useFieldArray, useFormContext, useForm, useWatch, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ApiError, api } from "@/lib/api";
+import { aNumero } from "@/lib/formulario";
 import { primerPasoConError, rutasConError, traducir422 } from "@/lib/errores-validacion";
-import { PASOS, RUTAS_EN_FRACCION, esquemaAnalisis, pasoDeRuta, prepararEnvio, valoresIniciales, type EntradaFormulario, type ValoresAnalisis } from "@/lib/schema";
+import { PASOS, RUTAS_EN_FRACCION, depositoFraccion, descartarOcultos, esquemaAnalisis, estaOculta, ocupacionConRenta, pasoDeRuta, rutasOcultas, prepararEnvio, valoresIniciales, type EntradaFormulario, type ValoresAnalisis } from "@/lib/schema";
 import type { Opciones, Resultado } from "@/lib/types";
 import { Button, Campo, Card, CardContent, CardHeader, CardTitle, Check, ErrorBox, Input, Select, Spinner } from "@/components/ui";
 import { CondicionesVetos, EscaleraPrecios, EscenariosPanel, IcoDesglose, MetricasClave, RiesgosPanel, SemaforoHero } from "@/components/resultado";
@@ -24,10 +25,9 @@ function getError(errors: any, path: string): string | undefined {
  * mensaje desaparece mientras se corrige y no al perder el foco: si desaparecía
  * al pulsar «Siguiente», el botón subía 22 px entre `mousedown` y `mouseup` y el
  * clic se perdía (medido en la e2e de validación). */
-function useRegistro(name: string, opciones: { shouldUnregister?: boolean } = {}) {
+function useRegistro(name: string) {
   const { register, getFieldState, trigger } = useFormContext();
   return register(name as never, {
-    ...opciones,
     onChange: () => { if (getFieldState(name as never).error) void trigger(name as never); },
   });
 }
@@ -55,15 +55,12 @@ function valorInicial(ruta: string): unknown {
  * ni rueda, que dejaban bajar la antigüedad de un comparable a −1, −2…
  *   · `negativo`: el teclado decimal de iOS no tiene «-»; esos campos usan el
  *     teclado de texto.
- *   · `condicional`: el campo solo existe según otro (VPO, arrendado, hipoteca,
- *     rentista). Al ocultarse se da de baja, para que un valor que ya no se ve
- *     ni bloquee la validación ni viaje al backend.
  *   · Sin `placeholder`, muestra «Por defecto: …» con el valor inicial, si lo hay. */
-function FNum({ name, label, ayuda, placeholder, negativo, condicional, obligatorio }:
+function FNum({ name, label, ayuda, placeholder, negativo, obligatorio }:
   { name: string; label: string; ayuda?: string; placeholder?: string; negativo?: boolean;
-    condicional?: boolean; obligatorio?: boolean }) {
+    obligatorio?: boolean }) {
   const { formState: { errors } } = useFormContext();
-  const registro = useRegistro(name, { shouldUnregister: condicional });
+  const registro = useRegistro(name);
   const inicial = valorInicial(name);
   const marcador = placeholder ?? (typeof inicial === "number" ? `Por defecto: ${num(inicial, 2)}` : undefined);
   return (
@@ -105,6 +102,42 @@ const cap = (s: string) => s.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCa
 const aOps = (xs: string[]) => xs.map((x) => ({ v: x, t: cap(x) }));
 
 /* ── pasos ────────────────────────────────────────────────────────────── */
+/** Fase 5I-C — depósito en % o en euros. La conversión a lo que lee el motor es
+ * `depositoFraccion` (lib/schema.ts), la misma que usa el envío; aquí solo se
+ * muestra su resultado como equivalente («7.600 € = 5 %»). */
+function CampoDeposito() {
+  // `useWatch` y no `watch`: así solo se repinta este campo al teclear, no el asistente entero.
+  const [modo, pct, importe, valor] = useWatch({
+    name: ["subasta.deposito_modo", "subasta.deposito_pct", "subasta.deposito_importe", "subasta.valor_subasta"],
+  });
+  const valorNum = aNumero(valor);
+  const fraccion = depositoFraccion({
+    deposito_modo: modo === "importe" ? "importe" : "porcentaje",
+    deposito_pct: aNumero(pct, { puntoDeMiles: false }), deposito_importe: aNumero(importe),
+    valor_subasta: valorNum,
+  });
+  // «No puede superar el valor de subasta» depende de los dos campos: si cambia el
+  // valor y el importe tenía error, se revalida el importe.
+  const { getFieldState, trigger } = useFormContext();
+  useEffect(() => {
+    if (getFieldState("subasta.deposito_importe" as never).error) void trigger("subasta.deposito_importe" as never);
+  }, [valor, getFieldState, trigger]);
+  // Solo un equivalente que pasaría la validación (0 < depósito ≤ valor de subasta):
+  // «-4.560 € = -3 %» junto a un error rojo parecería un dato bueno.
+  const valida = fraccion !== undefined && fraccion > 0 && fraccion <= 1 && valorNum !== undefined && valorNum > 0;
+  const equivalente = !valida ? undefined
+    : `${eur(fraccion * valorNum)} = ${tasa(fraccion)} del valor de subasta`;
+  return (
+    <div className="grid grid-cols-[minmax(0,9rem)_minmax(0,1fr)] gap-3">
+      <FSel name="subasta.deposito_modo" label="Depósito en"
+        opciones={[{ v: "porcentaje", t: "Porcentaje" }, { v: "importe", t: "Importe (€)" }]} />
+      {modo === "importe"
+        ? <FNum key="deposito_importe" name="subasta.deposito_importe" label="Depósito (€)" placeholder="p. ej. 7.600"
+            ayuda={equivalente} />
+        : <FNum key="deposito_pct" name="subasta.deposito_pct" label="Depósito (%)" ayuda={equivalente} />}
+    </div>
+  );
+}
 function Paso1({ op }: { op?: Opciones }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
@@ -113,7 +146,7 @@ function Paso1({ op }: { op?: Opciones }) {
       <FSel name="subasta.fuente" label="Fuente de la subasta" opciones={aOps(op?.fuentes ?? ["judicial_boe"])} />
       <FNum name="subasta.valor_subasta" obligatorio label="Valor de subasta / tasación (€)" placeholder="p. ej. 152.000" />
       <FNum name="subasta.puja_minima" label="Puja mínima (€, opcional)" placeholder="Sin puja mínima" />
-      <FNum name="subasta.deposito_pct" label="Depósito (%)" />
+      <CampoDeposito />
       <FNum name="subasta.horas_hasta_cierre" label="Horas hasta el cierre (opcional)" placeholder="No consta" />
       <FNum name="subasta.subastas_desiertas_previas" label="Subastas previas desiertas" />
       <FIn name="subasta.identificador_externo" label="Identificador / expediente (opcional)" />
@@ -134,7 +167,7 @@ function Paso2({ op }: { op?: Opciones }) {
         <FCheck name="activo.es_vivienda_habitual" label="Vivienda habitual del ejecutado (plazos posesorios reforzados)" />
         <FCheck name="activo.vpo" label="Vivienda de protección oficial (VPO)" />
       </div>
-      {vpo && <FNum name="activo.vpo_precio_max_legal" condicional label="Precio máximo legal VPO (€)" />}
+      {vpo && <FNum name="activo.vpo_precio_max_legal" label="Precio máximo legal VPO (€)" />}
     </div>
   );
 }
@@ -184,8 +217,8 @@ function Paso3() {
         <FSel name="ocupacion.estado" label="Situación posesoria declarada"
           opciones={aOps(["desconocida", "vacio", "propietario", "precario", "arrendado_posterior", "arrendado_anterior", "renta_antigua"])}
           ayuda="Si es desconocida, el motor asume precario (prudencia P5) y exige verificación in situ." />
-        {estadoOcu.startsWith("arrendado") || estadoOcu === "renta_antigua" ? (
-          <FNum name="ocupacion.renta_mensual" condicional label="Renta mensual actual (€)" />
+        {ocupacionConRenta(estadoOcu) ? (
+          <FNum name="ocupacion.renta_mensual" label="Renta mensual actual (€)" />
         ) : null}
       </div>
     </div>
@@ -349,8 +382,8 @@ function Paso9() {
         <FSel name="financiacion.tipo" label="Estructura de pago" opciones={[{ v: "cash", t: "100 % equity (cash)" }, { v: "hipoteca", t: "Con hipoteca" }]} />
         {tipo === "hipoteca" && (
           <>
-            <FNum name="financiacion.ltv" condicional label="LTV (%)" />
-            <FNum name="financiacion.interes_anual_pct" condicional label="Interés anual (%)" />
+            <FNum name="financiacion.ltv" label="LTV (%)" />
+            <FNum name="financiacion.interes_anual_pct" label="Interés anual (%)" />
             <div className="sm:col-span-3">
               <FCheck name="financiacion.preaprobada" label="Financiación preaprobada en firme (sin preaprobación ⇒ VETO-FIN-01)" />
             </div>
@@ -361,12 +394,12 @@ function Paso9() {
         <div>
           <h4 className="mb-3 text-sm font-semibold text-slate-700">Explotación en alquiler (perfil rentista)</h4>
           <div className="grid gap-4 sm:grid-cols-3">
-            <FNum condicional name="rentista.renta_mensual_estimada" label="Renta mensual de mercado (€)" />
-            <FNum condicional name="rentista.vacancia_pct" label="Vacancia (%)" />
-            <FNum condicional name="rentista.ibi_anual" label="IBI anual (€)" />
-            <FNum condicional name="rentista.comunidad_mensual" label="Comunidad mensual (€)" />
-            <FNum condicional name="rentista.seguro_anual" label="Seguro anual (€)" />
-            <FNum condicional name="rentista.mantenimiento_pct_renta" label="Mantenimiento (% renta)" />
+            <FNum name="rentista.renta_mensual_estimada" label="Renta mensual de mercado (€)" />
+            <FNum name="rentista.vacancia_pct" label="Vacancia (%)" />
+            <FNum name="rentista.ibi_anual" label="IBI anual (€)" />
+            <FNum name="rentista.comunidad_mensual" label="Comunidad mensual (€)" />
+            <FNum name="rentista.seguro_anual" label="Seguro anual (€)" />
+            <FNum name="rentista.mantenimiento_pct_renta" label="Mantenimiento (% renta)" />
           </div>
         </div>
       )}
@@ -395,7 +428,7 @@ function Paso10() {
       </div>
       {nota && (
         <div className="max-w-xs">
-          <FNum name="documentos.nota_simple_dias" condicional label="Antigüedad de la nota simple (días)" placeholder="No consta" />
+          <FNum name="documentos.nota_simple_dias" label="Antigüedad de la nota simple (días)" placeholder="No consta" />
         </div>
       )}
       <div>
@@ -447,7 +480,10 @@ const sinRobarFoco = (e: React.MouseEvent) => e.preventDefault();
 /** `zodResolver` (v3.10) declara que devuelve el tipo de ENTRADA, pero en
  * ejecución entrega la SALIDA de Zod (números ya convertidos, sin `raw: true`).
  * El tipo se ajusta a lo que hace; `tests/schema.test.ts` prueba esa salida. */
-const resolutor = zodResolver(esquemaAnalisis) as unknown as Resolver<EntradaFormulario, unknown, ValoresAnalisis>;
+const resolverZod = zodResolver(esquemaAnalisis) as unknown as Resolver<EntradaFormulario, unknown, ValoresAnalisis>;
+/** Antes de validar se vacían los campos ocultos por su condición (`descartarOcultos`). */
+const resolutor: Resolver<EntradaFormulario, unknown, ValoresAnalisis> =
+  (valores, contexto, opciones) => resolverZod(descartarOcultos(valores), contexto, opciones);
 
 function AsistenteNuevaInversion() {
   const router = useRouter();
@@ -505,6 +541,19 @@ function AsistenteNuevaInversion() {
   // Entre la validación (asíncrona) y el cambio de paso, «Siguiente» queda
   // deshabilitado: dos clics seguidos en el paso 10 lanzaban dos cálculos.
   const [validando, setValidando] = useState(false);
+  // Al ocultarse un campo (cambia el modo del depósito, VPO, ocupación, hipoteca,
+  // nota simple o perfil), sus errores se retiran: si no, seguirían contando para
+  // el aviso y para el paso en rojo sin nada visible que corregir.
+  const controladores = useWatch({ control: form.control, name: [
+    "subasta.deposito_modo", "activo.vpo", "ocupacion.estado", "financiacion.tipo",
+    "documentos.nota_simple", "perfil"] });
+  useEffect(() => {
+    // Estado vivo de cada ruta oculta (`getFieldState`), no la foto de `formState`.
+    const conError = rutasOcultas(form.getValues()).filter((r) => form.getFieldState(r as never).error);
+    if (conError.length) form.clearErrors(conError as never);
+    // `controladores` es la señal: cambia cuando se muestra u oculta algún campo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(controladores)]);
   const irA = (i: number) => { setAviso(null); setPaso(i); };
 
   useEffect(() => {
@@ -537,9 +586,11 @@ function AsistenteNuevaInversion() {
     if (!(e instanceof ApiError) || e.status !== 422) return;
     // Solo cuentan como campo las hojas de un paso (no `activo` entero, ni un
     // campo oculto y dado de baja): lo demás va al aviso general.
+    const ocultas = rutasOcultas(form.getValues());
     const esCampo = (ruta: string) => {
       const v = form.getValues(ruta as never) as unknown;
-      return pasoDeRuta(ruta) !== undefined && v !== undefined && (v === null || typeof v !== "object");
+      return pasoDeRuta(ruta) !== undefined && !estaOculta(ruta, ocultas)
+        && v !== undefined && (v === null || typeof v !== "object");
     };
     const t = traducir422(e.detalle, esCampo, RUTAS_EN_FRACCION);
     for (const [ruta, mensaje] of Object.entries(t.campos)) {
