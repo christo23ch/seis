@@ -11,7 +11,7 @@ from pathlib import Path
 
 import yaml
 
-from app.engine import fiscal
+from app.engine import fiscal, procedimiento
 from app.engine.contracts import (AnalisisInput, AnalisisResult, DecisionFinal,
                                   ReglaDisparadaOut)
 from app.engine.modules import (m01_captura, m02_validacion, m03_valoracion,
@@ -133,13 +133,18 @@ def ejecutar_analisis(inp: AnalisisInput, params: Parametros | None = None,
                  "coste_capital_anual": params.get("capital.coste_capital_anual")}
     checklist = m14_informe.construir_checklist(inp, decision, hechos,
                                                 metodo_valoracion=valoracion.metodo)
+    # Fase 5J-1 (ADR-0022): datos del procedimiento, INFORMATIVOS. Se calculan
+    # después de decidir y sin pizarra de hechos: nada de lo anterior los lee.
+    datos_procedimiento = procedimiento.calcular(inp, params)
     informe = m14_informe.construir_informe(
         inp, parciales, decision, checklist,
-        estado_asumido=hechos.get("activo.estado_conservacion_asumido"))
+        estado_asumido=hechos.get("activo.estado_conservacion_asumido"),
+        seccion_procedimiento=procedimiento.seccion_informe(datos_procedimiento))
 
     return AnalisisResult(
         decision=decision, ici=ici, valoracion=valoracion, icu=icu, reforma=reforma,
         costes=costes, riesgos=ra_res, rentabilidad=rentabilidad, puja=puja,
         checklist=checklist, reglas_disparadas=reglas_out, informe_markdown=informe,
         delta_v=round(delta_v, 4), vs_prudente=round(vs_p, 2),
+        procedimiento=datos_procedimiento,
     )
