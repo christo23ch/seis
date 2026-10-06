@@ -31,6 +31,26 @@ export interface Resultado {
   reglas_disparadas: { codigo: string; version: string; categoria: string }[];
   informe_markdown: string;
   delta_v: number; vs_prudente: number;
+  /** Fase 5J-1 (ADR-0022): informativo; ausente en resultados anteriores a la fase. */
+  procedimiento?: ProcedimientoResultado | null;
+}
+
+/** Fase 5J-1 — un dato legal aplicado, con su artículo y si está confirmado. */
+export interface DatoLegal { dato: string; valor: number | null; articulo: string; estado: "confirmado" | "sin_confirmar"; nota?: string | null; }
+/** Fase 5J-1 — datos del procedimiento (`app/engine/procedimiento.py`). Importes `null`
+ * = dato ausente (P4). No alteran escalera, RVC, semáforo ni rentabilidad. */
+export interface ProcedimientoResultado {
+  procedimiento: string; procedimiento_deducido: boolean;
+  regimen: string | null; regimen_nombre: string | null; regimen_asumido: boolean;
+  vivienda_habitual: "si" | "no" | "no_consta"; vivienda_habitual_asumida: boolean;
+  valor_subasta: number; cantidad_reclamada: number | null;
+  deposito_pct: number | null; deposito_eur: number | null; deposito_declarado_pct: number;
+  capital_para_pujar: number | null;
+  plazo_pago_dias: number | null; plazo_pago_unidad: string | null; meses_inmovilizacion: number | null;
+  umbral_aprobacion_pct: number | null; puja_minima_aprobable: number | null;
+  umbral_aprobacion_segura_pct: number | null; puja_aprobacion_segura: number | null;
+  suelo_absoluto_pct: number | null; suelo_absoluto: number | null;
+  datos_legales: DatoLegal[]; avisos: string[]; aviso_orientativo: string;
 }
 
 export interface ListItem {
@@ -53,7 +73,9 @@ export interface ValoresDefecto {
   /** Fase 5I-D: estado que asume el motor si el de conservación no consta. */
   estado_conservacion_desconocido: string;
 }
-export interface Opciones { tipologias: string[]; fuentes: string[]; estados_conservacion: string[]; estados_ocupacion: string[]; ccaa: string[]; perfiles: Record<string, string>; valores_defecto: ValoresDefecto; }
+export interface Opciones { tipologias: string[]; fuentes: string[]; estados_conservacion: string[]; estados_ocupacion: string[]; ccaa: string[]; perfiles: Record<string, string>; valores_defecto: ValoresDefecto;
+  /** Fase 5J-1: etiquetas de los procedimientos, el de cada fuente y la fecha de la LO 1/2025. */
+  procedimientos?: Record<string, string>; procedimiento_por_fuente?: Record<string, string>; fecha_lo_1_2025?: string; }
 
 // Fase 9 — multi-tenancy
 export type RolOrg = "propietario" | "miembro";

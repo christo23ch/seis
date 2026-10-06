@@ -52,8 +52,17 @@ def test_el_alta_persiste_lo_declarado_y_devuelve_el_resultado(api, headers):
         db.close()
 
 
+def _cuerpo_anterior_a_la_fase(identificador: str) -> dict:
+    """El cuerpo que enviaba el formulario antes de la 5J-1: sin ninguna pregunta nueva."""
+    c = _cuerpo({"identificador_externo": identificador})
+    for campo in ("procedimiento", "regimen_judicial", "cantidad_reclamada"):
+        c["subasta"].pop(campo, None)
+    c["activo"].pop("vivienda_habitual_ejecutado", None)
+    return c
+
+
 def test_un_cuerpo_anterior_a_la_fase_sigue_valiendo_y_no_inventa_respuestas(api, headers):
-    cuerpo = _cuerpo({"identificador_externo": "SUB-5J1-ANTIGUO"})
+    cuerpo = _cuerpo_anterior_a_la_fase("SUB-5J1-ANTIGUO")
     r = api.post("/api/v1/analisis", json=cuerpo, headers=headers)
     assert r.status_code == 200, r.text
     proc = r.json()["resultado"]["procedimiento"]
@@ -66,6 +75,20 @@ def test_un_cuerpo_anterior_a_la_fase_sigue_valiendo_y_no_inventa_respuestas(api
         assert subasta.procedimiento is None and subasta.cantidad_reclamada is None
         assert subasta.regimen_judicial == "no_se"            # el valor por defecto del contrato
         assert subasta.activos[0].vivienda_habitual_ejecutado is None
+    finally:
+        db.close()
+
+
+def test_el_cuerpo_actual_del_formulario_guarda_lo_respondido(api, headers):
+    r = api.post("/api/v1/analisis", json=_cuerpo({"identificador_externo": "SUB-5J1-FORM"}), headers=headers)
+    assert r.status_code == 200, r.text
+    proc = r.json()["resultado"]["procedimiento"]
+    assert not proc["procedimiento_deducido"] and proc["regimen_asumido"] and proc["vivienda_habitual_asumida"]
+    db = SessionLocal()
+    try:
+        subasta = db.query(models.Subasta).filter_by(identificador_externo="SUB-5J1-FORM").one()
+        assert (subasta.procedimiento, subasta.regimen_judicial) == ("judicial", "no_se")
+        assert subasta.activos[0].vivienda_habitual_ejecutado == "no_consta"
     finally:
         db.close()
 

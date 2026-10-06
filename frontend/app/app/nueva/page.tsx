@@ -9,10 +9,11 @@ import { aNumero } from "@/lib/formulario";
 import { PROVINCIAS } from "@/lib/provincias";
 import { coordenadaDeProvincia, coordenadasAlCambiarProvincia, esCoordenadaDeProvincia } from "@/lib/coordenadas";
 import { primerPasoConError, rutasConError, traducir422 } from "@/lib/errores-validacion";
-import { PASOS, RUTAS_EN_FRACCION, depositoFraccion, descartarOcultos, esquemaAnalisis, estaOculta, ocupacionConRenta, pasoDeRuta, rutasOcultas, prepararEnvio, valoresIniciales, type EntradaFormulario, type ValoresAnalisis } from "@/lib/schema";
+import { PASOS, PROCEDIMIENTOS, PROCEDIMIENTOS_CON_DEUDA, RUTAS_EN_FRACCION, depositoFraccion, descartarOcultos, esquemaAnalisis, estaOculta, ocupacionConRenta, pasoDeRuta, rutasOcultas, prepararEnvio, valoresIniciales, type EntradaFormulario, type ValoresAnalisis } from "@/lib/schema";
 import type { Opciones, Resultado } from "@/lib/types";
 import { Button, Campo, Card, CardContent, CardHeader, CardTitle, Check, ErrorBox, Input, Select, Spinner } from "@/components/ui";
 import { CondicionesVetos, EscaleraPrecios, EscenariosPanel, IcoDesglose, MetricasClave, RiesgosPanel, SemaforoHero } from "@/components/resultado";
+import { ProcedimientoPanel } from "@/components/procedimiento";
 import { Check as CheckIcon, ChevronLeft, ChevronRight, Plus, RefreshCw, Save, Trash2 } from "lucide-react";
 import { rutaApp } from "@/lib/rutas";
 import { eur, num, tasa } from "@/lib/format";
@@ -142,12 +143,47 @@ function CampoDeposito() {
     </div>
   );
 }
+/** Fase 5J-1 (ADR-0022): preguntas del procedimiento. El tipo se preselecciona con el
+ * de la fuente (`/opciones`) mientras la persona no lo cambie a mano; el régimen solo
+ * se pregunta en la vía judicial y la cantidad reclamada solo donde cuenta. */
+const REGIMENES = [
+  { v: "posterior", t: "El 3-4-2025 o después (LO 1/2025)" },
+  { v: "anterior", t: "Antes del 3-4-2025" },
+  { v: "no_se", t: "No sé (se aplica el régimen desfavorable)" },
+];
+function CamposProcedimiento({ op }: { op?: Opciones }) {
+  const { setValue, getFieldState } = useFormContext();
+  const [fuente, procedimiento] = useWatch({ name: ["subasta.fuente", "subasta.procedimiento"] });
+  const deFuente = op?.procedimiento_por_fuente?.[fuente as string];
+  useEffect(() => {
+    if (deFuente && !getFieldState("subasta.procedimiento" as never).isDirty) {
+      setValue("subasta.procedimiento" as never, deFuente as never);
+    }
+  }, [deFuente, getFieldState, setValue]);
+  const etiquetas = op?.procedimientos ?? {};
+  return (
+    <>
+      <FSel name="subasta.procedimiento" label="Tipo de procedimiento"
+        opciones={PROCEDIMIENTOS.map((v) => ({ v, t: etiquetas[v] ?? cap(v) }))}
+        ayuda="Determina el depósito, los plazos y los umbrales legales que el resultado muestra (orientativos)." />
+      {procedimiento === "judicial" && (
+        <FSel name="subasta.regimen_judicial" label="¿Cuándo se inició el procedimiento judicial?" opciones={REGIMENES}
+          ayuda="Consta en el edicto (fecha de incoación). Con «No sé» se aplica el régimen más exigente y se avisa en el informe." />
+      )}
+      {PROCEDIMIENTOS_CON_DEUDA.has(procedimiento as string) && (
+        <FNum name="subasta.cantidad_reclamada" label="Cantidad reclamada (€, opcional)" placeholder="No consta"
+          ayuda="Principal, intereses y costas que reclama el ejecutante. Permite aplicar la aprobación por cubrir la deuda." />
+      )}
+    </>
+  );
+}
 function Paso1({ op }: { op?: Opciones }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <FSel name="perfil" label="Perfil de inversión"
         opciones={Object.entries(op?.perfiles ?? { flip_integral: "Reforma integral + venta" }).map(([v, t]) => ({ v, t }))} />
       <FSel name="subasta.fuente" label="Fuente de la subasta" opciones={aOps(op?.fuentes ?? ["judicial_boe"])} />
+      <CamposProcedimiento op={op} />
       <FNum name="subasta.valor_subasta" obligatorio label="Valor de subasta / tasación (€)" placeholder="p. ej. 152.000" />
       <FNum name="subasta.puja_minima" label="Puja mínima (€, opcional)" placeholder="Sin puja mínima" />
       <CampoDeposito />
@@ -172,8 +208,10 @@ function Paso2({ op }: { op?: Opciones }) {
           : cap(v) }))}
         ayuda="Si no ha visto el interior, deje «No consta»: el análisis supondrá un estado prudente y lo indicará en el informe." />
       <FNum name="activo.anio_construccion" label="Año de construcción (opcional)" placeholder="No consta" />
+      <FSel name="activo.vivienda_habitual_ejecutado" label="¿Es la vivienda habitual del ejecutado?"
+        opciones={[{ v: "no_consta", t: "No consta (se asume que sí)" }, { v: "si", t: "Sí" }, { v: "no", t: "No" }]}
+        ayuda="Si lo es, la ley exige un precio mayor para aprobar el remate. Con «No consta» se asume que sí y se avisa en el informe." />
       <div className="space-y-2.5 sm:col-span-2">
-        <FCheck name="activo.es_vivienda_habitual" label="Vivienda habitual del ejecutado (plazos posesorios reforzados)" />
         <FCheck name="activo.vpo" label="Vivienda de protección oficial (VPO)" />
       </div>
       {vpo && <FNum name="activo.vpo_precio_max_legal" label="Precio máximo legal VPO (€)" />}
@@ -527,6 +565,7 @@ function PasoResultado({ res, cargando, error, onRecalcular, onGuardar, guardand
         <MetricasClave res={res} />
       </div>
       <CondicionesVetos d={res.decision} />
+      <ProcedimientoPanel datos={res.procedimiento} />
       <div className="grid gap-4 xl:grid-cols-2">
         <RiesgosPanel riesgos={res.riesgos} />
         <div className="space-y-4">
