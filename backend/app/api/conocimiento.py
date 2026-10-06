@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app import models
 from app.api.deps import get_current_user, require_superadmin
 from app.core.db import get_db
+from app.engine import procedimiento
 from app.services import conocimiento_service as cs
 from app.services.simulacion_service import OverrideInvalidoError
 
@@ -114,6 +115,12 @@ def opciones(db: Session = Depends(get_db),
                               "arrendado_posterior", "arrendado_anterior", "renta_antigua"],
         "ccaa": list(params.seccion("fiscal.itp_por_ccaa").keys()),
         "perfiles": {k: v.get("nombre", k) for k, v in params.seccion("perfiles").items()},
+        # Fase 5J-1 (ADR-0022): preguntas del procedimiento. `procedimiento_por_fuente`
+        # preselecciona la respuesta al elegir la fuente (null ⇒ «no_aplica»).
+        "procedimientos": procedimiento.ETIQUETAS_PROCEDIMIENTO,
+        "procedimiento_por_fuente": {f: (p or "no_aplica") for f, p in
+                                     params.seccion("procedimiento.deducido_de_fuente").items()},
+        "fecha_lo_1_2025": str(params.get("procedimiento.fecha_lo_1_2025")),
         # Fase 5I: lo que el motor aplica cuando un campo opcional del alta va vacío,
         # leído del catálogo T3 vigente para que el formulario lo muestre sin copiar
         # cifras. Solo informa: el cálculo sigue en el motor (M05, M06).

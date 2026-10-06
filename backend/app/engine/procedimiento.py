@@ -32,6 +32,16 @@ if TYPE_CHECKING:
 REGIMEN_JUDICIAL = {"posterior": "judicial_lec_2025", "anterior": "judicial_lec_2015",
                     "no_se": "judicial_lec_2025"}
 NOMBRE_VENTA_NO_REGLADA = "Venta no reglada (bancaria o privada)"
+# Etiquetas del formulario (las sirve `/opciones`): el orden es el de la pregunta.
+ETIQUETAS_PROCEDIMIENTO = {
+    "judicial": "Judicial (juzgado, Portal de Subastas del BOE)",
+    "aeat": "Agencia Tributaria (AEAT)",
+    "tgss": "Seguridad Social (TGSS)",
+    "notarial": "Subasta notarial",
+    "extrajudicial": "Venta extrajudicial hipotecaria ante notario",
+    "concursal": "Concursal",
+    "no_aplica": "No aplica (venta bancaria o privada)",
+}
 
 # Orden y nombre legible de cada dato legal en el informe y la interfaz.
 NOMBRES_DATO = {
