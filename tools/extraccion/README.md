@@ -17,6 +17,9 @@ producto. Nada de esta carpeta forma parte de SEIS: no lo importa `backend/`, no
 | `datos_crudos/` | Salidas de extracción, con URL, fecha y hash | **No** |
 | `.venv-scrapling/` | Entorno de Scrapling | **No** |
 | `.venv-scrapegraph/` | Entorno de ScrapeGraphAI | **No** |
+| `.venv-agentreach/` | Entorno de Agent Reach | **No** |
+| `requisitos/` | `pip freeze` de cada entorno | Sí |
+| `pruebas_humo/` | Pruebas contra sitios de demostración | Sí |
 
 ## Entornos
 
@@ -39,6 +42,23 @@ python -m venv .venv-scrapegraph
 .venv-scrapegraph/Scripts/python -m pip install scrapegraphai
 .venv-scrapegraph/Scripts/python -m playwright install chromium
 ```
+
+Para reproducir exactamente lo verificado, instala desde las listas congeladas:
+`pip install -r requisitos/scrapling.txt` (o `scrapegraph.txt`, `agent-reach.txt`).
+
+### Versiones verificadas (2026-10-06, Python 3.12.10, Windows 11)
+
+| Entorno | Paquete | Versión |
+|---|---|---|
+| `.venv-scrapling` | scrapling | 0.4.15 |
+| | playwright · patchright | 1.63.0 · 1.63.0 |
+| | curl_cffi · browserforge | 0.16.3 · 1.2.4 |
+| `.venv-scrapegraph` | scrapegraphai | 2.3.1 |
+| | playwright | 1.63.0 |
+| | langchain · langchain-core | 1.4.3 · 1.6.7 |
+| | free-proxy · undetected-playwright | 1.3.0 · 0.3.0 (**prohibido su uso**, ADR-0021) |
+| | langchain-anthropic | **no instalado** |
+| `.venv-agentreach` | agent-reach | 1.5.0 (commit `a19a171`) |
 
 En Linux/macOS, `Scripts/` es `bin/`. Los navegadores de Playwright se descargan en la caché
 del usuario (`%LOCALAPPDATA%\ms-playwright`), no aquí.
