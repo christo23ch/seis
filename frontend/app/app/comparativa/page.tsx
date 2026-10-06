@@ -75,28 +75,31 @@ export default function Comparativa() {
         <>
           <Card>
             <CardContent className="px-0 py-0">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-100 text-left text-[11.5px] uppercase tracking-wide text-slate-400">
-                    <th className="px-5 py-2.5">Métrica</th>
-                    {cargados.map((d, i) => (
-                      <th key={d.id} className="px-3 py-2.5" style={{ color: PALETA[i] }}>{etiqueta(d)}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filas.map((f) => (
-                    <tr key={f.k} className="border-b border-slate-50">
-                      <td className="px-5 py-2 text-slate-500">{f.k}</td>
-                      {cargados.map((d) => (
-                        <td key={d.id} className="cifra px-3 py-2 font-medium">
-                          {f.k === "Semáforo" ? <SemaforoBadge s={d.resultado.decision.semaforo} /> : f.f(d)}
-                        </td>
+              {/* Fase 5G.4-C: una columna por análisis comparado; el contenedor desplaza la tabla, nunca la página. */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-left text-[11.5px] uppercase tracking-wide text-slate-400">
+                      <th className="px-5 py-2.5">Métrica</th>
+                      {cargados.map((d, i) => (
+                        <th key={d.id} className="px-3 py-2.5" style={{ color: PALETA[i] }}>{etiqueta(d)}</th>
                       ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {filas.map((f) => (
+                      <tr key={f.k} className="border-b border-slate-50">
+                        <td className="px-5 py-2 text-slate-500">{f.k}</td>
+                        {cargados.map((d) => (
+                          <td key={d.id} className="cifra px-3 py-2 font-medium">
+                            {f.k === "Semáforo" ? <SemaforoBadge s={d.resultado.decision.semaforo} /> : f.f(d)}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </CardContent>
           </Card>
 

@@ -1,0 +1,1372 @@
+{
+ "_origen": "motor de ea60803, antes de la 5H.1; generado por un script de captura, no a mano",
+ "caso19": {
+  "checklist": [
+   {
+    "bloqueante": true,
+    "detalle": "Antigüedad declarada: 10 días",
+    "estado": "pendiente",
+    "grupo": "A. Documental",
+    "orden": 1,
+    "texto": "Nota simple actualizada ≤ 5 días antes del cierre, cotejada con el edicto"
+   },
+   {
+    "bloqueante": true,
+    "detalle": null,
+    "estado": "ok",
+    "grupo": "A. Documental",
+    "orden": 2,
+    "texto": "Certificación de cargas / condiciones de la subasta leídas íntegras"
+   },
+   {
+    "bloqueante": true,
+    "detalle": "ICI actual: 63",
+    "estado": "ok",
+    "grupo": "A. Documental",
+    "orden": 3,
+    "texto": "ICI ≥ 45 o subsanación documentada de carencias críticas"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "ok",
+    "grupo": "A. Documental",
+    "orden": 4,
+    "texto": "Avalúo/tasación de la subasta revisado y contrastado con VM propio"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "ok",
+    "grupo": "A. Documental",
+    "orden": 5,
+    "texto": "Referencia catastral conciliada con finca registral; superficies coherentes"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "ok",
+    "grupo": "A. Documental",
+    "orden": 6,
+    "texto": "Fotos recientes o visita exterior realizada"
+   },
+   {
+    "bloqueante": true,
+    "detalle": "0 €",
+    "estado": "ok",
+    "grupo": "B. Jurídico",
+    "orden": 7,
+    "texto": "Cargas anteriores subsistentes cuantificadas e incorporadas a C_F (o inexistentes)"
+   },
+   {
+    "bloqueante": true,
+    "detalle": "Estado declarado: precario",
+    "estado": "pendiente",
+    "grupo": "B. Jurídico",
+    "orden": 8,
+    "texto": "Situación posesoria verificada según árbol §8.7.2"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "ok",
+    "grupo": "B. Jurídico",
+    "orden": 9,
+    "texto": "Arrendamientos: fecha cierta, oponibilidad y retracto analizados"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "ok",
+    "grupo": "B. Jurídico",
+    "orden": 10,
+    "texto": "VPO / prohibiciones de disponer / condiciones resolutorias descartadas o valoradas"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "pendiente",
+    "grupo": "B. Jurídico",
+    "orden": 11,
+    "texto": "Certificado de deuda de la comunidad solicitado; derramas preguntadas"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "pendiente",
+    "grupo": "B. Jurídico",
+    "orden": 12,
+    "texto": "Procedimiento sin incidentes visibles que amenacen la adjudicación"
+   },
+   {
+    "bloqueante": true,
+    "detalle": "Régimen calculado por el motor según los datos declarados; base imponible tomada de la puja por no constar valor de referencia: el impuesto es un mínimo",
+    "estado": "pendiente",
+    "grupo": "C. Fiscal",
+    "orden": 13,
+    "texto": "Tributación de la adquisición determinada (árbol §8.7.3) y aplicada en c_v"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "pendiente",
+    "grupo": "C. Fiscal",
+    "orden": 14,
+    "texto": "Plusvalía municipal y quién la soporta según condiciones de la subasta"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "pendiente",
+    "grupo": "C. Fiscal",
+    "orden": 15,
+    "texto": "Vehículo de compra decidido (persona física / sociedad) y coherente"
+   },
+   {
+    "bloqueante": true,
+    "detalle": "7.600 €",
+    "estado": "pendiente",
+    "grupo": "D. Económico",
+    "orden": 16,
+    "texto": "Depósito disponible y transferido en plazo"
+   },
+   {
+    "bloqueante": true,
+    "detalle": null,
+    "estado": "ok",
+    "grupo": "D. Económico",
+    "orden": 17,
+    "texto": "Plan de pago del remate cubierto sin condición suspensiva de financiación"
+   },
+   {
+    "bloqueante": true,
+    "detalle": "Objetivo 60.011 € · Máx 68.731 € · Límite 80.022 €",
+    "estado": "ok",
+    "grupo": "D. Económico",
+    "orden": 18,
+    "texto": "Escalera de precios cargada en la interfaz de puja"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "pendiente",
+    "grupo": "D. Económico",
+    "orden": 19,
+    "texto": "Capital para C_F (reforma, posesión, tenencia) comprometido por calendario"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "pendiente",
+    "grupo": "D. Económico",
+    "orden": 20,
+    "texto": "Coste de depósitos de otras subastas simultáneas contemplado (cartera §11.3)"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "ok",
+    "grupo": "E. Técnico",
+    "orden": 21,
+    "texto": "Presupuesto de reforma P50/P80 vigente (baremos < 6 meses)"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "pendiente",
+    "grupo": "E. Técnico",
+    "orden": 22,
+    "texto": "ITE/IEE del edificio consultada; derramas estructurales preguntadas"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "pendiente",
+    "grupo": "E. Técnico",
+    "orden": 23,
+    "texto": "Suministros: estado de altas y boletines estimado"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "pendiente",
+    "grupo": "E. Técnico",
+    "orden": 24,
+    "texto": "Seguro de daños (y de impago si rentista) cotizado para el día 1"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "pendiente",
+    "grupo": "E. Técnico",
+    "orden": 25,
+    "texto": "Plan de toma de posesión escrito"
+   },
+   {
+    "bloqueante": true,
+    "detalle": "Judicial: depósito del 5% y pago del remate en plazo legal sin condición suspensiva; cesión de remate solo por el ejecutante (§3.2); Solicitar certificado de deuda de la comunidad antes de la puja (deuda estimada al alza mientras tanto, P5); Verificar la situación posesoria in situ antes de pujar; dotar provisión de desalojo P80",
+    "estado": "ok",
+    "grupo": "F. Ejecución",
+    "orden": 26,
+    "texto": "Semáforo Verde/Amarillo, o Naranja con todas sus condiciones verificadas y firmadas"
+   },
+   {
+    "bloqueante": true,
+    "detalle": "RVC = 1,08 · P adjudicación esperado 63.840 €",
+    "estado": "ok",
+    "grupo": "F. Ejecución",
+    "orden": 27,
+    "texto": "RVC dentro del umbral del perfil; si 0,90–1,05 aceptación explícita de 'operación de oportunidad'"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "pendiente",
+    "grupo": "F. Ejecución",
+    "orden": 28,
+    "texto": "Calendario de cierre con extensiones entendido; responsable de puja designado"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "pendiente",
+    "grupo": "F. Ejecución",
+    "orden": 29,
+    "texto": "Regla de retirada acordada (qué información nueva aborta la puja)"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "pendiente",
+    "grupo": "F. Ejecución",
+    "orden": 30,
+    "texto": "Post-adjudicación: lista de primeras 72 h preparada"
+   }
+  ],
+  "costes": {
+   "base_fiscal_minima": 0.0,
+   "base_fiscal_origen": "precio_pagado",
+   "c_f_p50": 77544.06,
+   "c_f_p80": 87707.76,
+   "c_v": 0.064,
+   "c_v_desglose": {
+    "aranceles_variables": 0.004,
+    "itp": 0.06
+   },
+   "contingencia_pct": 0.1,
+   "desglose_p50": {
+    "adquisicion_fija": 2700.0,
+    "atrasos_comunidad_ibi": 2432.0,
+    "cargas_subsistentes": 0.0,
+    "comercializacion": 6840.78,
+    "contingencia": 5898.48,
+    "ocupacion_desalojo": 6500.0,
+    "plusvalia_municipal": 0.0,
+    "reforma": 50052.8,
+    "tenencia": 3120.0
+   },
+   "desglose_p80": {
+    "adquisicion_fija": 2700.0,
+    "atrasos_comunidad_ibi": 3234.56,
+    "cargas_subsistentes": 0.0,
+    "comercializacion": 6840.78,
+    "contingencia": 0.0,
+    "ocupacion_desalojo": 9500.0,
+    "plusvalia_municipal": 0.0,
+    "reforma": 61064.42,
+    "tenencia": 4368.0
+   },
+   "plazo_meses_p50": 13.0,
+   "plazo_meses_p80": 18.2,
+   "regimen_fiscal": "itp",
+   "tenencia_mensual": 240.0,
+   "tipo_base_minima": 0.0,
+   "tipo_impositivo": 0.06
+  },
+  "decision": {
+   "condiciones": [
+    "Judicial: depósito del 5% y pago del remate en plazo legal sin condición suspensiva; cesión de remate solo por el ejecutante (§3.2)",
+    "Solicitar certificado de deuda de la comunidad antes de la puja (deuda estimada al alza mientras tanto, P5)",
+    "Verificar la situación posesoria in situ antes de pujar; dotar provisión de desalojo P80"
+   ],
+   "ici": 63,
+   "ico": 64,
+   "ico_desglose": {
+    "financiero": 8.0,
+    "informacion": 5.04,
+    "juridico": 5.55,
+    "liquidez": 10.59,
+    "rentabilidad": 15.0,
+    "revalorizacion": 5.8,
+    "ubicacion": 9.9,
+    "urbanistico": 4.48
+   },
+   "icu": 66,
+   "margen_seguridad_valor": 0.248,
+   "p_adj_esperado": 63840.0,
+   "precios": {
+    "degenerada": false,
+    "detalle": {
+     "coste_capital": 3659.05,
+     "coste_capital_anual": 0.015,
+     "delta_v_aplicado": 0.0,
+     "m_minimo_ajustado": 0.17,
+     "m_objetivo_ajustado": 0.25,
+     "p_por_margen_min": 69097.33,
+     "p_por_pesimista": 68730.9,
+     "vs_pesimista": 160837.44
+    },
+    "p_ideal": 51317.0,
+    "p_limite": 80022.0,
+    "p_max": 68731.0,
+    "p_objetivo": 60011.0
+   },
+   "ra": 40,
+   "razones": [
+    "ICO 64 en banda 60–74 o límites de Verde no alcanzados"
+   ],
+   "rvc": 1.077,
+   "semaforo": "amarillo",
+   "techos_aplicados": [
+    "amarillo"
+   ],
+   "version_parametros": "2026.07",
+   "version_reglas": "2026.07",
+   "vetos": []
+  },
+  "delta_v": 0.06,
+  "ici": {
+   "carencias": [
+    "posesion_verificada",
+    "fotos_interior_o_visita",
+    "cert_comunidad",
+    "ite_cee"
+   ],
+   "desglose": {
+    "avaluo": 8.0,
+    "catastro_conciliado": 6.0,
+    "cert_cargas": 14.0,
+    "cert_comunidad": 0.0,
+    "comparables_ok": 8.0,
+    "fotos_exterior": 4.0,
+    "fotos_interior_o_visita": 0.0,
+    "ite_cee": 0.0,
+    "nota_simple": 18.0,
+    "posesion_verificada": 0.0,
+    "recibo_ibi": 5.0
+   },
+   "efecto_contingencia_pp": 2.0,
+   "efecto_delta_v_pp": 2.0,
+   "ici": 63,
+   "penalizaciones": [],
+   "techo_semaforo": null
+  },
+  "icu": {
+   "desglose": {
+    "macro.dom_alquiler": 86.7,
+    "macro.dom_venta": 93.8,
+    "macro.poblacion": 50.0,
+    "macro.renta": 37.8,
+    "macro.stock": 85.7,
+    "macro.tendencia": 68.8,
+    "micro.comercio": 70.0,
+    "micro.educacion": 60.0,
+    "micro.entorno_construido": 65.0,
+    "micro.pipeline_urbanistico": 55.0,
+    "micro.potencial_transformacion": 60.0,
+    "micro.sanidad": 65.0,
+    "micro.seguridad": 60.0,
+    "micro.transporte": 70.0,
+    "micro.zonas_verdes": 55.0
+   },
+   "dom_alquiler_dias": 25.0,
+   "dom_venta_dias": 75.0,
+   "icu": 66,
+   "macro_score": 72.54,
+   "micro_score": 62.25,
+   "potencial_revalorizacion": 58,
+   "tendencia_5a_pct": 3.0,
+   "y_zona_pct": 5.5
+  },
+  "puja": {
+   "banda_rvc": "alcanzable",
+   "p_adj_esperado": 63840.0,
+   "plan": [
+    "Cargar límites en la interfaz antes de abrir la puja: objetivo 60.011 € · máximo 68.731 € · límite absoluto 80.022 € (infranqueable por software)",
+    "Pujar siempre el tramo mínimo; sin pujas psicológicas redondas",
+    "Entrar tarde con límites precargados: la extensión automática del cierre neutraliza el sniping; la ventaja es la disciplina",
+    "Depósito requerido: 7.600 € (5 % del valor de subasta)",
+    "Si aparece información nueva durante la subasta, re-análisis exprés; si el semáforo cae, retirada"
+   ],
+   "ratio_base": 0.42,
+   "riesgo_ejecucion": [
+    "Suspensión/sobreseimiento del procedimiento: capital del depósito inmovilizado sin operación",
+    "Pago del remate en plazo legal sin condición suspensiva de financiación (incumplir ⇒ pérdida del depósito)",
+    "Cargas descubiertas entre puja y pago: mitigación con nota simple ≤ 5 días antes del cierre",
+    "Cesión de remate solo disponible para el ejecutante: la estructura compradora final debe pujar directamente"
+   ],
+   "rvc": 1.077
+  },
+  "reforma": {
+   "nivel": "media",
+   "obra_p50": 45920.0,
+   "obra_p80": 56022.4,
+   "partidas": {
+    "extras_conocidos": 0.0,
+    "obra": 45920.0,
+    "tecnicos_licencia": 4132.8
+   },
+   "plazo_obra_meses": 3.0,
+   "tecnicos_licencia_p50": 4132.8,
+   "tecnicos_licencia_p80": 5042.02,
+   "total_p50": 50052.8,
+   "total_p80": 61064.42
+  },
+  "reglas_disparadas": [
+   {
+    "categoria": "semaforo",
+    "codigo": "SEM-OCU-02",
+    "efecto": {
+     "condicion": "Verificar la situación posesoria in situ antes de pujar; dotar provisión de desalojo P80",
+     "techo_semaforo": "amarillo"
+    },
+    "evidencias": [
+     "riesgo.ocupacion.score",
+     "ocupacion.estado"
+    ],
+    "version": "2026.07"
+   },
+   {
+    "categoria": "semaforo",
+    "codigo": "SEM-DOC-01",
+    "efecto": {
+     "condicion": "Solicitar certificado de deuda de la comunidad antes de la puja (deuda estimada al alza mientras tanto, P5)"
+    },
+    "evidencias": [
+     "documentos.cert_comunidad"
+    ],
+    "version": "2026.07"
+   },
+   {
+    "categoria": "puja",
+    "codigo": "SEM-EJEC-01",
+    "efecto": {
+     "condicion": "Judicial: depósito del 5% y pago del remate en plazo legal sin condición suspensiva; cesión de remate solo por el ejecutante (§3.2)"
+    },
+    "evidencias": [
+     "subasta.fuente"
+    ],
+    "version": "2026.07"
+   }
+  ],
+  "rentabilidad": {
+   "beneficio": 35348.68,
+   "cash_on_cash": null,
+   "dscr": null,
+   "escenarios": [
+    {
+     "beneficio": 9277.98,
+     "coste_total": 151559.46,
+     "nombre": "pesimista",
+     "plazo_meses": 18.2,
+     "probabilidad": 0.25,
+     "roi": 0.0612,
+     "roi_anualizado": 0.04,
+     "vs": 160837.44
+    },
+    {
+     "beneficio": 35348.68,
+     "coste_total": 141395.76,
+     "nombre": "base",
+     "plazo_meses": 13.0,
+     "probabilidad": 0.55,
+     "roi": 0.25,
+     "roi_anualizado": 0.2287,
+     "vs": 176744.44
+    },
+    {
+     "beneficio": 52999.92,
+     "coste_total": 133995.7,
+     "nombre": "optimista",
+     "plazo_meses": 11.0,
+     "probabilidad": 0.2,
+     "roi": 0.3955,
+     "roi_anualizado": 0.4361,
+     "vs": 186995.62
+    }
+   ],
+   "inversion_total": 141395.76,
+   "precio_evaluado": 60011.0,
+   "roi": 0.25,
+   "roi_anualizado": 0.2287,
+   "tir_anual": 0.3387,
+   "valor_esperado": 32361.25,
+   "y_neta": null
+  },
+  "riesgos": {
+   "banda": "medio",
+   "dimensiones": [
+    {
+     "condiciones": [],
+     "dimension": "juridico",
+     "evidencias": [
+      "procedimiento_subasta"
+     ],
+     "impacto": 3,
+     "mitigable": true,
+     "nivel": "medio",
+     "probabilidad": 2,
+     "score": 6
+    },
+    {
+     "condiciones": [
+      "Subsanar: posesion_verificada",
+      "Subsanar: fotos_interior_o_visita",
+      "Subsanar: cert_comunidad",
+      "Subsanar: ite_cee"
+     ],
+     "dimension": "documental",
+     "evidencias": [
+      "ICI=63"
+     ],
+     "impacto": 3,
+     "mitigable": true,
+     "nivel": "medio",
+     "probabilidad": 2,
+     "score": 6
+    },
+    {
+     "condiciones": [],
+     "dimension": "ocupacion",
+     "evidencias": [
+      "estado=precario"
+     ],
+     "impacto": 3,
+     "mitigable": true,
+     "nivel": "alto",
+     "probabilidad": 4,
+     "score": 12
+    },
+    {
+     "condiciones": [],
+     "dimension": "urbanistico",
+     "evidencias": [],
+     "impacto": 2,
+     "mitigable": true,
+     "nivel": "bajo",
+     "probabilidad": 2,
+     "score": 4
+    },
+    {
+     "condiciones": [
+      "Visita interior (o con cerrajero tras adjudicación) para cerrar presupuesto P50"
+     ],
+     "dimension": "tecnico",
+     "evidencias": [
+      "nivel_reforma=media",
+      "sin_visita_interior"
+     ],
+     "impacto": 3,
+     "mitigable": true,
+     "nivel": "medio",
+     "probabilidad": 3,
+     "score": 9
+    },
+    {
+     "condiciones": [],
+     "dimension": "financiero",
+     "evidencias": [
+      "estructura=cash"
+     ],
+     "impacto": 2,
+     "mitigable": true,
+     "nivel": "bajo",
+     "probabilidad": 1,
+     "score": 2
+    },
+    {
+     "condiciones": [],
+     "dimension": "comercial",
+     "evidencias": [],
+     "impacto": 3,
+     "mitigable": true,
+     "nivel": "medio",
+     "probabilidad": 2,
+     "score": 6
+    },
+    {
+     "condiciones": [],
+     "dimension": "liquidez",
+     "evidencias": [
+      "DOM=75d"
+     ],
+     "impacto": 2,
+     "mitigable": true,
+     "nivel": "bajo",
+     "probabilidad": 2,
+     "score": 4
+    },
+    {
+     "condiciones": [],
+     "dimension": "mercado",
+     "evidencias": [],
+     "impacto": 3,
+     "mitigable": true,
+     "nivel": "medio",
+     "probabilidad": 2,
+     "score": 6
+    }
+   ],
+   "dominancia_aplicada": "una_alta",
+   "ra": 40,
+   "ra_base": 25.36
+  },
+  "valoracion": {
+   "confianza": 0.756,
+   "detalle_comparables": [
+    {
+     "normalizado_m2": 2100.0,
+     "peso": 1.0,
+     "precio_ajustado_m2": 2100.0
+    },
+    {
+     "normalizado_m2": 2200.0,
+     "peso": 1.0,
+     "precio_ajustado_m2": 2200.0
+    },
+    {
+     "normalizado_m2": 2250.0,
+     "peso": 1.0,
+     "precio_ajustado_m2": 2250.0
+    },
+    {
+     "normalizado_m2": 2293.0,
+     "peso": 1.0,
+     "precio_ajustado_m2": 2293.0
+    },
+    {
+     "normalizado_m2": 2350.0,
+     "peso": 1.0,
+     "precio_ajustado_m2": 2350.0
+    },
+    {
+     "normalizado_m2": 2420.0,
+     "peso": 1.0,
+     "precio_ajustado_m2": 2420.0
+    },
+    {
+     "normalizado_m2": 2490.0,
+     "peso": 1.0,
+     "precio_ajustado_m2": 2490.0
+    }
+   ],
+   "dispersion_cv": 0.0534,
+   "hechos": [],
+   "k_estado_activo": 0.72,
+   "metodo": "comparables_ajustados",
+   "n_comparables": 7,
+   "ratio_sanidad": 1.1228,
+   "vm": 135378.72,
+   "vm_rango": [
+    131364.0,
+    140810.4
+   ],
+   "vs": 188026.0,
+   "vs_antes_de_capitalizacion": null,
+   "vs_capitalizacion": null,
+   "vs_m2": 2293.0,
+   "vs_rango": [
+    182450.0,
+    195570.0
+   ]
+  },
+  "vs_prudente": 176744.44
+ },
+ "hipoteca": {
+  "checklist": [
+   {
+    "bloqueante": true,
+    "detalle": "Antigüedad declarada: 10 días",
+    "estado": "pendiente",
+    "grupo": "A. Documental",
+    "orden": 1,
+    "texto": "Nota simple actualizada ≤ 5 días antes del cierre, cotejada con el edicto"
+   },
+   {
+    "bloqueante": true,
+    "detalle": null,
+    "estado": "ok",
+    "grupo": "A. Documental",
+    "orden": 2,
+    "texto": "Certificación de cargas / condiciones de la subasta leídas íntegras"
+   },
+   {
+    "bloqueante": true,
+    "detalle": "ICI actual: 63",
+    "estado": "ok",
+    "grupo": "A. Documental",
+    "orden": 3,
+    "texto": "ICI ≥ 45 o subsanación documentada de carencias críticas"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "ok",
+    "grupo": "A. Documental",
+    "orden": 4,
+    "texto": "Avalúo/tasación de la subasta revisado y contrastado con VM propio"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "ok",
+    "grupo": "A. Documental",
+    "orden": 5,
+    "texto": "Referencia catastral conciliada con finca registral; superficies coherentes"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "ok",
+    "grupo": "A. Documental",
+    "orden": 6,
+    "texto": "Fotos recientes o visita exterior realizada"
+   },
+   {
+    "bloqueante": true,
+    "detalle": "0 €",
+    "estado": "ok",
+    "grupo": "B. Jurídico",
+    "orden": 7,
+    "texto": "Cargas anteriores subsistentes cuantificadas e incorporadas a C_F (o inexistentes)"
+   },
+   {
+    "bloqueante": true,
+    "detalle": "Estado declarado: precario",
+    "estado": "pendiente",
+    "grupo": "B. Jurídico",
+    "orden": 8,
+    "texto": "Situación posesoria verificada según árbol §8.7.2"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "ok",
+    "grupo": "B. Jurídico",
+    "orden": 9,
+    "texto": "Arrendamientos: fecha cierta, oponibilidad y retracto analizados"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "ok",
+    "grupo": "B. Jurídico",
+    "orden": 10,
+    "texto": "VPO / prohibiciones de disponer / condiciones resolutorias descartadas o valoradas"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "pendiente",
+    "grupo": "B. Jurídico",
+    "orden": 11,
+    "texto": "Certificado de deuda de la comunidad solicitado; derramas preguntadas"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "pendiente",
+    "grupo": "B. Jurídico",
+    "orden": 12,
+    "texto": "Procedimiento sin incidentes visibles que amenacen la adjudicación"
+   },
+   {
+    "bloqueante": true,
+    "detalle": "Régimen calculado por el motor según los datos declarados; base imponible tomada de la puja por no constar valor de referencia: el impuesto es un mínimo",
+    "estado": "pendiente",
+    "grupo": "C. Fiscal",
+    "orden": 13,
+    "texto": "Tributación de la adquisición determinada (árbol §8.7.3) y aplicada en c_v"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "pendiente",
+    "grupo": "C. Fiscal",
+    "orden": 14,
+    "texto": "Plusvalía municipal y quién la soporta según condiciones de la subasta"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "pendiente",
+    "grupo": "C. Fiscal",
+    "orden": 15,
+    "texto": "Vehículo de compra decidido (persona física / sociedad) y coherente"
+   },
+   {
+    "bloqueante": true,
+    "detalle": "7.600 €",
+    "estado": "pendiente",
+    "grupo": "D. Económico",
+    "orden": 16,
+    "texto": "Depósito disponible y transferido en plazo"
+   },
+   {
+    "bloqueante": true,
+    "detalle": null,
+    "estado": "ok",
+    "grupo": "D. Económico",
+    "orden": 17,
+    "texto": "Plan de pago del remate cubierto sin condición suspensiva de financiación"
+   },
+   {
+    "bloqueante": true,
+    "detalle": "Objetivo 57.812 € · Máx 66.266 € · Límite 77.100 €",
+    "estado": "ok",
+    "grupo": "D. Económico",
+    "orden": 18,
+    "texto": "Escalera de precios cargada en la interfaz de puja"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "pendiente",
+    "grupo": "D. Económico",
+    "orden": 19,
+    "texto": "Capital para C_F (reforma, posesión, tenencia) comprometido por calendario"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "pendiente",
+    "grupo": "D. Económico",
+    "orden": 20,
+    "texto": "Coste de depósitos de otras subastas simultáneas contemplado (cartera §11.3)"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "ok",
+    "grupo": "E. Técnico",
+    "orden": 21,
+    "texto": "Presupuesto de reforma P50/P80 vigente (baremos < 6 meses)"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "pendiente",
+    "grupo": "E. Técnico",
+    "orden": 22,
+    "texto": "ITE/IEE del edificio consultada; derramas estructurales preguntadas"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "pendiente",
+    "grupo": "E. Técnico",
+    "orden": 23,
+    "texto": "Suministros: estado de altas y boletines estimado"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "pendiente",
+    "grupo": "E. Técnico",
+    "orden": 24,
+    "texto": "Seguro de daños (y de impago si rentista) cotizado para el día 1"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "pendiente",
+    "grupo": "E. Técnico",
+    "orden": 25,
+    "texto": "Plan de toma de posesión escrito"
+   },
+   {
+    "bloqueante": true,
+    "detalle": "Judicial: depósito del 5% y pago del remate en plazo legal sin condición suspensiva; cesión de remate solo por el ejecutante (§3.2); Solicitar certificado de deuda de la comunidad antes de la puja (deuda estimada al alza mientras tanto, P5); Verificar la situación posesoria in situ antes de pujar; dotar provisión de desalojo P80",
+    "estado": "ok",
+    "grupo": "F. Ejecución",
+    "orden": 26,
+    "texto": "Semáforo Verde/Amarillo, o Naranja con todas sus condiciones verificadas y firmadas"
+   },
+   {
+    "bloqueante": true,
+    "detalle": "RVC = 1,04 · P adjudicación esperado 63.840 €",
+    "estado": "pendiente",
+    "grupo": "F. Ejecución",
+    "orden": 27,
+    "texto": "RVC dentro del umbral del perfil; si 0,90–1,05 aceptación explícita de 'operación de oportunidad'"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "pendiente",
+    "grupo": "F. Ejecución",
+    "orden": 28,
+    "texto": "Calendario de cierre con extensiones entendido; responsable de puja designado"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "pendiente",
+    "grupo": "F. Ejecución",
+    "orden": 29,
+    "texto": "Regla de retirada acordada (qué información nueva aborta la puja)"
+   },
+   {
+    "bloqueante": false,
+    "detalle": null,
+    "estado": "pendiente",
+    "grupo": "F. Ejecución",
+    "orden": 30,
+    "texto": "Post-adjudicación: lista de primeras 72 h preparada"
+   }
+  ],
+  "costes": {
+   "base_fiscal_minima": 0.0,
+   "base_fiscal_origen": "precio_pagado",
+   "c_f_p50": 77944.06,
+   "c_f_p80": 88107.76,
+   "c_v": 0.09754,
+   "c_v_desglose": {
+    "aranceles_variables": 0.004,
+    "financiacion_apertura": 0.007,
+    "financiacion_intereses": 0.02654,
+    "itp": 0.06
+   },
+   "contingencia_pct": 0.1,
+   "desglose_p50": {
+    "adquisicion_fija": 3100.0,
+    "atrasos_comunidad_ibi": 2432.0,
+    "cargas_subsistentes": 0.0,
+    "comercializacion": 6840.78,
+    "contingencia": 5898.48,
+    "ocupacion_desalojo": 6500.0,
+    "plusvalia_municipal": 0.0,
+    "reforma": 50052.8,
+    "tenencia": 3120.0
+   },
+   "desglose_p80": {
+    "adquisicion_fija": 3100.0,
+    "atrasos_comunidad_ibi": 3234.56,
+    "cargas_subsistentes": 0.0,
+    "comercializacion": 6840.78,
+    "contingencia": 0.0,
+    "ocupacion_desalojo": 9500.0,
+    "plusvalia_municipal": 0.0,
+    "reforma": 61064.42,
+    "tenencia": 4368.0
+   },
+   "plazo_meses_p50": 13.0,
+   "plazo_meses_p80": 18.2,
+   "regimen_fiscal": "itp",
+   "tenencia_mensual": 240.0,
+   "tipo_base_minima": 0.0,
+   "tipo_impositivo": 0.06
+  },
+  "decision": {
+   "condiciones": [
+    "Judicial: depósito del 5% y pago del remate en plazo legal sin condición suspensiva; cesión de remate solo por el ejecutante (§3.2)",
+    "Solicitar certificado de deuda de la comunidad antes de la puja (deuda estimada al alza mientras tanto, P5)",
+    "Verificar la situación posesoria in situ antes de pujar; dotar provisión de desalojo P80"
+   ],
+   "ici": 63,
+   "ico": 62,
+   "ico_desglose": {
+    "financiero": 6.08,
+    "informacion": 5.04,
+    "juridico": 5.55,
+    "liquidez": 10.59,
+    "rentabilidad": 15.0,
+    "revalorizacion": 5.8,
+    "ubicacion": 9.9,
+    "urbanistico": 4.48
+   },
+   "icu": 66,
+   "margen_seguridad_valor": 0.248,
+   "p_adj_esperado": 63840.0,
+   "precios": {
+    "degenerada": false,
+    "detalle": {
+     "coste_capital": 3659.05,
+     "coste_capital_anual": 0.015,
+     "delta_v_aplicado": 0.0,
+     "m_minimo_ajustado": 0.17,
+     "m_objetivo_ajustado": 0.25,
+     "p_por_margen_min": 66621.32,
+     "p_por_pesimista": 66266.09,
+     "vs_pesimista": 160837.44
+    },
+    "p_ideal": 49384.0,
+    "p_limite": 77100.0,
+    "p_max": 66266.0,
+    "p_objetivo": 57812.0
+   },
+   "ra": 40,
+   "razones": [
+    "ICO 62 en banda 60–74 o límites de Verde no alcanzados"
+   ],
+   "rvc": 1.038,
+   "semaforo": "amarillo",
+   "techos_aplicados": [
+    "amarillo"
+   ],
+   "version_parametros": "2026.07",
+   "version_reglas": "2026.07",
+   "vetos": []
+  },
+  "delta_v": 0.06,
+  "ici": {
+   "carencias": [
+    "posesion_verificada",
+    "fotos_interior_o_visita",
+    "cert_comunidad",
+    "ite_cee"
+   ],
+   "desglose": {
+    "avaluo": 8.0,
+    "catastro_conciliado": 6.0,
+    "cert_cargas": 14.0,
+    "cert_comunidad": 0.0,
+    "comparables_ok": 8.0,
+    "fotos_exterior": 4.0,
+    "fotos_interior_o_visita": 0.0,
+    "ite_cee": 0.0,
+    "nota_simple": 18.0,
+    "posesion_verificada": 0.0,
+    "recibo_ibi": 5.0
+   },
+   "efecto_contingencia_pp": 2.0,
+   "efecto_delta_v_pp": 2.0,
+   "ici": 63,
+   "penalizaciones": [],
+   "techo_semaforo": null
+  },
+  "icu": {
+   "desglose": {
+    "macro.dom_alquiler": 86.7,
+    "macro.dom_venta": 93.8,
+    "macro.poblacion": 50.0,
+    "macro.renta": 37.8,
+    "macro.stock": 85.7,
+    "macro.tendencia": 68.8,
+    "micro.comercio": 70.0,
+    "micro.educacion": 60.0,
+    "micro.entorno_construido": 65.0,
+    "micro.pipeline_urbanistico": 55.0,
+    "micro.potencial_transformacion": 60.0,
+    "micro.sanidad": 65.0,
+    "micro.seguridad": 60.0,
+    "micro.transporte": 70.0,
+    "micro.zonas_verdes": 55.0
+   },
+   "dom_alquiler_dias": 25.0,
+   "dom_venta_dias": 75.0,
+   "icu": 66,
+   "macro_score": 72.54,
+   "micro_score": 62.25,
+   "potencial_revalorizacion": 58,
+   "tendencia_5a_pct": 3.0,
+   "y_zona_pct": 5.5
+  },
+  "puja": {
+   "banda_rvc": "ajustado",
+   "p_adj_esperado": 63840.0,
+   "plan": [
+    "Cargar límites en la interfaz antes de abrir la puja: objetivo 57.812 € · máximo 66.266 € · límite absoluto 77.100 € (infranqueable por software)",
+    "Pujar siempre el tramo mínimo; sin pujas psicológicas redondas",
+    "Entrar tarde con límites precargados: la extensión automática del cierre neutraliza el sniping; la ventaja es la disciplina",
+    "Depósito requerido: 7.600 € (5 % del valor de subasta)",
+    "Si aparece información nueva durante la subasta, re-análisis exprés; si el semáforo cae, retirada",
+    "RVC 0,90–1,05: operación de oportunidad, no de plan — aceptar por escrito antes de pujar"
+   ],
+   "ratio_base": 0.42,
+   "riesgo_ejecucion": [
+    "Suspensión/sobreseimiento del procedimiento: capital del depósito inmovilizado sin operación",
+    "Pago del remate en plazo legal sin condición suspensiva de financiación (incumplir ⇒ pérdida del depósito)",
+    "Cargas descubiertas entre puja y pago: mitigación con nota simple ≤ 5 días antes del cierre",
+    "Cesión de remate solo disponible para el ejecutante: la estructura compradora final debe pujar directamente"
+   ],
+   "rvc": 1.038
+  },
+  "reforma": {
+   "nivel": "media",
+   "obra_p50": 45920.0,
+   "obra_p80": 56022.4,
+   "partidas": {
+    "extras_conocidos": 0.0,
+    "obra": 45920.0,
+    "tecnicos_licencia": 4132.8
+   },
+   "plazo_obra_meses": 3.0,
+   "tecnicos_licencia_p50": 4132.8,
+   "tecnicos_licencia_p80": 5042.02,
+   "total_p50": 50052.8,
+   "total_p80": 61064.42
+  },
+  "reglas_disparadas": [
+   {
+    "categoria": "semaforo",
+    "codigo": "SEM-OCU-02",
+    "efecto": {
+     "condicion": "Verificar la situación posesoria in situ antes de pujar; dotar provisión de desalojo P80",
+     "techo_semaforo": "amarillo"
+    },
+    "evidencias": [
+     "riesgo.ocupacion.score",
+     "ocupacion.estado"
+    ],
+    "version": "2026.07"
+   },
+   {
+    "categoria": "semaforo",
+    "codigo": "SEM-DOC-01",
+    "efecto": {
+     "condicion": "Solicitar certificado de deuda de la comunidad antes de la puja (deuda estimada al alza mientras tanto, P5)"
+    },
+    "evidencias": [
+     "documentos.cert_comunidad"
+    ],
+    "version": "2026.07"
+   },
+   {
+    "categoria": "puja",
+    "codigo": "SEM-EJEC-01",
+    "efecto": {
+     "condicion": "Judicial: depósito del 5% y pago del remate en plazo legal sin condición suspensiva; cesión de remate solo por el ejecutante (§3.2)"
+    },
+    "evidencias": [
+     "subasta.fuente"
+    ],
+    "version": "2026.07"
+   }
+  ],
+  "rentabilidad": {
+   "beneficio": 35349.4,
+   "cash_on_cash": null,
+   "dscr": null,
+   "escenarios": [
+    {
+     "beneficio": 9278.7,
+     "coste_total": 151558.74,
+     "nombre": "pesimista",
+     "plazo_meses": 18.2,
+     "probabilidad": 0.25,
+     "roi": 0.0612,
+     "roi_anualizado": 0.04,
+     "vs": 160837.44
+    },
+    {
+     "beneficio": 35349.4,
+     "coste_total": 141395.04,
+     "nombre": "base",
+     "plazo_meses": 13.0,
+     "probabilidad": 0.55,
+     "roi": 0.25,
+     "roi_anualizado": 0.2287,
+     "vs": 176744.44
+    },
+    {
+     "beneficio": 53000.64,
+     "coste_total": 133994.98,
+     "nombre": "optimista",
+     "plazo_meses": 11.0,
+     "probabilidad": 0.2,
+     "roi": 0.3955,
+     "roi_anualizado": 0.4361,
+     "vs": 186995.62
+    }
+   ],
+   "inversion_total": 141395.04,
+   "precio_evaluado": 57812.0,
+   "roi": 0.25,
+   "roi_anualizado": 0.2287,
+   "tir_anual": 0.3387,
+   "valor_esperado": 32361.97,
+   "y_neta": null
+  },
+  "riesgos": {
+   "banda": "medio",
+   "dimensiones": [
+    {
+     "condiciones": [],
+     "dimension": "juridico",
+     "evidencias": [
+      "procedimiento_subasta"
+     ],
+     "impacto": 3,
+     "mitigable": true,
+     "nivel": "medio",
+     "probabilidad": 2,
+     "score": 6
+    },
+    {
+     "condiciones": [
+      "Subsanar: posesion_verificada",
+      "Subsanar: fotos_interior_o_visita",
+      "Subsanar: cert_comunidad",
+      "Subsanar: ite_cee"
+     ],
+     "dimension": "documental",
+     "evidencias": [
+      "ICI=63"
+     ],
+     "impacto": 3,
+     "mitigable": true,
+     "nivel": "medio",
+     "probabilidad": 2,
+     "score": 6
+    },
+    {
+     "condiciones": [],
+     "dimension": "ocupacion",
+     "evidencias": [
+      "estado=precario"
+     ],
+     "impacto": 3,
+     "mitigable": true,
+     "nivel": "alto",
+     "probabilidad": 4,
+     "score": 12
+    },
+    {
+     "condiciones": [],
+     "dimension": "urbanistico",
+     "evidencias": [],
+     "impacto": 2,
+     "mitigable": true,
+     "nivel": "bajo",
+     "probabilidad": 2,
+     "score": 4
+    },
+    {
+     "condiciones": [
+      "Visita interior (o con cerrajero tras adjudicación) para cerrar presupuesto P50"
+     ],
+     "dimension": "tecnico",
+     "evidencias": [
+      "nivel_reforma=media",
+      "sin_visita_interior"
+     ],
+     "impacto": 3,
+     "mitigable": true,
+     "nivel": "medio",
+     "probabilidad": 3,
+     "score": 9
+    },
+    {
+     "condiciones": [
+      "Confirmar que la preaprobación no contiene condición suspensiva incompatible con el plazo de pago del remate"
+     ],
+     "dimension": "financiero",
+     "evidencias": [
+      "estructura=hipoteca"
+     ],
+     "impacto": 3,
+     "mitigable": true,
+     "nivel": "medio",
+     "probabilidad": 2,
+     "score": 6
+    },
+    {
+     "condiciones": [],
+     "dimension": "comercial",
+     "evidencias": [],
+     "impacto": 3,
+     "mitigable": true,
+     "nivel": "medio",
+     "probabilidad": 2,
+     "score": 6
+    },
+    {
+     "condiciones": [],
+     "dimension": "liquidez",
+     "evidencias": [
+      "DOM=75d"
+     ],
+     "impacto": 2,
+     "mitigable": true,
+     "nivel": "bajo",
+     "probabilidad": 2,
+     "score": 4
+    },
+    {
+     "condiciones": [],
+     "dimension": "mercado",
+     "evidencias": [],
+     "impacto": 3,
+     "mitigable": true,
+     "nivel": "medio",
+     "probabilidad": 2,
+     "score": 6
+    }
+   ],
+   "dominancia_aplicada": "una_alta",
+   "ra": 40,
+   "ra_base": 26.96
+  },
+  "valoracion": {
+   "confianza": 0.756,
+   "detalle_comparables": [
+    {
+     "normalizado_m2": 2100.0,
+     "peso": 1.0,
+     "precio_ajustado_m2": 2100.0
+    },
+    {
+     "normalizado_m2": 2200.0,
+     "peso": 1.0,
+     "precio_ajustado_m2": 2200.0
+    },
+    {
+     "normalizado_m2": 2250.0,
+     "peso": 1.0,
+     "precio_ajustado_m2": 2250.0
+    },
+    {
+     "normalizado_m2": 2293.0,
+     "peso": 1.0,
+     "precio_ajustado_m2": 2293.0
+    },
+    {
+     "normalizado_m2": 2350.0,
+     "peso": 1.0,
+     "precio_ajustado_m2": 2350.0
+    },
+    {
+     "normalizado_m2": 2420.0,
+     "peso": 1.0,
+     "precio_ajustado_m2": 2420.0
+    },
+    {
+     "normalizado_m2": 2490.0,
+     "peso": 1.0,
+     "precio_ajustado_m2": 2490.0
+    }
+   ],
+   "dispersion_cv": 0.0534,
+   "hechos": [],
+   "k_estado_activo": 0.72,
+   "metodo": "comparables_ajustados",
+   "n_comparables": 7,
+   "ratio_sanidad": 1.1228,
+   "vm": 135378.72,
+   "vm_rango": [
+    131364.0,
+    140810.4
+   ],
+   "vs": 188026.0,
+   "vs_antes_de_capitalizacion": null,
+   "vs_capitalizacion": null,
+   "vs_m2": 2293.0,
+   "vs_rango": [
+    182450.0,
+    195570.0
+   ]
+  },
+  "vs_prudente": 176744.44
+ }
+}

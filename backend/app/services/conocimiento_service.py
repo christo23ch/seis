@@ -42,6 +42,11 @@ def set_parametro(db: Session, clave: str, valor, fuente_legal: str | None,
         base.get(clave)                               # la ruta debe existir en el árbol T3
     except KeyError:
         raise ValueError(f"Ruta de parámetro desconocida: {clave}")
+    # Fase 5G.4: la misma regla de rango que las simulaciones, antes de escribir
+    # nada (ni fila ni auditoría). Import diferido: `simulacion_service` ya
+    # importa este módulo.
+    from app.services.simulacion_service import validar_rangos
+    validar_rangos(clave, valor)
     fila = models.Parametro(clave=clave, ambito="nacional",
                             vigente_desde=date.today().isoformat(),
                             valor=valor, fuente_legal=fuente_legal)

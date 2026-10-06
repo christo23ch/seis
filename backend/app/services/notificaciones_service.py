@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 
 from app import models
+from app.engine.formato import eur
 from app.ingesta.contratos import OrigenCaptacion
 from app.core.config import get_settings
 from app.core.security import crear_token_proposito
@@ -229,7 +230,7 @@ def evaluar_subasta(db: Session, subasta: models.Subasta,
         score = (subasta.datos_brutos or {}).get("score")
         cuerpo = (f"Nueva subasta captada que casa con su alerta «{alerta.nombre}»:\n"
                   f"Fuente: {subasta.fuente_codigo}\n"
-                  f"Valor de subasta: {float(subasta.valor_subasta):,.0f} €\n"
+                  f"Valor de subasta: {eur(float(subasta.valor_subasta))}\n"
                   + (f"Puntuación orientativa: {score}/100\n" if score is not None else "")
                   + f"Detalle: {get_settings().frontend_url}/subastas")
         n = models.Notificacion(usuario_id=alerta.usuario_id, alerta_id=alerta.id,

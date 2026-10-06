@@ -1,10 +1,85 @@
 """Fixtures compartidas de la suite SEIS."""
 import os
+import shutil
+import tempfile
+from pathlib import Path
 
 # Configuración de test: debe fijarse antes de importar la aplicación
 os.environ.setdefault("CELERY_TASK_ALWAYS_EAGER", "1")
 os.environ.setdefault("JWT_SECRET", "secreto-de-test")
 os.environ.setdefault("ADMIN_PASSWORD", "admin")
+
+# ─────────────────── Base de datos PROPIA de la suite ───────────────────
+#
+# `app.core.db` crea su `engine` al importarse, con `get_settings().database_url`,
+# cuyo valor por defecto es `sqlite:///./seis_dev.db`: el MISMO fichero que usa el
+# backend de desarrollo arrancado desde `backend/`. Sin esto, la fixture `api`
+# hacía `drop_all` sobre esa base y después la borraba (incidente del 2026-09-24:
+# la base de desarrollo quedó en 0 bytes tras ejecutar la suite).
+#
+# Por eso la URL se fija AQUÍ, antes de cualquier import de la app: pytest carga
+# este fichero antes de recolectar ningún test, y los 26 módulos que hacen
+# `from app.core.db import ...` se recolectan después. La base vive en un
+# directorio temporal del sistema, FUERA del repositorio, con ruta absoluta: no
+# depende del directorio desde el que se lance pytest.
+#
+# Asignación directa y no `setdefault`: un `DATABASE_URL` exportado en la terminal
+# (el de desarrollo o, por descuido, uno de producción) no debe llegar nunca a una
+# suite que hace `drop_all`. Mismo criterio que `SEIS_TEST_POSTGRES_URL`: PostgreSQL
+# tiene su variable dedicada y sus propios engines.
+#
+# El directorio se anota en el entorno para que un segundo import de este módulo
+# (`from tests.conftest import …`) reutilice la MISMA base en vez de crear otra.
+_VAR_DIR_BD = "SEIS_PYTEST_DIR_BD"
+if not os.environ.get(_VAR_DIR_BD) or not Path(os.environ[_VAR_DIR_BD]).is_dir():
+    os.environ[_VAR_DIR_BD] = tempfile.mkdtemp(prefix="seis-pytest-")
+DIR_BD_TESTS = Path(os.environ[_VAR_DIR_BD]).resolve()
+RUTA_BD_TESTS = DIR_BD_TESTS / "tests.db"
+os.environ["DATABASE_URL"] = f"sqlite:///{RUTA_BD_TESTS.as_posix()}"
+
+RAIZ_REPO = Path(__file__).resolve().parents[2]
+RUTA_BD_DESARROLLO = RAIZ_REPO / "backend" / "seis_dev.db"
+
+
+def problema_de_aislamiento(url, esperada: Path, directorio: Path, raiz_repo: Path) -> str | None:
+    """Motivo por el que la base EFECTIVA no es la desechable de la suite, o `None`.
+
+    Recibe la URL del engine (no la variable de entorno): lo que cuenta es contra
+    qué base va a ejecutarse `drop_all`, no lo que diga `os.environ`.
+    """
+    from sqlalchemy.engine import make_url
+
+    url = make_url(str(url))
+    if url.get_backend_name() != "sqlite" or not url.database:
+        return f"la suite solo admite su SQLite desechable y el engine apunta a {url!r}"
+    ruta = Path(url.database).resolve()
+    if ruta.name == "seis_dev.db":
+        return f"el engine apunta a la base de DESARROLLO ({ruta})"
+    try:
+        ruta.relative_to(directorio.resolve())
+    except ValueError:
+        return f"la base {ruta} está fuera del directorio temporal de la suite ({directorio})"
+    if ruta != esperada.resolve():
+        return f"la base {ruta} no es la esperada ({esperada})"
+    try:
+        directorio.resolve().relative_to(raiz_repo.resolve())
+        return f"el directorio temporal {directorio} está DENTRO del repositorio"
+    except ValueError:
+        return None
+
+
+def verificar_bd_de_tests() -> None:
+    """Aborta la sesión entera si el engine global no es la base desechable.
+
+    Se llama antes de cualquier `create_all`/`drop_all`. `pytest.exit` y no
+    `assert`: un fallo aquí no es un test rojo, es una suite que no debe seguir.
+    """
+    from app.core.db import engine
+
+    motivo = problema_de_aislamiento(engine.url, RUTA_BD_TESTS, DIR_BD_TESTS, RAIZ_REPO)
+    if motivo:
+        pytest.exit(f"Aislamiento de la base de tests ROTO: {motivo}. "
+                    "No se ejecuta nada para no tocar datos reales.", returncode=3)
 
 import pytest
 
@@ -77,14 +152,38 @@ def _limpiar_rate_limit():
     salud.reiniciar_cache_sonda()
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _bd_de_tests_aislada():
+    """Comprueba el aislamiento ANTES del primer test y retira la base al final.
+
+    Al terminar: `engine.dispose()` suelta las conexiones (en Windows, sin esto el
+    fichero sigue bloqueado) y se borra SOLO el directorio temporal de la suite,
+    que la guarda ya ha verificado que está fuera del repositorio. Si Windows lo
+    mantiene bloqueado, se deja en el TEMP del sistema: nunca se toca el repo.
+    """
+    verificar_bd_de_tests()
+    yield
+    from app.core.db import engine
+
+    engine.dispose()
+    if problema_de_aislamiento(engine.url, RUTA_BD_TESTS, DIR_BD_TESTS, RAIZ_REPO) is None:
+        shutil.rmtree(DIR_BD_TESTS, ignore_errors=True)
+
+
 @pytest.fixture(scope="module")
 def api():
-    """Cliente HTTP con esquema creado, admin superadmin sembrado y limpieza al terminar."""
+    """Cliente HTTP con esquema creado, admin superadmin sembrado y limpieza al terminar.
+
+    Trabaja sobre la base desechable de la suite (ver cabecera del módulo), nunca
+    sobre `seis_dev.db`: la guarda se repite aquí, junto a `create_all`/`drop_all`,
+    porque son las dos operaciones que destruirían datos reales.
+    """
     from fastapi.testclient import TestClient
     from app.core.db import Base, SessionLocal, engine
     from app.main import app
     from app.services import usuario_service
 
+    verificar_bd_de_tests()
     Base.metadata.create_all(engine)
     db = SessionLocal()
     try:
@@ -98,10 +197,11 @@ def api():
         db.close()
     with TestClient(app) as c:
         yield c
+    # Cada módulo deja la base sin tablas, como antes. Ya no se borra ningún
+    # fichero: el antiguo `os.remove("seis_dev.db")` borraba la base de desarrollo.
+    verificar_bd_de_tests()
     Base.metadata.drop_all(engine)
     engine.dispose()
-    if os.path.exists("seis_dev.db"):
-        os.remove("seis_dev.db")
 
 
 @pytest.fixture(scope="module")

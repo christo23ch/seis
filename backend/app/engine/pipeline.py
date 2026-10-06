@@ -105,11 +105,18 @@ def ejecutar_analisis(inp: AnalisisInput, params: Parametros | None = None,
                                                   ici.ici, escalera, costes.plazo_meses_p50)
     semaforo, razones = m12_decision.decidir_semaforo(
         params, ico, ra_res, rentabilidad, ms_valor, puja.rvc, ici.ici,
-        ici.techo_semaforo, escalera, vetos, techos, inp)
+        ici.techo_semaforo, escalera, vetos, techos, inp,
+        metodo_valoracion=valoracion.metodo)
 
     decision = DecisionFinal(
         semaforo=semaforo, ico=ico, ico_desglose=ico_desglose, ra=ra_res.ra, ici=ici.ici,
         icu=icu.icu, precios=escalera, margen_seguridad_valor=round(ms_valor, 4),
+        # Fase 5H.1-C (§9.5): colchón de plazo a P_objetivo y a P_max; informativo. Con la
+        # escalera degenerada no hay precios utilizables (y pueden ser ≤ 0): no se calcula.
+        colchon_plazo_meses=None if escalera.degenerada else m11_rentabilidad.colchon_plazo(
+            escalera.p_objetivo, costes, vs_p, inp, float(params.get("capital.coste_capital_anual"))),
+        colchon_plazo_meses_p_max=None if escalera.degenerada else m11_rentabilidad.colchon_plazo(
+            escalera.p_max, costes, vs_p, inp, float(params.get("capital.coste_capital_anual"))),
         rvc=puja.rvc, p_adj_esperado=puja.p_adj_esperado, vetos=vetos,
         condiciones=sorted(set(condiciones)), techos_aplicados=sorted(set(techos)),
         razones=razones, version_reglas=version_reglas, version_parametros=params.version,
@@ -120,8 +127,12 @@ def ejecutar_analisis(inp: AnalisisInput, params: Parametros | None = None,
 
     parciales = {"valoracion": valoracion, "icu": icu, "reforma": reforma, "costes": costes,
                  "riesgos": ra_res, "rentabilidad": rentabilidad, "puja": puja, "ici": ici,
-                 "delta_v": delta_v, "vs_p": vs_p, "reglas": reglas_out}
-    checklist = m14_informe.construir_checklist(inp, decision, hechos)
+                 "delta_v": delta_v, "vs_p": vs_p, "reglas": reglas_out,
+                 # Fase 5G.4: tasa de los parámetros aplicados, para la línea
+                 # explicativa del coste de capital en M14 (solo redacción).
+                 "coste_capital_anual": params.get("capital.coste_capital_anual")}
+    checklist = m14_informe.construir_checklist(inp, decision, hechos,
+                                                metodo_valoracion=valoracion.metodo)
     informe = m14_informe.construir_informe(inp, parciales, decision, checklist)
 
     return AnalisisResult(

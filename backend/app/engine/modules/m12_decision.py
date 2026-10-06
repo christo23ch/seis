@@ -7,6 +7,8 @@ Todo determinista; cada disparo de regla queda trazado (P1, P2, P6).
 from __future__ import annotations
 
 from app.engine import fiscal
+# Fase 5G.4-B: las razones se leen en el informe y en la interfaz (formato español).
+from app.engine.formato import decimal, pct
 from app.engine.contracts import (AnalisisInput, CostesResultado, DecisionFinal,
                                   EscaleraPrecios, ICIResultado, ICUResultado,
                                   RAResultado, RentabilidadResultado, RiesgoOut,
@@ -67,6 +69,7 @@ def calcular_escalera(inp: AnalisisInput, params, banda_ra: str, vs_p: float,
     fila = params.seccion(f"primas_ra.{banda_ra}")
     cf50, cf80 = costes.c_f_p50, costes.c_f_p80
     detalle: dict[str, float] = {"delta_v_aplicado": 0.0}
+    f = inp.financiacion          # rama rentista (DSCR, CoC) y coste de capital (D5)
 
     if perfil["tipo"] == "venta":
         m_obj = float(perfil["m_objetivo"]) * float(fila["mult_m"])
@@ -101,7 +104,6 @@ def calcular_escalera(inp: AnalisisInput, params, banda_ra: str, vs_p: float,
 
         p_ideal, p_obj = p_de_y(y_req + 1.0), p_de_y(y_req + 0.5)
         candidatos = [p_de_y(y_req)]
-        f = inp.financiacion
         if f.tipo == "hipoteca" and f.ltv > 0:
             ts = (f.interes_anual_pct + float(params.get("financiacion.stress_tipos_pp"))) / 100
             dscr_min = float(params.get("financiacion.dscr_minimo"))
@@ -122,11 +124,20 @@ def calcular_escalera(inp: AnalisisInput, params, banda_ra: str, vs_p: float,
     p_lim_bruto = fiscal.resolver_por_tramos(
         costes, lambda c_v_ef, extra: (vs_p - cf80 - extra) / (1 + c_v_ef))
     i_aprox = fiscal.inversion(p_max, costes, cf80)
-    coste_capital = cc_anual * i_aprox * (costes.plazo_meses_p80 / 12.0)
+    # Fase 5H.1-B (ADR-0016 D5, auditoría E1): el coste de oportunidad solo se cobra al
+    # capital PROPIO. La parte financiada (LTV · P_max) ya paga su coste real como intereses
+    # dentro de `c_v` (M06); antes se le cobraba además este coste. Sin hipoteca, LTV = 0 y
+    # la fórmula es la de siempre.
+    financiado = f.ltv * p_max if f.tipo == "hipoteca" else 0.0
+    capital_propio = max(0.0, i_aprox - financiado)
+    coste_capital = cc_anual * capital_propio * (costes.plazo_meses_p80 / 12.0)
     p_lim = p_lim_bruto - coste_capital
     if perfil["tipo"] == "rentista":
         p_lim = min(p_lim, p_lim_rent) if p_lim_rent > 0 else p_lim
-    detalle.update({"coste_capital": round(coste_capital, 2)})
+    # Fase 5G.4: la tasa viaja junto al importe para que el resultado explique de
+    # dónde sale (informe e interfaz); es trazabilidad, no entra en ningún cálculo.
+    detalle.update({"coste_capital": round(coste_capital, 2), "coste_capital_anual": cc_anual,
+                    "capital_propio": round(capital_propio, 2)})
 
     escalera = EscaleraPrecios(
         p_ideal=round(p_ideal), p_objetivo=round(p_obj), p_max=round(p_max),
@@ -221,8 +232,20 @@ def procesar_disparos(disparos: list[Disparo]) -> tuple[list[VetoOut], list[str]
 def decidir_semaforo(params, ico: int, ra_res: RAResultado, rent: RentabilidadResultado,
                      ms_valor: float, rvc: float, ici: int, ici_techo: str | None,
                      escalera: EscaleraPrecios, vetos: list[VetoOut], techos: list[str],
-                     inp: AnalisisInput) -> tuple[str, list[str]]:
+                     inp: AnalisisInput, *,
+                     metodo_valoracion: str = "comparables_ajustados") -> tuple[str, list[str]]:
     razones: list[str] = []
+    # Fase 2 (puente captación → análisis, corte de valoración): sin comparables,
+    # M03 no tiene ancla de mercado independiente — VM=VS=VT degenerado,
+    # confianza 0.0 (m03_valoracion.py, rama n==0). Presentar una escalera de
+    # precios calculada sobre esa base sería dar apariencia de valoración a una
+    # cifra sin respaldo. Mismo patrón que un veto: corta ANTES de evaluar
+    # ICO/RVC/riesgos, así que nunca puede llegar a verde, amarillo ni naranja.
+    if metodo_valoracion == "sin_comparables":
+        return "rojo", ["Sin ancla de mercado independiente: no se han aportado "
+                        "comparables de mercado (M03 §6.3); la valoración no es "
+                        "determinable y el semáforo no puede ser verde, amarillo "
+                        "ni naranja hasta que existan"]
     if vetos:
         return "rojo", [f"Veto {v.codigo}: {v.motivo}" for v in vetos]
     if escalera.degenerada:
@@ -240,7 +263,7 @@ def decidir_semaforo(params, ico: int, ra_res: RAResultado, rent: RentabilidadRe
     if (ico >= sv["ico_min"] and not hay_alta and b_pes >= piso * i_base
             and ms_valor >= sv["ms_valor_min"] and rvc >= sv["rvc_min"] and ici >= sv["ici_min"]):
         candidato = "verde"
-        razones.append(f"ICO {ico} sin riesgos altos; pesimista positivo; MS {ms_valor:.0%}; RVC {rvc:.2f}")
+        razones.append(f"ICO {ico} sin riesgos altos; pesimista positivo; MS {pct(ms_valor, 0)}; RVC {decimal(rvc)}")
     elif (ico >= sa["ico_min"] and not hay_critica and b_pes >= sa["pes_piso_frac_i"] * i_base
           and rvc >= sa["rvc_min"] and ici >= sa["ici_min"]):
         candidato = "amarillo"
@@ -251,7 +274,7 @@ def decidir_semaforo(params, ico: int, ra_res: RAResultado, rent: RentabilidadRe
     else:
         motivo = "ICO insuficiente" if ico < sn["ico_min"] else \
             ("RVC por debajo del mínimo" if rvc < sn["rvc_min"] else "riesgo crítico")
-        return "rojo", [f"No alcanza Naranja: {motivo} (ICO {ico}, RVC {rvc:.2f})"]
+        return "rojo", [f"No alcanza Naranja: {motivo} (ICO {ico}, RVC {decimal(rvc)})"]
 
     # Techos: dominancia de críticas mitigables, ICI y reglas de semáforo
     if hay_critica:

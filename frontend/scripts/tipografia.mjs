@@ -23,9 +23,9 @@
 
 import { mkdir, writeFile } from "node:fs/promises";
 import { chromium } from "playwright";
+import { rutaNavegador } from "./navegador.mjs";
 
-const EJECUTABLE = process.env.CHROMIUM_PATH
-  ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
+const EJECUTABLE = rutaNavegador();   // CHROMIUM_PATH › PLAYWRIGHT_CHROMIUM › sandbox (navegador.mjs)
 const FUENTES = process.env.SEIS_FUENTES ?? "/tmp/seis-tipografia";
 const DESTINO = process.env.SEIS_DESTINO ?? "capturas/tipografia";
 

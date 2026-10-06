@@ -1,9 +1,11 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
-import { Badge, Campo, Card, CardContent, CardHeader, CardTitle, ErrorBox, Input, Spinner } from "@/components/ui";
+import { Badge, Button, Campo, Card, CardContent, CardHeader, CardTitle, ErrorBox, Input, Spinner } from "@/components/ui";
 import { eur, fecha } from "@/lib/format";
+import { rutaApp } from "@/lib/rutas";
 import { Info } from "lucide-react";
 
 // La nota es ORIENTATIVA: la calcula el scoring exprés con los datos brutos de la
@@ -82,7 +84,12 @@ export default function Subastas() {
                     {s.subastas_desiertas_previas > 0 && ` · ${s.subastas_desiertas_previas} desierta(s)`}
                   </div>
                 </div>
-                <NotaOrientativa score={s.score} desglose={s.score_desglose} />
+                <div className="flex shrink-0 items-center gap-3">
+                  <NotaOrientativa score={s.score} desglose={s.score_desglose} />
+                  <Link href={rutaApp(`/nueva?subasta=${s.id}`)}>
+                    <Button variante="secundario">Analizar</Button>
+                  </Link>
+                </div>
               </div>
             ))}
           </CardContent>

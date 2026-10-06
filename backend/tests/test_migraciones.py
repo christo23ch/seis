@@ -57,7 +57,7 @@ from app.core.config import Settings
 # --------------------------------------------------------------------------
 
 RUTA_BACKEND = Path(__file__).resolve().parents[1]
-RUTA_SEIS_DEV_DB = RUTA_BACKEND / "seis_dev.db"  # fichero compartido de la fixture `api`
+RUTA_SEIS_DEV_DB = RUTA_BACKEND / "seis_dev.db"  # base de DESARROLLO: la suite no la toca (conftest usa su propia base desde 9db44b3)
 
 POSTGRES_ENV_VAR = "SEIS_TEST_POSTGRES_URL"  # dedicada: nunca DATABASE_URL
 
@@ -185,7 +185,7 @@ def _verificar_url_aislada(url: str, directorio_permitido: Path | None) -> None:
     verificablemente desechable.
 
     No pretende ser una lista exhaustiva de todo lo peligroso: combina una
-    lista de negación explícita (el fichero compartido con la fixture `api`,
+    lista de negación explícita (la base de desarrollo `seis_dev.db`,
     el valor por defecto de `Settings`) con una comprobación de contención
     real en el directorio desechable de la sesión de pytest en curso.
     """
@@ -251,7 +251,7 @@ def _url_desde_ruta(ruta_db: Path) -> str:
 
 def _estado_fichero(ruta: Path) -> tuple[int, int] | None:
     """Tamaño y mtime del fichero, o `None` si no existe. Base de la
-    comprobación pasiva de que el fichero compartido no se tocó."""
+    comprobación pasiva de que la base de desarrollo no se tocó."""
     if not ruta.exists():
         return None
     estadisticas = ruta.stat()
@@ -349,7 +349,7 @@ def entorno_migraciones(tmp_path: Path) -> Iterator[EntornoMigraciones]:
     `tmp_path`, validado por la guarda de aislamiento.
 
     Comprobación pasiva FIRME (no opcional): captura el estado
-    (existencia/tamaño/mtime) del fichero compartido `seis_dev.db` antes y
+    (existencia/tamaño/mtime) de la base de desarrollo `seis_dev.db` antes y
     después del test, y falla si cambió — es la evidencia de que el
     aislamiento se cumplió de hecho, no solo de que la URL parecía correcta.
     """
@@ -378,7 +378,7 @@ def entorno_migraciones(tmp_path: Path) -> Iterator[EntornoMigraciones]:
 # --------------------------------------------------------------------------
 
 def test_tg_guarda_rechaza_url_del_fichero_compartido(tmp_path: Path) -> None:
-    """La guarda debe saltar ante la URL del fichero que usa la fixture `api`."""
+    """La guarda debe saltar ante la URL de la base de desarrollo (`seis_dev.db`)."""
     with pytest.raises(RuntimeError):
         _verificar_url_aislada("sqlite:///./seis_dev.db", tmp_path)
 

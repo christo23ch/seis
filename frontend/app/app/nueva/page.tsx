@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { FormProvider, useFieldArray, useFormContext, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -375,18 +375,46 @@ function PasoResultado({ res, cargando, error, onRecalcular, onGuardar, guardand
 }
 
 /* ── página ───────────────────────────────────────────────────────────── */
-export default function NuevaInversion() {
+function AsistenteNuevaInversion() {
   const router = useRouter();
+  // Fase 1 — puente captación → análisis: `?subasta=<id>` llega desde el botón
+  // «Analizar» de /app/subastas. Reutiliza la lista ya cargada por esa página
+  // (no existe GET /subastas/{id}) para prellenar lo que la fuente ya trajo.
+  const subastaId = useSearchParams().get("subasta");
   const { data: opciones } = useQuery({ queryKey: ["opciones"], queryFn: api.opciones });
+  const { data: subastasCaptadas } = useQuery({
+    queryKey: ["subastas"], queryFn: () => api.subastas(), enabled: !!subastaId,
+  });
   const form = useForm<ValoresAnalisis>({
     resolver: zodResolver(esquemaAnalisis), defaultValues: valoresIniciales, mode: "onBlur",
   });
   const [paso, setPaso] = useState(0);
   const [resultado, setResultado] = useState<Resultado | null>(null);
+  const [subastaPrellenada, setSubastaPrellenada] = useState(false);
+
+  useEffect(() => {
+    if (!subastaId || subastaPrellenada || !subastasCaptadas) return;
+    const s = subastasCaptadas.find((x) => x.id === subastaId);
+    if (!s) return;
+    // Solo los campos que la captación realmente trae (app/api/captacion.py,
+    // `_subasta_dict`): no se inventa ni deposito_pct ni puja_minima, que esa
+    // respuesta no incluye.
+    form.reset({
+      ...form.getValues(),
+      subasta: {
+        ...form.getValues().subasta,
+        fuente: s.fuente_codigo,
+        valor_subasta: s.valor_subasta,
+        identificador_externo: s.identificador_externo ?? "",
+        subastas_desiertas_previas: s.subastas_desiertas_previas,
+      },
+    });
+    setSubastaPrellenada(true);
+  }, [subastaId, subastaPrellenada, subastasCaptadas, form]);
 
   const simular = useMutation({ mutationFn: (p: unknown) => api.simular(p), onSuccess: setResultado });
   const guardar = useMutation({
-    mutationFn: (p: unknown) => api.crear(p),
+    mutationFn: (p: unknown) => api.crear(p, subastaId ?? undefined),
     onSuccess: (r) => router.push(rutaApp(`/inversiones/${r.id}`)),
   });
 
@@ -418,6 +446,13 @@ export default function NuevaInversion() {
       <header>
         <h1 className="h-display text-2xl font-bold">Nueva inversión</h1>
         <p className="text-sm text-slate-500">Asistente de análisis en 11 pasos. Toda la lógica se ejecuta en el backend.</p>
+        {subastaId && (
+          <p className="mt-1 text-[12px] text-primario">
+            {subastaPrellenada
+              ? "Datos de la subasta captada precargados en el paso 1. El resto se completa a mano."
+              : "Cargando los datos de la subasta captada…"}
+          </p>
+        )}
       </header>
       <div className="flex gap-6">
         <aside className="hidden w-60 shrink-0 lg:block">
@@ -472,5 +507,14 @@ export default function NuevaInversion() {
         </div>
       </div>
     </div>
+  );
+}
+
+/** `useSearchParams` exige un límite de Suspense (mismo patrón que /resetear y /verificar). */
+export default function NuevaInversion() {
+  return (
+    <Suspense fallback={<Spinner />}>
+      <AsistenteNuevaInversion />
+    </Suspense>
   );
 }

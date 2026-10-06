@@ -12,6 +12,415 @@ Las fases 1-8 construyeron el motor experto y el producto de un solo tenant.
 Este registro arranca en la Fase 9, que es cuando el proyecto empieza a
 convertirse en un SaaS. Lo anterior está en el historial de git.
 
+> **Dos numeraciones distintas.** Las entradas «Línea de producto · Fase 1-4» y
+> «Fase 5C-5F.7» de abajo **no son** las fases 1-8 del Plan Maestro: son una
+> línea de trabajo posterior (trazabilidad del análisis y simulaciones) que se
+> numeró por su cuenta. Así aparecen en el código (`Fase 3:`, `Fase 5D —`…).
+
+---
+
+## [Fase 5H.1] — Motor: VAN, coste de capital sobre el capital propio, colchón de plazo y especificación coherente — 2026-10-04
+
+Puntos de la auditoría 5G.4 que **no cambian el caso dorado** (`docs/AUDITORIA_MOTOR_ESPECIFICACION.md`,
+E1, E5, E6 y el punto 5 del orden E7), con autorización expresa para tocar `app/engine/`.
+**Guarda invariante de toda la fase:** `tests/datos/invariante_5h1.json` es la foto del
+resultado completo del §19 y del §19 con hipoteca tomada antes de empezar; el §19 no cambió ni
+una de sus 510 hojas, y el caso con hipoteca solo las cuatro que justifica D5. Cada bloque pasó
+por el agente `code-reviewer` (0 críticos, 0 altos en B y C). Suite al cerrar: 965 passed,
+18 skipped, 0 failed; CI en verde en cada bloque.
+
+### 5H.1-A · VAN y diferencial TIR frente al coste de capital (`31dd511`, ADR-0017)
+
+#### Añadido
+- M11 calcula, con los mismos flujos que la TIR (escenario base, P_objetivo),
+  `van_coste_capital` y `diferencial_tir_coste_capital` (puntos). Tasa efectiva anual llevada a
+  mensual con `(1+cc)^(1/12) − 1`, la misma equivalencia que la TIR: VAN = 0 cuando cc = TIR.
+  Informativos. §19: **33.230 € y +32,37 puntos**.
+- Informe (§7), «Métricas de decisión» y comparación de simulaciones.
+- `tests/test_golden_caso19.py`: la entrada pasa a la función `entrada_caso_19()` (mismos 52
+  assert y 14 tests) para que la guarda y sus scripts la reutilicen.
+
+### 5H.1-B · Coste de capital solo sobre el capital propio (`5cb0634`, `1386faa`, ADR-0018)
+
+#### Corregido
+- **Con hipoteca, el precio límite cobraba dos veces la parte financiada** (intereses en `c_v`
+  y coste de oportunidad sobre toda la inversión). Ahora
+  `coste_capital = cc · max(0, I(P_max, C_F^P80) − LTV·P_max) · plazo_P80/12`. Sin hipoteca,
+  idéntico. Caso con hipoteca (LTV 70 %, 3,5 %): coste de capital 3.659,05 → 2.603,76 € y
+  **P_límite 77.100 → 78.156 €**. `detalle["capital_propio"]` guarda la base.
+- `1386faa`: correcciones de la revisión de código (el test del `max(0, …)` no saturaba con
+  LTV 1,2; test de compra al contado con LTV informado; test del rentista con la fórmula).
+
+### 5H.1-C · Colchón de plazo (`f2bc04a`, ADR-0019)
+
+#### Añadido
+- §9.5: meses extra hasta beneficio base cero por tenencia, intereses del préstamo y coste de
+  oportunidad del capital propio, a P_objetivo y a P_max. Informativo. §19: **84,8 meses
+  (60,9 a P_max)**. `None` con escalera degenerada o sin coste mensual.
+- Informe, «Métricas de decisión» y comparación de simulaciones.
+
+### 5H.1-D · Especificación coherente con el motor
+
+#### Cambiado
+- Especificación: §9.1 define `coste_capital` (con D5); §7.7 añade VAN_cc y Δ_cc; §9.5 concreta
+  el colchón; **§19 regenerado con las cifras reales del motor** y un recuadro de qué cambió y
+  por qué (C_F^P80 85.060/86.800 → 87.708 €, coste de capital 3.659 €, P_límite 82.500 →
+  80.022 €, «TIR ≈ 23 %» era el ROI anualizado: ROI anualizado 22,9 % y TIR 33,9 %).
+- `docs/SEIS_informe_ejemplo_caso19.md` regenerado: era anterior a la corrección del ITP y a la
+  5G.2. Lo leen los tests del PDF (en verde).
+- `ESTADO_ACTUAL` §4: cerrada Backend 16 y la 18 en parte; nuevas Backend 19-21 y Pruebas 5.
+- Auditoría: estado punto a punto tras la 5H.1. Vault: notas `40-Fases/Fase-5G-4`,
+  `40-Fases/Fase-5H-1` y `02-Diario/2026-10-04`.
+
+---
+
+## [Fase 5G.4] — Coste de capital, decimales en formato español y e2e en CI — 2026-10-01
+
+Decisiones del responsable D1–D5 sobre `capital.coste_capital_anual`, registradas en
+[ADR-0016](30-Decisiones/ADR/ADR-0016-coste-de-capital-como-coste-de-oportunidad.md).
+**Ningún cálculo del motor cambia**: los tests de la fase fijan los valores de M11, M12 y M13
+del caso §19 capturados antes de empezar. Commits `3ecc9c8` (A), `729efd5` (B), `e2284da` y
+`b74abd0` (C). **CI en verde con los cuatro jobs, incluido el nuevo `e2e`:**
+[ejecución 36921942152](https://github.com/christo23ch/seis/actions/runs/36921942152).
+
+### 5G.4-A · Coste de capital como coste de oportunidad, rango y aviso
+
+#### Añadido
+- **Catálogo:** `capital.coste_capital_anual` se describe como coste de oportunidad del capital
+  propio (D1), con unidad «fracción anual (0–1)», **rango 0–0,15** (D2) y dos campos nuevos
+  opcionales, `umbral_aviso` (0,06) y `texto_aviso` (D3). Advertencia e impacto dicen que solo
+  afecta al precio límite (§9.1), no al ROI ni a la TIR. El nivel de riesgo sigue
+  `pendiente_de_definir`: el catálogo no tiene escala para él.
+- **`GET /analisis/{id}/parametros-simulables`** devuelve `umbral_aviso` y `texto_aviso` en cada
+  editable (`null` si no tiene aviso). Cambio aditivo.
+- **Editor de simulaciones:** aviso en el campo si el valor supera el umbral o sale del rango.
+  No bloquea crear; el backend decide.
+- **Informe (M14) e interfaz (escalera de precios):** «El coste de capital (X % anual, coste de
+  oportunidad del capital propio) solo se descuenta del precio límite (§9.1); ROI y TIR no lo
+  incluyen. Importe aplicado: Y €.» Sin tasa o sin importe no se muestra.
+- **M12** añade la tasa aplicada a `precios.detalle["coste_capital_anual"]` (trazabilidad).
+
+#### Cambiado
+- **Validación de rango vinculante** con una sola función, `simulacion_service.validar_rangos`,
+  para las simulaciones y para la edición global (`PUT /parametros`). Fuera del rango concreto
+  del catálogo: **422** con el rango en español, sin escribir filas ni auditoría. Las **11
+  cotas técnicas** que ya existían (dominancias de RA, umbral ICI del ICO, `ico_min`, `ici_min`
+  y `ms_valor_min` del semáforo) pasan a ser vinculantes; ningún valor guardado ni por defecto
+  quedaba fuera. Publicar una sección entera no salta el rango de sus hojas.
+- **Incompatible:** `PUT /parametros` responde 422 (antes 200) a un valor fuera de rango, y una
+  simulación con coste de capital > 0,15 ya no se puede crear. Las ya guardadas se siguen
+  leyendo.
+
+### 5G.4-B · Decimales en formato español en el informe
+
+#### Corregido
+- El informe usaba el formato de Python: «25.0%», «6.40%», «RVC 1.08», «CV 5.3%». Pasa a coma
+  decimal y «25,0 %» con `app/engine/formato.py` (`decimal`, `pct`) en M14, M13 (depósito del
+  plan de puja) y M12 (razones con MS y RVC). Mismo redondeo; solo cambian los separadores. En
+  el §19 cambian 15 fragmentos, enumerados en `tests/test_informe_coherencia.py::FORMATO_5G4B`.
+- Los informes oficiales ya emitidos conservan su texto (Markdown congelado).
+
+### 5G.4-C · E2E en CI, lanzadores unificados y desbordamiento de /app
+
+#### Añadido
+- **Job `e2e` en la CI** (`ubuntu-latest`, `CHROMIUM_PATH=/usr/bin/google-chrome`, sin descargar
+  navegadores): ejecuta `e2e/correr.sh` y `e2e/correr_simulaciones.sh`.
+- `frontend/scripts/navegador.mjs`: **una sola variable para el navegador** en los seis guiones
+  de Playwright (`CHROMIUM_PATH`, y `PLAYWRIGHT_CHROMIUM` por compatibilidad).
+
+#### Corregido
+- **`e2e/correr.sh` (alta)** funciona en Windows: sonda `/api/v1/health` (esperaba a
+  `/health/vivo`, que no existe), Python del venv, rutas nativas en un temporal fuera del repo,
+  puertos 8020/3020, compila contra su propio backend y cierra sus procesos por PID de Windows.
+  `comprobar_alta.py` imprime en UTF-8.
+- **`/app` desbordaba a 482 px con datos** (tabla de 447 px a 390 px), defecto previo a 5G.4. La
+  tabla del panel y la de la comparativa van dentro de un contenedor con desplazamiento propio.
+- «No utilizable» en la comparación ya no usa la fuente de las cifras.
+- El aviso del editor usa el estilo informativo del proyecto, no un color del semáforo.
+- **La Escalera de precios desbordaba 8 px a 390 px en Linux y macOS** (`b74abd0`), defecto
+  previo a 5G.4 que destapó la primera ejecución del job `e2e` (398/390 en la pestaña
+  Resumen). `.cifra` usa la monoespaciada del sistema, ~0,6 em en DejaVu Sans Mono y Menlo
+  frente a ~0,55 em de Consolas, y los escalones `flex-1` no encogían por debajo de su cifra.
+  Ahora encogen (`min-w-0`) y, por debajo de `sm`, la cifra va a 12 px. El paso 10 de
+  `simulaciones.mjs` mide además con la monoespaciada ancha forzada, para verlo en Windows.
+- **«1, % anual» en la nota de la escalera** (defecto de 5G.4-A, `b74abd0`): la expresión
+  regular de `lib/format.ts::tasa` perdió una barra al escribirse. Reescrita sin expresión
+  regular; la e2e comprueba el texto «1,5 % anual».
+
+### 5G.4-D · Decisión y documentación
+
+- **ADR-0016** (aceptado): D1–D4 con su justificación, D5 aceptada y pendiente para la 5H, y la
+  tabla de sensibilidad del §19 (coste de capital 0–0,20) con el umbral de degeneración 6,13 %.
+- `MANUAL_DE_PRUEBAS.md`: cómo probar el rango y el aviso, y las dos e2e con `CHROMIUM_PATH`.
+- `docs/ESTADO_ACTUAL.md` §4: cerradas Backend 12, 13 y 15 (y la 4 en parte), Pruebas 1 y
+  Entorno 1-2; deudas nuevas Backend 16-18, Frontend 11-14 y Entorno 7.
+- `CLAUDE.md`: reglas de entorno 3 y 5 actualizadas (las dos e2e compilan; puertos 8020/3020
+  del alta) y regla 6 nueva (`CHROMIUM_PATH`).
+
+### 5G.4-E · Auditoría del motor frente a la especificación
+
+- `docs/AUDITORIA_MOTOR_ESPECIFICACION.md` (solo lectura de código): doble cuenta con hipoteca,
+  `coste_capital()` sin definir, TIR del §19, perfil rentista, colchón de plazo y depósito,
+  diseño del VAN y orden propuesto para la 5H.
+
+---
+
+## [Fase 5G.3] — Escalera degenerada en la interfaz y formato de 4 cifras — 2026-10-01
+
+Lo mismo que 5G.2 hizo en el informe, ahora en la interfaz. La interfaz no decide si una
+escalera es degenerada: usa la marca `decision.precios.degenerada` de M12.
+
+### Corregido
+
+- **Escalera de precios** (`components/resultado.tsx`): con la escalera degenerada, el escalón
+  «Límite» deja de dibujarse como el más alto y sin su cifra: muestra «No utilizable» y
+  «escalera degenerada (§9.3)», con borde discontinuo y la altura del escalón «Objetivo». La
+  **línea de adjudicación se oculta**: no hay ningún escalón válido contra el que situarla, y
+  el precio de adjudicación esperado sigue en la cabecera de la tarjeta. La nota al pie se
+  mantiene. Sin escalera degenerada, el marcado es el de antes.
+- **Métricas clave:** «Precio límite: No utilizable (escalera degenerada)».
+- **Comparación original / simulación:** la celda del precio límite dice «No utilizable» en el
+  lado cuya escalera es degenerada; si el dato es antiguo y no trae la marca, la cifra como
+  antes.
+- **Importes de 4 cifras:** `lib/format.ts::eur` agrupa siempre (`useGrouping: "always"`):
+  «7.600 €» en vez de «7600 €», igual que el informe. es-ES no agrupa 4 cifras por defecto
+  (`minimumGroupingDigits` = 2 en CLDR). `num`, `pct` y `fecha` no cambian.
+
+### Añadido
+
+- `GET /analisis/{id}/simulaciones/{sid}/comparacion`: campo `escalera_degenerada`
+  (`bool | null`) en `resultado.original` y `resultado.simulacion`, leído tal cual de
+  `decision.precios.degenerada`; `null` si el resultado no trae la marca. Sin cálculos.
+
+### Pruebas
+
+`test_comparacion_simulacion_api.py`: `true` con `capital.coste_capital_anual = 0.31`, `false` en
+el original y `null` sin la marca. Suite: 865 passed, 18 skipped, 0 failed. `tsc` sin errores.
+Verificación visual en copia aislada a 1440 y 390 px (análisis normal, 4 cifras, simulación
+degenerada en uso y su comparación), sin desbordamiento horizontal. La e2e no se ejecutó: el
+puerto 3000 estaba ocupado por el entorno de desarrollo.
+
+## [Fase 5G.2] — Coherencia del texto del informe y overrides en el PDF oficial — 2026-10-01
+
+Tres hallazgos en un PDF oficial real (simulación con `capital.coste_capital_anual` alto).
+
+### Corregido
+
+- **El informe presentaba como accionable un precio límite inutilizable.** Con la escalera
+  degenerada (§9.3, la marca `decision.precios.degenerada` que ya pone M12 y que hace el
+  semáforo rojo), la tabla decía «Precio límite absoluto -13.894 € — infranqueable» y el plan
+  de puja instruía a «cargar límites». Ahora:
+  - tabla: «No utilizable: escalera de precios degenerada (§9.3)», sin la cifra;
+  - plan de puja (M13): «No cargar límites ni pujar: la escalera de precios es degenerada
+    (§9.3); la estructura de costes consume el valor y no hay precio límite utilizable», sin
+    las dos tácticas de cómo pujar; se mantienen el depósito y el re-análisis;
+  - checklist: «Escalera de precios cargada en la interfaz de puja» pasa a **pendiente**
+    («Escalera de precios degenerada (§9.3): no hay escalera utilizable para pujar.») y sale
+    entre los bloqueantes, con el mismo patrón que «sin comparables».
+
+  El valor calculado sigue en `decision.precios.p_limite`. **Ningún cálculo cambia**: un test
+  fija los números de M13 y de la escalera capturados antes del cambio (caso §19, §19 con
+  coste de capital 0,31 y un caso inviable).
+- **Separador de miles inglés.** El plan de puja de M13 escribía «60,011 €» y «7,600 €»
+  (`:,.0f`) mientras el resto del informe escribe «60.011 €». Un único helper,
+  `app/engine/formato.py::eur`, para M13, M14 y el correo de alertas
+  (`notificaciones_service`, «Valor de subasta: 152.000 €»). El informe del caso dorado §19
+  es idéntico al anterior salvo esas cuatro cifras (comparado con su texto previo,
+  `tests/datos/informe_caso19_antes_5g2.md`).
+
+### Añadido
+
+- **PDF oficial:** el bloque de identificación lista los overrides del informe, uno por línea
+  y por clave (`· capital.coste_capital_anual = 0.31`), leídos solo de `Informe.overrides`;
+  valor técnico tal cual y estructuras en JSON recortado a 60 caracteres.
+
+### Sin cambios
+
+Los informes oficiales ya emitidos conservan su texto exacto (Markdown congelado; hay test).
+Los análisis y simulaciones ya guardados conservan el texto anterior hasta que se reanalicen.
+Sin migración. Ni M01-M12, ni la parte numérica de M13/M14, ni modelos ni frontend.
+
+### Pruebas
+
+`test_formato.py`, `test_informe_coherencia.py`, tres casos nuevos en
+`test_pdf_identificacion.py` y uno en `test_notificaciones.py`. Suite: 863 passed,
+18 skipped, 0 failed.
+
+## [Fase 5G.1] — Identificación del informe oficial en el PDF — 2026-09-30
+
+Resuelve la deuda D5: impreso, un informe oficial no decía qué informe era.
+
+### Añadido
+
+- **PDF oficial identificado** (`GET /analisis/{id}/informes/{iid}/pdf`): cabecera en
+  cada página («Informe oficial · {id corto} · emitido … UTC»), un bloque inicial en la
+  primera (id, fecha y hora de emisión en UTC, procedencia —«Configuración original» o
+  «Simulación {id corto}» con el id completo—, versión de parámetros, versión de reglas,
+  overrides aplicados y, si falta, «Sin snapshot de parámetros») y un pie con el id
+  completo y la procedencia en cada página.
+- Todo sale **solo de la fila `Informe`** (`id`, `generado_en`, `simulacion_id`,
+  `overrides`, `parametros_aplicados`, `resultado.decision.version_*`); lo que no consta se
+  imprime como «no consta». La fecha de creación del PDF es la de emisión: **dos descargas
+  del mismo informe son idénticas byte a byte**.
+- **Vista previa marcada** (`GET /analisis/{id}/informe.pdf`): «VISTA PREVIA — NO OFICIAL»
+  en la cabecera de cada página y en un bloque inicial.
+- `pdf_service`: `Identificacion`, `identificacion_oficial`, `identificacion_vista_previa` y
+  el parámetro `identificacion=` de `informe_a_pdf`. Sin él, el PDF sale como antes. El pie
+  reduce el cuerpo (8 → 6 pt) si no cupiera en una línea; con los ids reales cabe a 8 pt en
+  Helvetica y en DejaVu.
+
+### Sin cambios
+
+El Markdown congelado (base y `GET /informes/{iid}`), M14, `informe_service`, los modelos y
+las migraciones. Sin migración nueva.
+
+### Pruebas
+
+`tests/test_pdf_identificacion.py`: 9 casos, cada uno con Helvetica y con DejaVu (la
+variante DejaVu se omite fuera de CI si la fuente no está instalada y falla en CI si falta).
+El texto se lee con `pypdf==6.19.0`, nueva dependencia **solo de tests** en
+`requirements-dev.txt`. `test_informe_api.py` comprueba además que la identificación que
+recibe el PDF es la de ese informe. Suite: 837 passed, 17 skipped, 0 failed.
+
+## [Fase 5F.7] — Simulaciones e informes oficiales en la interfaz — 2026-09-24 a 2026-09-30
+
+Rama `checkpoint/5f6-simulaciones-informes`. Una subfase, un commit (fechas de
+`git log`).
+
+### Añadido
+
+- **5F.7.1** (`9db8e70`) — `_validar_overrides` comprueba también la **forma**
+  del valor contra el de referencia del mismo árbol (número con número, `bool`
+  no cuenta como número, listas y diccionarios recursivos). Un valor de tipo
+  incorrecto da **422** en vez de 500. `SimulacionNueva` lleva
+  `extra="forbid"`: un campo desconocido da 422 en vez de crear una simulación
+  vacía.
+- **5F.7.2** (`a517299`) — `GET /analisis/{id}/parametros-simulables`:
+  editables, no editables y derivados, con `coincide_con_analisis`.
+  `app/services/parametros_simulables_service.py`.
+- **5F.7.3** (`a6835e8`) — `GET /analisis/{id}/simulaciones/{sid}/comparacion`:
+  qué parámetros cambian (causa `override` o `conocimiento_vigente`) y 12
+  campos del resultado a cada lado. No ejecuta el motor ni audita.
+- **5F.7.4** (`c957fc0`) — base del frontend: tipos, cliente de API
+  (`simulaciones.*`, `informes.*`, `guardarBlob`), `lib/permisos.ts`. **La UI
+  deja de ofrecer el PDF de `/informe.pdf`**; la pestaña «Informe» pasa a ser
+  «Vista previa (no oficial)».
+- **5F.7.5** (`b435688`) — pestaña **Simulaciones**: lista, validar,
+  descartar, usar esta configuración, y el aviso de qué configuración se
+  muestra (`aviso-configuracion.tsx`).
+- **5F.7.6** (`f244d6c`) — editor de parámetros por grupos y creación de
+  simulaciones (`editor.tsx`).
+- **5F.7.7** (`8b03870`) — comparación original / simulación en la interfaz
+  (`comparacion.tsx`), con «Mostrar todos».
+- **5F.7.8** (`9d6e411`) — pestaña **Informes oficiales**: emitir con
+  confirmación, histórico, detalle y descarga del PDF oficial
+  (`informes-oficiales.tsx`).
+- **5F.7.9** (`a589fbd`) — e2e versionada del flujo:
+  `e2e/correr_simulaciones.sh` + `frontend/e2e/simulaciones.mjs` +
+  `e2e/comprobar_simulaciones.py`. Puertos propios (8010/3010), base en un
+  temporal fuera del repo, compila su propio frontend.
+  `frontend/scripts/medir-desborde.mjs` acepta `CHROMIUM_PATH`.
+- **5F.7.10 A** (`4df5de8`) — `Confirmacion` compartida en
+  `components/ui.tsx` (antes duplicada en `lista.tsx` e
+  `informes-oficiales.tsx`); todas las escrituras de simulaciones comparten
+  `mutationKey` y el botón «Volver a la configuración original» se desactiva
+  mientras hay otra en curso.
+
+### Corregido
+
+- `de3498f` — la hoja `version` del árbol de parámetros ya no aparece como
+  parámetro no editable cambiado en la comparación (`_HOJA_VERSION`).
+
+### Verificado al cierre
+
+`pytest`: **828 passed, 9 skipped, 0 failed**. `tsc --noEmit`: sin errores.
+`correr_simulaciones.sh`: EXIT=0.
+
+## [Pruebas] — La suite deja de usar la base de desarrollo — 2026-09-28
+
+Commit `9db44b3`. No es una fase.
+
+### Corregido
+
+- **`pytest` borraba `seis_dev.db`.** `conftest.py` no fijaba `DATABASE_URL`,
+  así que la suite usaba la base por defecto (`sqlite:///./seis_dev.db`), la
+  misma del `uvicorn` de desarrollo, y la fixture `api` hacía `drop_all` y
+  `os.remove("seis_dev.db")` al terminar cada módulo. Ahora `conftest.py` fija
+  `DATABASE_URL` a una base en un directorio temporal (`SEIS_PYTEST_DIR_BD`)
+  **antes** de importar la aplicación, y aborta la sesión (`pytest.exit`) si
+  detecta que apunta a otra (`problema_de_aislamiento`).
+  `tests/test_aislamiento_bd.py`.
+
+## [Fases 5C-5F.6] — Catálogo, simulaciones, configuración validada, informes oficiales y API — 2026-09-23
+
+Todo en **un solo commit**, `4a6f61d` («feat: simulaciones, configuracion
+validada e informes oficiales»). Las subfases se reconstruyen por las marcas
+`Fase 5X` del código, no por commits propios. La fecha es la del commit.
+
+[VERIFICAR: las subfases **5B**, **5F.2** y **5F.5** no dejan marca en el código ni commit
+propio; no se documentan aquí. Tampoco consta la fecha de cierre de cada subfase, solo la
+del commit.]
+
+### Añadido
+
+- **5C / 5C.1** — `app/parametros/catalogo.py`: catálogo técnico de metadatos
+  de los parámetros T3 de M12/M13, con disciplina «no inventar». 5C.1 cierra
+  las tres claves físicas de `perfiles.rentista` y las de M12/M13 que faltaban.
+  `tests/test_catalogo_parametros.py`.
+- **5D** — tabla `simulacion` (migración `0012`) y
+  `app/services/simulacion_service.py`: una configuración alternativa de
+  parámetros sobre un análisis existente. Estados `pendiente` → `validada` o
+  `descartada`. `tests/test_simulacion.py`.
+- **5E / 5E.1** — `Analisis.simulacion_validada_id` (migración `0013`): qué
+  configuración se muestra hoy (NULL = la original). 5E.1 permite volver a
+  seleccionar una simulación ya validada. `tests/test_configuracion_validada.py`.
+- **5F.1 / 5F.1A** — `Analisis.parametros_aplicados` (migración `0014`): el
+  árbol T3 efectivo congelado en el análisis.
+  `tests/test_analisis_parametros_aplicados.py`.
+- **5F.3 / 5F.3.1** — tabla `informe` (migración `0015`): informe **oficial**,
+  snapshot histórico e inmutable. 5F.3.1: el informe y su evento de auditoría
+  van en la misma transacción (defecto B-1). `app/services/informe_service.py`,
+  `tests/test_informe.py`.
+- **5F.4** — API de informes oficiales: `POST/GET /analisis/{id}/informes`,
+  `GET …/informes/{iid}` y `GET …/informes/{iid}/pdf`. Recurso de otra
+  organización = 404. `tests/test_informe_api.py`.
+- **5F.6** — API de simulaciones: crear, listar, obtener, validar, descartar,
+  seleccionar y `POST /analisis/{id}/configuracion/original`. Cada escritura
+  audita en la **misma transacción**, con `rollback` si algo falla.
+  `tests/test_simulacion_api.py`.
+
+### Migraciones
+
+`0012_simulacion`, `0013_simulacion_validada`,
+`0014_analisis_parametros_aplicados`, `0015_informe`.
+
+## [Línea de producto · Fases 1-4] — Puente captación → análisis y trazabilidad de la valoración — 2026-09-23
+
+También dentro de `4a6f61d`; sin commits propios.
+
+### Añadido
+
+- **Fase 1 · Puente captación → análisis.** `POST /analisis?subasta_id=…`
+  reutiliza la `Subasta` captada en vez de crear otra
+  (`analisis_service.crear_analisis`, fail-closed si no existe o no es
+  visible). En la interfaz: botón «Analizar» en `/subastas` y
+  `nueva?subasta=`. Cierra el frente 🔴 «el puente captación → análisis no
+  existe».
+- **Fase 2 · Corte sin ancla.** Sin comparables (`metodo="sin_comparables"`
+  en M03), M12 decide **rojo** con «Sin ancla de mercado independiente…» y M14
+  añade al checklist «**NO DETERMINABLE: sin comparables de mercado.**».
+- **Fase 3 · Comparables usados.** `ComparableUsado` (migración `0010`):
+  snapshot inmutable de cada comparable tal y como lo recibió M03.
+  `tests/test_comparables_usados.py`.
+- **Fase 4 · Detalle de la valoración.** `ComparableValorado` y
+  `ValoracionAjustes` (migración `0011`): intermedios de M03 por comparable y
+  agregados; `detalle_comparables` y `k_estado_activo` en `contracts.py`.
+  `tests/test_valoracion_detalle.py`.
+
+### Migraciones
+
+`0010_comparable_usado`, `0011_valoracion_detalle`.
+
 ---
 
 ## [Corrección del motor] — La base imponible del ITP y la puja inviable — 2026-09-11

@@ -9,14 +9,14 @@ import {
   IcoDesglose, MetricasClave, RiesgosPanel, SemaforoHero,
 } from "@/components/resultado";
 import MapaLeaflet from "@/components/mapa-leaflet";
-import { Button, Card, CardContent, CardHeader, CardTitle, ErrorBox, Spinner, TabPanel, Tabs, TabsLista } from "@/components/ui";
-import { FileDown } from "lucide-react";
-import { useState } from "react";
+import { AvisoConfiguracion } from "@/components/simulaciones/aviso-configuracion";
+import { ListaSimulaciones } from "@/components/simulaciones/lista";
+import { InformesOficiales } from "@/components/informes/informes-oficiales";
+import { Card, CardContent, CardHeader, CardTitle, ErrorBox, Spinner, TabPanel, Tabs, TabsLista } from "@/components/ui";
 
 export default function DetalleInversion() {
   const { id } = useParams<{ id: string }>();
   const { data, isLoading, error } = useQuery({ queryKey: ["detalle", id], queryFn: () => api.detalle(id) });
-  const [bajando, setBajando] = useState(false);
 
   if (isLoading) return <Spinner />;
   if (error || !data) return <ErrorBox mensaje={(error as Error)?.message ?? "No encontrado"} />;
@@ -27,33 +27,22 @@ export default function DetalleInversion() {
   const lat = act.lat != null ? Number(act.lat) : null;
   const lng = act.lng != null ? Number(act.lng) : null;
 
-  async function descargarPdf() {
-    setBajando(true);
-    try {
-      const blob = await api.pdf(id);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = `SEIS_informe_${id.slice(0, 8)}.pdf`; a.click();
-      URL.revokeObjectURL(url);
-    } finally { setBajando(false); }
-  }
-
+  // Fase 5F.7.4: sin botón de PDF. El de `/informe.pdf` generaba la configuración
+  // ACTUAL, cambiaba con la selección e impreso no se distinguía de un informe
+  // oficial. Los PDF descargables serán solo los oficiales (5F.7.8).
   return (
     <div className="space-y-5">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="h-display text-2xl font-bold capitalize">
-            {act.tipologia ?? "Activo"} · {act.municipio ?? "—"}
-          </h1>
-          <p className="text-sm text-slate-500">
-            {data.perfil} · {num(act.superficie_m2 ?? 0)} m² · {fecha(data.creado_en)} ·
-            reglas v{data.version_reglas} · parámetros v{data.version_parametros}
-          </p>
-        </div>
-        <Button variante="secundario" onClick={descargarPdf} cargando={bajando}>
-          <FileDown className="h-4 w-4" /> Descargar informe PDF
-        </Button>
+      <header>
+        <h1 className="h-display text-2xl font-bold capitalize">
+          {act.tipologia ?? "Activo"} · {act.municipio ?? "—"}
+        </h1>
+        <p className="text-sm text-slate-500">
+          {data.perfil} · {num(act.superficie_m2 ?? 0)} m² · {fecha(data.creado_en)} ·
+          análisis original: reglas v{data.version_reglas} · parámetros v{data.version_parametros}
+        </p>
       </header>
+
+      <AvisoConfiguracion analisisId={id} simulacionValidadaId={data.simulacion_validada_id} />
 
       <SemaforoHero d={d} />
 
@@ -63,7 +52,9 @@ export default function DetalleInversion() {
           { valor: "riesgos", etiqueta: "Riesgos" },
           { valor: "puja", etiqueta: "Estrategia de puja" },
           { valor: "checklist", etiqueta: "Checklist" },
-          { valor: "informe", etiqueta: "Informe" },
+          { valor: "simulaciones", etiqueta: "Simulaciones" },
+          { valor: "informe", etiqueta: "Vista previa (no oficial)" },
+          { valor: "oficiales", etiqueta: "Informes oficiales" },
           { valor: "datos", etiqueta: "Datos de entrada" },
         ]} />
 
@@ -142,13 +133,21 @@ export default function DetalleInversion() {
           <Card><CardContent><ChecklistLista items={res.checklist} /></CardContent></Card>
         </TabPanel>
 
+        <TabPanel valor="simulaciones"><ListaSimulaciones detalle={data} /></TabPanel>
+
         <TabPanel valor="informe">
           <Card><CardContent>
+            <p className="mb-3 text-[13px] text-slate-500">
+              Vista previa de la configuración actual. <b>No es un informe oficial</b>: no queda
+              congelada y cambia si cambia la configuración seleccionada.
+            </p>
             <pre className="max-h-[70vh] overflow-auto whitespace-pre-wrap font-cifra text-[12.5px] leading-relaxed text-slate-700">
               {res.informe_markdown}
             </pre>
           </CardContent></Card>
         </TabPanel>
+
+        <TabPanel valor="oficiales"><InformesOficiales detalle={data} /></TabPanel>
 
         <TabPanel valor="datos">
           <Card><CardContent>

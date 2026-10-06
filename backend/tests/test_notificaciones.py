@@ -113,6 +113,30 @@ def test_listado_subastas_filtra_por_score_min(api, headers):
     assert len(r.json()) >= 1
 
 
+
+def test_el_correo_de_alerta_formatea_el_valor_en_espanol(api, headers):
+    """Fase 5G.2: el importe del correo usa el formato del informe («152.000 €»),
+    no el separador inglés («152,000 €», que un lector español lee como 152 €)."""
+    alerta = api.post("/api/v1/alertas", headers=headers,
+                      json={"nombre": "Formato 5G.2", "criterios": {"fuente": "judicial_boe"}}).json()
+    r = api.post("/api/v1/subastas", headers=headers,
+                 json={**CAPTADA, "valor_subasta": 152000, "identificador_externo": "formato-5g2",
+                       "fecha_cierre": (datetime.now(timezone.utc)
+                                        + timedelta(hours=300)).isoformat()})
+    assert r.status_code == 201, r.text
+
+    from app import models
+    from app.core.db import SessionLocal
+    db = SessionLocal()
+    try:
+        n = db.query(models.Notificacion).filter_by(alerta_id=alerta["id"]).one()
+        cuerpo = n.cuerpo
+    finally:
+        db.close()
+    assert "Valor de subasta: 152.000 €\n" in cuerpo
+    assert "152,000" not in cuerpo
+
+
 # ── Aislamiento del matcher entre organizaciones (cierre Fase 12, P0.2 — H1) ─
 
 def test_matcher_aislamiento_entre_organizaciones(api, dos_organizaciones):

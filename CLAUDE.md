@@ -33,9 +33,28 @@
 
 ---
 
-## 3 · Estado actual (avance ~40 % según Plan Maestro)
+## 3 · Estado actual
 
-### ✅ Construido y verificado
+> **Estado vivo: `docs/ESTADO_ACTUAL.md`** (flujo del producto, deudas abiertas, cómo lanzar las
+> e2e) y **`docs/PLAN_FASES.md` §5** (estado de cada fase y avance, **50 %** de las fases hasta el
+> lanzamiento con el criterio de §5-bis). Lo de abajo es el resumen; si discrepa, mandan esos dos.
+
+### Estado a 2026-09-30
+
+- **Rama de trabajo:** `checkpoint/5f6-simulaciones-informes`, publicada en `origin`, **sin PR**.
+  Lleva `4a6f61d` (línea de producto, fases 1-4 y 5C-5F.6) y la Fase 5F.7 completa.
+- **Suite:** 828 passed, 9 skipped, 0 failed (SQLite). **E2E de simulaciones:** verde.
+- **Hechas desde el último resumen de esta sección:** 14 (RGPD), 15 (landing), 16 (seguridad),
+  17-A (andamiaje de captación), 0' (sistema de diseño), la corrección del ITP, y la **línea de
+  producto 5x**: puente captación → análisis, corte sin ancla de mercado, trazabilidad de
+  comparables y valoración, catálogo de parámetros, simulaciones, configuración validada e
+  informes oficiales inmutables, con su API y su interfaz (pestañas **Simulaciones** e
+  **Informes oficiales** del detalle). Detalle en `CHANGELOG.md`.
+- **Migraciones:** hasta `0015_informe`; **la siguiente libre es la `0016`**.
+- **Pendientes:** 11-B (despliegue), 13 (Stripe), 17-B (selectores del BOE), 17-C (fuente de
+  comparables, decisión abierta), 19, 20. La 18 está aparcada (condicional).
+
+### ✅ Construido y verificado (histórico: hasta la Fase 11-A)
 - **Motor experto completo M01–M14** en `backend/app/engine/modules/` (un fichero por módulo, 1:1 con la especificación), **puro y sin I/O**, sobre una pizarra de hechos (`contracts.py`, `pipeline.py` como DAG).
 - **393 tests** en `backend/tests/` — 19 ficheros (medido al cerrar la Fase 11-A: 391 pasan, 0 fallan, 2 se omiten por configuración ausente). Incluye el **caso dorado §19** como test de regresión fundacional y la batería T1-T6 que ejerce Alembic de verdad.
   > Cifra medida con `python -m pytest tests -q` al cerrar la Fase 11-A. **Recontar antes de citarla**: durante la Fase 11 circularon siete cifras distintas y varias acabaron escritas en documentación de cierre como si fueran vigentes.
@@ -191,7 +210,7 @@ y la imagen en **824 K** sin `.env` ni `.venv`.
 > arrancar la pila entera** —backend, worker y beat—, porque `SEIS_ENV` sin declarar vale
 > `production` y ahí la guardia exige `PROXIES_DE_CONFIANZA`. Hay que añadir esa línea.
 
-### ⏳ No construido (Fases 12-20 del Plan Maestro — ver §5)
+### ⏳ No construido (histórico, anterior a las fases 12-17-A; lo vigente está en «Estado a 2026-09-30»)
 Infraestructura de producción real, monetización con Stripe, cumplimiento RGPD, landing pública, endurecimiento de seguridad, escalado de captación (el conector BOE existe pero defensivo, sin ajuste empírico contra el portal real), analítica de negocio, beta cerrada.
 
 ### 🐛 Gotchas conocidos
@@ -316,4 +335,31 @@ Caso de prueba de referencia: **§19 de la especificación**, guion completo con
 
 ## 9 · Notas para la próxima sesión
 
-**TL;DR:** El motor experto (M01-M14), el producto de un solo tenant, multi-tenancy (Fase 9), el saneamiento de migraciones (Fase 9.5), notificaciones multicanal (Fase 12) y el alta self-service (Fase 10) están completos, probados y fusionados a `main`. Lo que falta es todo lo que convierte esto en negocio a partir de aquí: infraestructura real (Fase 11, **siguiente paso**), monetización, legal y salida a mercado. Seguir el Plan Maestro fase a fase, con plan-antes-de-código como regla no negociable.
+**TL;DR (2026-09-30):** Cerrada la Fase 5F.7 (simulaciones e informes oficiales en la interfaz) en la rama `checkpoint/5f6-simulaciones-informes`, publicada y **sin PR**. Siguiente paso sin dependencias externas: abrir ese PR hacia `main` para revisión humana. Lo demás espera a terceros (dominio y hosting, figura fiscal, HTML del BOE, fuente de comparables). Deudas abiertas, consolidadas y comprobadas en el código: `docs/ESTADO_ACTUAL.md` §4. Seguir fase a fase, con plan-antes-de-código como regla no negociable.
+
+### Reglas de entorno aprendidas (obligatorias)
+
+Cada una salió de un incidente real en esta máquina de desarrollo (Windows):
+
+1. **Arrancar Claude Code desde la carpeta del repositorio** (`C:\dev\proyectos\seis`), no desde
+   otra (p. ej. `C:\Windows\System32`): las rutas relativas, el `CLAUDE.md` del proyecto y la
+   memoria dependen del directorio de arranque.
+2. **Los tests usan su propia base.** `backend/tests/conftest.py` fija `DATABASE_URL` a un
+   directorio temporal antes de importar la app y aborta si apunta a otra. **No lo quites ni
+   exportes `DATABASE_URL` para la suite:** antes del commit `9db44b3`, `pytest` borraba
+   `seis_dev.db`, la base del `uvicorn` de desarrollo.
+3. **No ejecutar `npm run build` ni las e2e (`correr.sh` y `correr_simulaciones.sh`, que
+   compilan) con un `next dev` en marcha:** escriben en `frontend/.next` y se pisan.
+4. **`frontend/next-env.d.ts` nunca entra en un commit.** `next build` lo regenera; se restaura
+   con `git checkout -- frontend/next-env.d.ts` y los ficheros se añaden por nombre, nunca con
+   `git add .` ni `-A`.
+5. **Verificar en una copia aislada o en puertos dedicados, sin tocar los servidores del
+   usuario.** El usuario suele tener su backend en **8000** y su `next dev` en **3000**, con
+   `backend/seis_dev.db`: no se paran, no se reinician y no se escribe en esa base. Para probar,
+   una copia del frontend en el scratchpad o las e2e con sus puertos propios (8010/3010
+   simulaciones, 8020/3020 alta, desde 5G.4-C), una base SQLite desechable fuera del repo, y al
+   terminar se matan **solo** los procesos propios.
+6. **Una sola variable para el navegador: `CHROMIUM_PATH`** (en Windows,
+   `C:/Program Files/Google/Chrome/Application/chrome.exe`). La leen todos los guiones de
+   Playwright a través de `frontend/scripts/navegador.mjs`; `PLAYWRIGHT_CHROMIUM` solo se
+   acepta por compatibilidad.

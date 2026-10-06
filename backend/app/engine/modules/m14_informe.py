@@ -8,17 +8,20 @@ from __future__ import annotations
 
 from app.engine.contracts import (AnalisisInput, AnalisisResult, ChecklistItem,
                                   DecisionFinal)
+# Fase 5G.2: un único formato de importes para M13 y M14 (`app/engine/formato.py`).
+from app.engine.formato import eur as _eur
+from app.engine.formato import tasa as _tasa
+# Fase 5G.4-B: coma decimal y «25,0 %» en todo el texto que lee una persona.
+from app.engine.formato import decimal as _dec
+from app.engine.formato import pct as _pct
 
 _SEM_ICONO = {"verde": "🟢 VERDE", "amarillo": "🟡 AMARILLO",
               "naranja": "🟠 NARANJA", "rojo": "🔴 ROJO"}
 
 
-def _eur(x: float | None) -> str:
-    return f"{x:,.0f} €".replace(",", ".") if x is not None else "—"
-
-
 # ───────────────────────────── CHECKLIST (§13) ─────────────────────────────
-def construir_checklist(inp: AnalisisInput, dec: DecisionFinal, hechos: dict) -> list[ChecklistItem]:
+def construir_checklist(inp: AnalisisInput, dec: DecisionFinal, hechos: dict, *,
+                        metodo_valoracion: str = "comparables_ajustados") -> list[ChecklistItem]:
     d = inp.documentos
     items: list[ChecklistItem] = []
     n = [0]
@@ -79,8 +82,24 @@ def construir_checklist(inp: AnalisisInput, dec: DecisionFinal, hechos: dict) ->
     add("D. Económico", "Depósito disponible y transferido en plazo", True, "pendiente", _eur(deposito))
     add("D. Económico", "Plan de pago del remate cubierto sin condición suspensiva de financiación", True,
         "ok" if inp.financiacion.tipo == "cash" or inp.financiacion.preaprobada else "pendiente")
-    add("D. Económico", "Escalera de precios cargada en la interfaz de puja", True, "ok",
-        f"Objetivo {_eur(dec.precios.p_objetivo)} · Máx {_eur(dec.precios.p_max)} · Límite {_eur(dec.precios.p_limite)}")
+    # Cierre de Fase 2: sin comparables no hay ancla de mercado independiente
+    # (M03 §6.3), así que la escalera interna NO es una escalera utilizable —
+    # aunque calcular_escalera() la siga calculando para el resto del DAG
+    # (M11/M13). Este ítem es el único lugar del sistema que AFIRMA "está
+    # cargada en la interfaz de puja"; dejarlo en "ok" prometería una
+    # recomendación de puja que no existe.
+    if metodo_valoracion == "sin_comparables":
+        add("D. Económico", "Escalera de precios cargada en la interfaz de puja", True, "pendiente",
+            "No determinable sin comparables de mercado independientes: no hay "
+            "escalera utilizable para pujar (§6.3).")
+    elif dec.precios.degenerada:
+        # Fase 5G.2: con la escalera degenerada (§9.3, la marca de M12) no hay
+        # límites que cargar; mismo patrón que «sin comparables».
+        add("D. Económico", "Escalera de precios cargada en la interfaz de puja", True, "pendiente",
+            "Escalera de precios degenerada (§9.3): no hay escalera utilizable para pujar.")
+    else:
+        add("D. Económico", "Escalera de precios cargada en la interfaz de puja", True, "ok",
+            f"Objetivo {_eur(dec.precios.p_objetivo)} · Máx {_eur(dec.precios.p_max)} · Límite {_eur(dec.precios.p_limite)}")
     add("D. Económico", "Capital para C_F (reforma, posesión, tenencia) comprometido por calendario", False, "pendiente")
     add("D. Económico", "Coste de depósitos de otras subastas simultáneas contemplado (cartera §11.3)", False, "pendiente")
 
@@ -98,7 +117,7 @@ def construir_checklist(inp: AnalisisInput, dec: DecisionFinal, hechos: dict) ->
         "; ".join(dec.condiciones) if dec.condiciones else None)
     add("F. Ejecución", "RVC dentro del umbral del perfil; si 0,90–1,05 aceptación explícita de 'operación de oportunidad'",
         True, "ok" if dec.rvc >= 1.05 else ("pendiente" if dec.rvc >= 0.80 else "pendiente"),
-        f"RVC = {dec.rvc:.2f} · P adjudicación esperado {_eur(dec.p_adj_esperado)}")
+        f"RVC = {_dec(dec.rvc)} · P adjudicación esperado {_eur(dec.p_adj_esperado)}")
     add("F. Ejecución", "Calendario de cierre con extensiones entendido; responsable de puja designado", False, "pendiente")
     add("F. Ejecución", "Regla de retirada acordada (qué información nueva aborta la puja)", False, "pendiente")
     add("F. Ejecución", "Post-adjudicación: lista de primeras 72 h preparada", False, "pendiente")
@@ -117,8 +136,8 @@ def construir_informe(inp: AnalisisInput, res_parciales: dict, dec: DecisionFina
         f"| {r.dimension} | {r.probabilidad}×{r.impacto} = {r.score} | {r.nivel} | "
         f"{'; '.join(r.condiciones) or '—'} |" for r in ra.dimensiones)
     filas_esc = "\n".join(
-        f"| {e.nombre} | {e.probabilidad:.0%} | {_eur(e.vs)} | {_eur(e.coste_total)} | "
-        f"{_eur(e.beneficio)} | {e.roi:.1%} | {e.roi_anualizado:.1%} | {e.plazo_meses:.0f} m |"
+        f"| {e.nombre} | {_pct(e.probabilidad, 0)} | {_eur(e.vs)} | {_eur(e.coste_total)} | "
+        f"{_eur(e.beneficio)} | {_pct(e.roi)} | {_pct(e.roi_anualizado)} | {e.plazo_meses:.0f} m |"
         for e in rent.escenarios)
     filas_c50 = "\n".join(f"| {k} | {_eur(v)} |" for k, v in costes.desglose_p50.items())
     if costes.base_fiscal_minima > 0:
@@ -132,10 +151,59 @@ def construir_informe(inp: AnalisisInput, res_parciales: dict, dec: DecisionFina
                        "Supuesto no verificado, no dato confirmado.")
     bloq = [c for c in checklist if c.bloqueante and c.estado == "pendiente"]
     filas_bloq = "\n".join(f"- [ ] **[B]** {c.texto}" + (f" — _{c.detalle}_" if c.detalle else "") for c in bloq) or "- (ninguno)"
+    # Fase 2: sin comparables no hay ancla de mercado independiente (M03 §6.3,
+    # metodo="sin_comparables") y VM/VS son el propio valor de subasta degradado
+    # a confianza 0 — no una valoración. No se presentan como cifra central; el
+    # valor de subasta, si aparece, queda etiquetado como tal y no como valoración.
+    if val.metodo == "sin_comparables":
+        seccion_valoracion = (
+            "**NO DETERMINABLE: sin comparables de mercado.** M03 no dispone de "
+            "ningún comparable independiente (§6.3): no hay ancla de mercado con "
+            f"la que contrastar el precio. El **valor de subasta** declarado es "
+            f"{_eur(inp.subasta.valor_subasta)} — es el dato de la fuente, **no una "
+            "valoración de mercado**, y no debe leerse como tal ni usarse para "
+            "decidir una puja."
+        )
+    else:
+        seccion_valoracion = (
+            f"Método {val.metodo} con {val.n_comparables} comparables "
+            f"(CV {_pct(val.dispersion_cv)}, confianza {_pct(val.confianza, 0)}). "
+            f"VM actual {_eur(val.vm)} · VS de salida {_eur(val.vs)} ({_eur(val.vs_m2)}/m²) · "
+            f"δ_v aplicado {_pct(res_parciales['delta_v'])} ⇒ "
+            f"**VS prudente {_eur(res_parciales['vs_p'])}**."
+        )
     condiciones = "\n".join(f"- {c}" for c in dec.condiciones) or "- (ninguna)"
     vetos = "\n".join(f"- **{v.codigo}**: {v.motivo}" + (f" · Subsanable con: {v.subsanable_con}" if v.subsanable_con else "")
                       for v in dec.vetos) or "- (ninguno)"
+    # Fase 5G.2: degenerada (§9.3), el límite no se ofrece como cifra accionable;
+    # el valor calculado sigue en `decision.precios.p_limite`.
+    fila_limite = ("No utilizable: escalera de precios degenerada (§9.3)" if dec.precios.degenerada
+                   else f"{_eur(dec.precios.p_limite)} — infranqueable")
     trazas = "\n".join(f"- `{r.codigo}` v{r.version} ({r.categoria})" for r in res_parciales["reglas"]) or "- (sin disparos)"
+    # Fase 5G.4 (ADR-0016): el coste de capital solo descuenta el precio límite
+    # (§9.1). La tasa sale de los parámetros aplicados y el importe de M12; si
+    # falta cualquiera de los dos, no se afirma nada.
+    cc_anual = res_parciales.get("coste_capital_anual")
+    cc_importe = dec.precios.detalle.get("coste_capital")
+    nota_coste_capital = (
+        f"\n\nEl coste de capital ({_tasa(cc_anual)} anual, coste de oportunidad del capital "
+        f"propio) solo se descuenta del precio límite (§9.1); ROI y TIR no lo incluyen. "
+        f"Importe aplicado: {_eur(cc_importe)}."
+        if cc_anual is not None and cc_importe is not None else "")
+    # Fase 5H.1-A (ADR-0017): VAN y diferencial, con los flujos de la TIR. Sin dato, nada.
+    van, dif = getattr(rent, "van_coste_capital", None), getattr(rent, "diferencial_tir_coste_capital", None)
+    nota_van = (
+        f"\n\nVAN al coste de capital ({_tasa(cc_anual)}): {_eur(van)} · "
+        f"TIR frente a coste de capital: {_dec(dif, 2, signo=True)} puntos"
+        if van is not None and dif is not None and cc_anual is not None else "")
+    # Fase 5H.1-C (§9.5, ADR-0019): colchón de plazo. Sin dato, nada.
+    colchon, colchon_max = (getattr(dec, "colchon_plazo_meses", None),
+                            getattr(dec, "colchon_plazo_meses_p_max", None))
+    nota_colchon = (
+        f"\n\nColchón de plazo: {_dec(colchon, 1)} meses a precio objetivo"
+        + (f" ({_dec(colchon_max, 1)} a precio máximo)" if colchon_max is not None else "")
+        + ", hasta beneficio cero por tenencia y coste de capital."
+        if colchon is not None else "")
 
     return f"""# Informe de análisis SEIS
 
@@ -152,12 +220,12 @@ def construir_informe(inp: AnalisisInput, res_parciales: dict, dec: DecisionFina
 | **Precio ideal** | {_eur(dec.precios.p_ideal)} |
 | **Precio objetivo** | {_eur(dec.precios.p_objetivo)} |
 | **Precio máximo recomendado** | {_eur(dec.precios.p_max)} |
-| **Precio límite absoluto** | {_eur(dec.precios.p_limite)} — infranqueable |
-| ROI base (a P objetivo) | {rent.roi:.1%} ({rent.roi_anualizado:.1%} anualizado) |
-| TIR anual | {rent.tir_anual:.1%} |
-| Margen de seguridad (caída de VS soportable) | {dec.margen_seguridad_valor:.1%} |
+| **Precio límite absoluto** | {fila_limite} |
+| ROI base (a P objetivo) | {_pct(rent.roi)} ({_pct(rent.roi_anualizado)} anualizado) |
+| TIR anual | {_pct(rent.tir_anual)} |
+| Margen de seguridad (caída de VS soportable) | {_pct(dec.margen_seguridad_valor)} |
 | Valor esperado (3 escenarios) | {_eur(rent.valor_esperado)} |
-| P. adjudicación esperado · RVC | {_eur(dec.p_adj_esperado)} · **{dec.rvc:.2f}** ({puja.banda_rvc}) |
+| P. adjudicación esperado · RVC | {_eur(dec.p_adj_esperado)} · **{_dec(dec.rvc)}** ({puja.banda_rvc}) |
 
 **Razones principales:** {" · ".join(dec.razones[:3])}
 
@@ -168,16 +236,16 @@ def construir_informe(inp: AnalisisInput, res_parciales: dict, dec: DecisionFina
 {vetos}
 
 ## 2 · Activo y subasta
-{a.tipologia.capitalize()} de {a.superficie_m2:.0f} m² en {a.municipio or "—"} ({a.provincia or "—"}), estado {a.estado_conservacion}. Subasta {inp.subasta.fuente}, valor de subasta {_eur(inp.subasta.valor_subasta)}, depósito {inp.subasta.deposito_pct:.0%}. Ocupación declarada: {inp.ocupacion.estado}.
+{a.tipologia.capitalize()} de {a.superficie_m2:.0f} m² en {a.municipio or "—"} ({a.provincia or "—"}), estado {a.estado_conservacion}. Subasta {inp.subasta.fuente}, valor de subasta {_eur(inp.subasta.valor_subasta)}, depósito {_pct(inp.subasta.deposito_pct, 0)}. Ocupación declarada: {inp.ocupacion.estado}.
 
 ## 3 · Valoración
-Método {val.metodo} con {val.n_comparables} comparables (CV {val.dispersion_cv:.1%}, confianza {val.confianza:.0%}). VM actual {_eur(val.vm)} · VS de salida {_eur(val.vs)} ({_eur(val.vs_m2)}/m²) · δ_v aplicado {res_parciales["delta_v"]:.1%} ⇒ **VS prudente {_eur(res_parciales["vs_p"])}**.
+{seccion_valoracion}
 
 ## 4 · Mercado y ubicación
-ICU {icu.icu} (macro {icu.macro_score:.0f} · micro {icu.micro_score:.0f}). Tendencia {icu.tendencia_5a_pct:+.1f} %/a · DOM venta {icu.dom_venta_dias:.0f} d · DOM alquiler {icu.dom_alquiler_dias:.0f} d · Potencial de revalorización {icu.potencial_revalorizacion}/100.
+ICU {icu.icu} (macro {icu.macro_score:.0f} · micro {icu.micro_score:.0f}). Tendencia {_dec(icu.tendencia_5a_pct, 1, signo=True)} %/a · DOM venta {icu.dom_venta_dias:.0f} d · DOM alquiler {icu.dom_alquiler_dias:.0f} d · Potencial de revalorización {icu.potencial_revalorizacion}/100.
 
 ## 5 · Plan de obra y costes
-Reforma nivel **{ref.nivel}**: {_eur(ref.total_p50)} (P50) / {_eur(ref.total_p80)} (P80), {ref.plazo_obra_meses:.0f} meses de obra. c_v = {costes.c_v:.2%} ({costes.regimen_fiscal.upper()}).{base_fiscal} Plazo total {costes.plazo_meses_p50:.0f} m (P50) / {costes.plazo_meses_p80:.0f} m (P80). Contingencia {costes.contingencia_pct:.0%}.
+Reforma nivel **{ref.nivel}**: {_eur(ref.total_p50)} (P50) / {_eur(ref.total_p80)} (P80), {ref.plazo_obra_meses:.0f} meses de obra. c_v = {_pct(costes.c_v, 2)} ({costes.regimen_fiscal.upper()}).{base_fiscal} Plazo total {costes.plazo_meses_p50:.0f} m (P50) / {costes.plazo_meses_p80:.0f} m (P80). Contingencia {_pct(costes.contingencia_pct, 0)}.
 
 | Partida C_F (P50) | Importe |
 |---|---|
@@ -194,10 +262,10 @@ Riesgo agregado **RA {dec.ra}** (banda {ra.banda}{", dominancia: " + ra.dominanc
 ## 7 · Análisis financiero (a precio objetivo {_eur(dec.precios.p_objetivo)})
 | Escenario | Prob. | VS | Coste total | Beneficio | ROI | ROI anual | Plazo |
 |---|---|---|---|---|---|---|---|
-{filas_esc}
+{filas_esc}{nota_coste_capital}{nota_van}{nota_colchon}
 
 ## 8 · Estrategia de puja
-Ratio histórico del segmento: {puja.ratio_base:.0%} sobre valor de subasta.
+Ratio histórico del segmento: {_pct(puja.ratio_base, 0)} sobre valor de subasta.
 {chr(10).join("- " + p for p in puja.plan)}
 
 **Riesgo de ejecución del proceso:**

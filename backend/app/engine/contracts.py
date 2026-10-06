@@ -205,6 +205,15 @@ class ICIResultado(BaseModel):
     techo_semaforo: Semaforo | None
 
 
+class ComparableValoradoOut(BaseModel):
+    """Fase 4: intermedios de M03 para un comparable — expone, sin recalcular,
+    lo que el bucle de `m03_valoracion.ejecutar` ya produce y hoy descarta.
+    En el mismo orden que `AnalisisInput.comparables` (posición i ⇔ comparables[i])."""
+    precio_ajustado_m2: float   # variable `precio` tras los ajustes de origen/temporal
+    normalizado_m2: float       # `normalizados[i]` = precio_ajustado_m2 / k_estado[estado]
+    peso: float                 # `pesos[i]`, peso de frescura usado en la mediana ponderada
+
+
 class ValoracionResultado(BaseModel):
     vm: float
     vm_rango: tuple[float, float]
@@ -216,6 +225,13 @@ class ValoracionResultado(BaseModel):
     dispersion_cv: float
     confianza: float
     hechos: list[str] = Field(default_factory=list)
+    # Fase 4 — trazabilidad de valoración: expone intermedios que M03 ya calcula
+    # y hoy descarta. No participan en ningún cálculo; solo se leen al final.
+    detalle_comparables: list[ComparableValoradoOut] = Field(default_factory=list)
+    k_estado_activo: float | None = None          # k_estado[activo.estado_conservacion]
+    ratio_sanidad: float | None = None             # variable `ratio` (VT/VM)
+    vs_antes_de_capitalizacion: float | None = None  # `vs` justo antes del override rentista
+    vs_capitalizacion: float | None = None           # `vs_cap` que lo sustituyó
 
 
 class ICUResultado(BaseModel):
@@ -304,6 +320,10 @@ class RentabilidadResultado(BaseModel):
     y_neta: float | None = None
     dscr: float | None = None
     cash_on_cash: float | None = None
+    # Fase 5H.1-A (ADR-0017): informativos, con los mismos flujos que la TIR. `None` en
+    # resultados anteriores a la fase. No entran en el ICO, el semáforo ni la escalera.
+    van_coste_capital: float | None = None              # € al coste de capital
+    diferencial_tir_coste_capital: float | None = None  # TIR − coste de capital, en puntos
 
 
 class EscaleraPrecios(BaseModel):
@@ -365,6 +385,11 @@ class DecisionFinal(BaseModel):
     razones: list[str]
     version_reglas: str
     version_parametros: str
+    # Fase 5H.1-C (§9.5, ADR-0019): meses extra hasta beneficio base cero por tenencia y
+    # coste de capital, a P_objetivo y a P_max. Informativo; `None` en resultados anteriores
+    # o si no hay ningún coste mensual que agote el beneficio.
+    colchon_plazo_meses: float | None = None
+    colchon_plazo_meses_p_max: float | None = None
 
 
 class AnalisisResult(BaseModel):

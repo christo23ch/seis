@@ -1,5 +1,5 @@
 "use client";
-import { eur, num, pct } from "@/lib/format";
+import { eur, num, pct, puntos, tasa } from "@/lib/format";
 import type { Decision, Resultado, RiesgoDim, Semaforo } from "@/lib/types";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Badge, Card, CardContent, CardHeader, CardTitle } from "./ui";
@@ -37,17 +37,21 @@ const MetricaMini = ({ etiqueta, valor }: { etiqueta: string; valor: string }) =
   </div>
 );
 
-/** Elemento firma: la escalera de precios como escalera real, con P_adj cruzándola. */
+/** Elemento firma: la escalera de precios como escalera real, con P_adj cruzándola.
+ *
+ * Fase 5G.3: con la escalera degenerada (marca `precios.degenerada` de M12, §9.3)
+ * el límite no es utilizable: su escalón no se dibuja como el más alto ni con su
+ * cifra, y la línea de adjudicación se oculta, porque no hay ningún escalón
+ * válido contra el que situarla (el precio adjudicado sigue en la cabecera). */
 export function EscaleraPrecios({ d }: { d: Decision }) {
   const p = d.precios;
+  const degenerada = p.degenerada;
   const escalones = [
     { n: "Ideal", v: p.p_ideal, alto: 34 },
     { n: "Objetivo", v: p.p_objetivo, alto: 56 },
     { n: "Máximo", v: p.p_max, alto: 78 },
-    { n: "Límite", v: p.p_limite, alto: 100 },
   ];
-  const max = p.p_limite;
-  const adjPct = Math.min(100, Math.max(2, (d.p_adj_esperado / max) * 100));
+  const adjPct = Math.min(100, Math.max(2, (d.p_adj_esperado / p.p_limite) * 100));
   return (
     <Card>
       <CardHeader className="flex items-center justify-between">
@@ -55,25 +59,67 @@ export function EscaleraPrecios({ d }: { d: Decision }) {
         <span className="text-[12px] text-slate-400">P. adjudicación esperado: <b className="cifra text-slate-600">{eur(d.p_adj_esperado)}</b></span>
       </CardHeader>
       <CardContent>
-        <div className="relative mt-6 flex h-44 items-end gap-3 pb-1">
-          <div className="absolute inset-x-0 border-t-2 border-dashed border-slate-400" style={{ bottom: `${adjPct * 0.88}%` }}>
-            <span className="absolute -top-5 right-0 rounded bg-tinta px-1.5 py-0.5 text-[10px] font-semibold text-white">P adj. {eur(d.p_adj_esperado)}</span>
-          </div>
+        {/* Fase 5G.4-C: a 390 px la fila no cabía con una monoespaciada de ~0,6 em
+            (DejaVu Sans Mono en Linux, Menlo en macOS; Consolas en Windows es más
+            estrecha): `flex-1` con `min-width: auto` no encoge por debajo de su cifra.
+            Por debajo de `sm`, escalones que encogen, cifra a 12 px y menos hueco. */}
+        <div className="relative mt-6 flex h-44 items-end gap-2 pb-1 sm:gap-3">
+          {!degenerada && (
+            <div className="absolute inset-x-0 border-t-2 border-dashed border-slate-400" style={{ bottom: `${adjPct * 0.88}%` }}>
+              <span className="absolute -top-5 right-0 rounded bg-tinta px-1.5 py-0.5 text-[10px] font-semibold text-white">P adj. {eur(d.p_adj_esperado)}</span>
+            </div>
+          )}
           {escalones.map((e, i) => (
-            <div key={e.n} className="escalon flex-1" style={{ height: `${e.alto}%`, background: i === 3 ? "#FBEAEA" : i === 2 ? "#E8EDF7" : "white" }}>
+            <div key={e.n} className="escalon min-w-0 flex-1" style={{ height: `${e.alto}%`, background: i === 2 ? "#E8EDF7" : "white" }}>
               <span className="escalon-etiqueta">{e.n}</span>
-              <div className="px-2 pb-2 text-center">
-                <div className="cifra text-sm font-bold">{eur(e.v)}</div>
+              <div className="px-1 pb-2 text-center sm:px-2">
+                <div className="cifra text-[12px] font-bold sm:text-sm">{eur(e.v)}</div>
               </div>
             </div>
           ))}
+          {degenerada ? (
+            // Texto compacto y altura del escalón «Objetivo» a propósito, medidos a 390 px:
+            // con un cuerpo mayor la página desbordaba 4 px (cifras negativas de 5 dígitos
+            // en los otros escalones), y con un escalón más bajo el texto partido en
+            // cinco líneas tapaba la etiqueta «Límite».
+            <div className="escalon min-w-0 flex-1 border-dashed" style={{ height: "56%" }}>
+              <span className="escalon-etiqueta">Límite</span>
+              <div className="px-0.5 pb-2 text-center">
+                <div className="text-[12px] font-bold leading-tight text-tinta">No utilizable</div>
+                <div className="mt-0.5 text-[10px] leading-tight text-slate-500">escalera degenerada (§9.3)</div>
+              </div>
+            </div>
+          ) : (
+            <div className="escalon min-w-0 flex-1" style={{ height: "100%", background: "#FBEAEA" }}>
+              <span className="escalon-etiqueta">Límite</span>
+              <div className="px-1 pb-2 text-center sm:px-2">
+                <div className="cifra text-[12px] font-bold sm:text-sm">{eur(p.p_limite)}</div>
+              </div>
+            </div>
+          )}
         </div>
         <p className="mt-3 text-[12px] text-slate-500">
           El <b>límite absoluto</b> es infranqueable por software; superar el <b>máximo</b> exige doble firma del comité.
           {p.degenerada && <span className="ml-1 font-semibold text-sem-rojo">Escalera degenerada: la estructura de costes consume el valor.</span>}
         </p>
+        <NotaCosteCapital detalle={p.detalle} />
       </CardContent>
     </Card>
+  );
+}
+
+/** Fase 5G.4 (ADR-0016): mismo texto que el informe (M14). Tasa e importe salen del
+ * mismo resultado (`precios.detalle` de M12); si falta cualquiera de los dos
+ * —resultados anteriores a 5G.4 no traen la tasa—, no se afirma nada. */
+function NotaCosteCapital({ detalle }: { detalle: Record<string, number> | undefined }) {
+  const tasaAnual = detalle?.coste_capital_anual;
+  const importe = detalle?.coste_capital;
+  if (tasaAnual == null || importe == null) return null;
+  return (
+    <p data-nota-coste-capital className="mt-1.5 text-[12px] text-slate-500">
+      El coste de capital ({tasa(tasaAnual)} anual, coste de oportunidad del capital propio) solo se
+      descuenta del precio límite (§9.1); ROI y TIR no lo incluyen. Importe aplicado: <span className="cifra">{eur(importe)}</span>.
+    </p>
   );
 }
 
@@ -193,10 +239,18 @@ export function MetricasClave({ res }: { res: Resultado }) {
   const d = res.decision, r = res.rentabilidad;
   const filas: [string, string][] = [
     ["Precio ideal", eur(d.precios.p_ideal)], ["Precio objetivo", eur(d.precios.p_objetivo)],
-    ["Precio máximo", eur(d.precios.p_max)], ["Precio límite", eur(d.precios.p_limite)],
+    ["Precio máximo", eur(d.precios.p_max)],
+    ["Precio límite", d.precios.degenerada ? "No utilizable (escalera degenerada)" : eur(d.precios.p_limite)],
     ["ROI (base)", `${pct(r.roi)} · ${pct(r.roi_anualizado)} anual`], ["TIR anual", pct(r.tir_anual)],
     ["Margen de seguridad", pct(d.margen_seguridad_valor)], ["Inversión total a P obj.", eur(r.inversion_total)],
     ["VS prudente", eur(res.vs_prudente)], ["δ_v aplicado", pct(res.delta_v)],
+    // Fase 5H.1-A (ADR-0017): informativos; un resultado anterior no los trae y no se muestran.
+    ...(r.van_coste_capital != null ? [["VAN al coste de capital", eur(r.van_coste_capital)] as [string, string]] : []),
+    ...(r.diferencial_tir_coste_capital != null
+      ? [["TIR − coste de capital", puntos(r.diferencial_tir_coste_capital)] as [string, string]] : []),
+    // Fase 5H.1-C (§9.5, ADR-0019): meses hasta beneficio cero, a precio objetivo.
+    ...(d.colchon_plazo_meses != null
+      ? [["Colchón de plazo", `${num(d.colchon_plazo_meses, 1)} meses`] as [string, string]] : []),
   ];
   return (
     <Card>

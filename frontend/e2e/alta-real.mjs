@@ -19,11 +19,11 @@
  * `e2e/comprobar_alta.py`, sobre el SQLite desechable de la ejecución.
  */
 import { chromium } from "playwright";
+import { rutaNavegador } from "../scripts/navegador.mjs";
 
 const FRONTEND = process.env.E2E_FRONTEND ?? "http://localhost:3000";
 const BACKEND = process.env.E2E_BACKEND ?? "http://localhost:8000/api/v1";
-const EJECUTABLE = process.env.PLAYWRIGHT_CHROMIUM
-  ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
+const EJECUTABLE = rutaNavegador();   // CHROMIUM_PATH › PLAYWRIGHT_CHROMIUM › sandbox (navegador.mjs)
 
 const fallos = [];
 function comprobar(condicion, descripcion) {

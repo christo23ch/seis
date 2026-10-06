@@ -10,8 +10,57 @@
 
 ## Frentes abiertos
 
-**Actualizado:** 2026-09-13 · **Suite:** 571 con PostgreSQL, 0 omitidos (en SQLite: 563 + 8 omitidos, los exclusivos de PG) · **E2E:** alta real verde (`e2e/correr.sh`) · **Responsividad:** 19 rutas, 0 desbordan · **Guard:** 12 privadas, 0 fugas
-**Última fase cerrada:** 15 (landing, onboarding, ayuda) · **Puerta: ABIERTA**
+**Actualizado:** 2026-10-04 · **Rama de trabajo:** `checkpoint/5f6-simulaciones-informes` · **Suite (SQLite):** 965 passed, 18 skipped, 0 failed (9 de los omitidos son las variantes DejaVu de 5G.1/5G.2, que sí corren en CI) · **E2E:** alta y simulaciones en la CI (job `e2e`, 5G.4-C)
+**Última fase cerrada:** 5H.1 (VAN y diferencial, coste de capital solo sobre el capital propio, colchón de plazo, especificación coherente con el motor; ADR-0017 a 0019) · **Siguiente:** 5H.2, los puntos de la auditoría que SÍ cambian el caso dorado (`docs/AUDITORIA_MOTOR_ESPECIFICACION.md` §E7) · **Puerta: ABIERTA**
+
+### Estado a 2026-09-30
+
+**Dónde está el trabajo.** Todo lo posterior a `main` vive en la rama
+`checkpoint/5f6-simulaciones-informes`, publicada en `origin`, **sin PR y sin fusionar**:
+`4a6f61d` (líneas de producto 1-4 y 5C-5F.6, un solo commit) y los doce commits de la 5F.7
+(`9db8e70` … `4df5de8` y el de documentación que acompaña a este texto). `main` local está en
+`90fab7b`, un commit de docs de la 17-C por delante de `origin/main` (`f97f620`) y sin
+publicar. Para el hash vigente, `git log --oneline -1`.
+
+**Flujo del producto, de punta a punta, tal como está hoy en el código:**
+
+1. **Captación.** Una subasta entra por `POST /subastas` (alta manual con scoring exprés) o por
+   el conector BOE de la 17-A (`app/ingesta/boe.py`), que existe pero **no está ajustado** al
+   HTML real del portal (17-B).
+2. **Análisis.** Desde `/subastas`, «Analizar» abre `nueva?subasta=` y `POST
+   /analisis?subasta_id=…` reutiliza la subasta captada (Fase 1 de la línea de producto). El
+   motor M01-M14 corre una vez; se congelan los comparables usados (`ComparableUsado`), el
+   detalle de la valoración (`ComparableValorado`, `ValoracionAjustes`) y el árbol de
+   parámetros efectivo (`Analisis.parametros_aplicados`). Sin comparables, el semáforo sale
+   **rojo** por falta de ancla de mercado (Fase 2).
+3. **Detalle.** `/app/inversiones/{id}` con ocho pestañas: Resumen, Riesgos, Estrategia de
+   puja, Checklist, **Simulaciones**, **Vista previa (no oficial)**, **Informes oficiales** y
+   Datos de entrada. Un aviso encima dice siempre qué configuración se está mostrando.
+4. **Simular.** En «Simulaciones», «Nueva simulación» abre el editor de parámetros; «Crear
+   simulación» ejecuta el motor con esos cambios y guarda una simulación **pendiente**. Se
+   puede comparar con el original, **validar** (pasa a ser la configuración en uso),
+   **descartar**, volver a usar una validada, o volver a la configuración original.
+5. **Emitir.** En «Informes oficiales», «Emitir informe oficial» congela la configuración en
+   uso en un informe **inmutable**, con su PDF. El histórico conserva todos.
+6. **Permisos.** El rol lector ve todo y no ve ningún botón de escritura; el backend responde
+   403 si lo intenta. Recurso de otra organización u otro análisis: 404.
+
+**Pruebas e2e, cómo lanzarlas:**
+
+| Suite | Linux / CI | Windows (Git Bash) |
+|---|---|---|
+| Simulaciones e informes (`e2e/correr_simulaciones.sh`) | `bash e2e/correr_simulaciones.sh` | `CHROMIUM_PATH="C:/Program Files/Google/Chrome/Application/chrome.exe" bash e2e/correr_simulaciones.sh` |
+| Alta real (`e2e/correr.sh`) | `bash e2e/correr.sh` | `CHROMIUM_PATH="C:/Program Files/Google/Chrome/Application/chrome.exe" bash e2e/correr.sh` |
+
+Los dos lanzadores siguen el mismo patrón desde 5G.4-C: puertos propios (8010/3010 simulaciones,
+8020/3020 alta), una base SQLite en un temporal fuera del repo, compilan el frontend en
+`frontend/.next` contra su propio backend y matan sus propios procesos al terminar. **No
+lanzarlos con un `next dev` en marcha sobre ese `.next`.** Variables: `PUERTO_API`,
+`PUERTO_WEB`, `PY`, `CHROMIUM_PATH` (o `PLAYWRIGHT_CHROMIUM`, por compatibilidad),
+`E2E_SIN_BUILD=1`, `E2E_CONSERVAR=1`. La CI los ejecuta en el job `e2e`.
+
+**Suite de backend:** `cd backend && python -m pytest -q`. Usa su propia base en un
+directorio temporal (`conftest.py`) y **no toca `seis_dev.db`**.
 
 > **Este encabezado ya no lleva el hash de `main`, y es a propósito.** Un índice no puede
 > describir su propia fusión: la línea que dice «`main` está en X» se escribe *antes* del commit
@@ -21,18 +70,23 @@
 > que una imagen del hash no contesta. Variante del punto 6 del [[ADR-0014]]: cada herramienta
 > a su pregunta.
 
-**Ningún PR abierto** (comprobado, no supuesto). Todo lo trabajado hasta el 2026-09-13 está
-fusionado en `main`.
+**Ningún PR abierto** (comprobado el 2026-09-13; [VERIFICAR: que siga sin haber PR abiertos
+hoy — esta sesión no consultó GitHub]). Lo trabajado hasta el 2026-09-13 está fusionado en
+`main`; lo posterior, en la rama de arriba.
 
 > El remoto conserva ~28 ramas de fases ya cerradas. **Son historia, no trabajo pendiente**: un
 > `git branch -r` no distingue una cosa de la otra, así que la lista de arriba es la que manda y
 > una rama que no aparezca aquí está fusionada.
 
-Sin frentes abiertos de código.
+Frente de código abierto: la rama `checkpoint/5f6-simulaciones-informes`, pendiente de PR.
 
-### 🔴 Frente abierto de PRODUCTO, con dueño: el puente captación → análisis
+### ✅ Cerrado: el puente captación → análisis
 
-**No existe.** `analisis_service.crear_analisis` **crea su propia fila `Subasta`**
+**Resuelto por la Fase 1 de la línea de producto** (commit `4a6f61d`): `POST
+/analisis?subasta_id=…` reutiliza la subasta captada y la interfaz la abre desde `/subastas`.
+Lo que sigue es el registro original del frente.
+
+**No existía.** `analisis_service.crear_analisis` **crea su propia fila `Subasta`**
 a partir del `AnalisisInput`; no reutiliza ninguna captada. `POST /subastas`
 (captación, con su scoring exprés) y `POST /analisis` (motor M01-M14) son dos
 caminos que no se hablan.
@@ -50,6 +104,12 @@ Descubierto el 2026-09-10 recorriendo el flujo completo con un caso real de la
 AEAT, no con una fixture.
 
 ### 🟡 Frente abierto de PRODUCTO, planificado: sin comparables, el motor se compara consigo mismo
+
+> **Mitigado, no resuelto.** Desde la Fase 2 de la línea de producto, un análisis sin
+> comparables sale **rojo** («Sin ancla de mercado independiente…») y el checklist lo marca
+> «NO DETERMINABLE». El motor ya no aparenta una valoración; la fuente automática sigue siendo
+> la 17-C. Y el «hallazgo colateral» del ITP de más abajo **está corregido** (entrada
+> «Corrección del motor» del `CHANGELOG.md`, `app/engine/fiscal.py`).
 
 En el mismo recorrido real (Santiponce, 44 m², tasada en 23.391,72 €) el motor devolvió
 `VM = 23.391,72 € · método = sin_comparables · confianza = 0,0`: **el valor de mercado cayó al
@@ -97,34 +157,33 @@ y **sale con código 1** si alguna ruta desborda. Demostrado en rojo contra el a
 arreglar: 12 detectadas. Su alcance —solo 390 px, solo el estado inicial de cada ruta, y
 necesita datos para que las tablas tengan filas— va declarado en su cabecera.
 
-### 🔴 DECISIÓN ABIERTA, esperando al responsable: la fuente recomendada de la 17-C se cae
+### 🔴 DECISIÓN ABIERTA, esperando al responsable: la fuente recomendada de la 17-C se cae (ahora confirmado con certeza)
 
-**Primera tarea de la 17-C ejecutada el 2026-09-13. Resultado: no existe servicio web libre
-para el valor de referencia del Catastro.** Es gratuito y público —cualquiera puede consultar
-el de cualquier inmueble, no solo su titular— pero **exige una credencial PERSONAL en cada
-consulta** (Cl@ve, DNIe o certificado) a través de un servicio interactivo de la Sede. *Público*
-no es *anónimo*, y para un SaaS que analiza subastas de muchos clientes **eso no automatiza**.
+**Confirmado el 2026-09-14: no existe servicio web libre para el valor de referencia del
+Catastro.** El 2026-09-13 esto quedaba en «muy probable» porque la red de aquella sesión
+bloqueaba los dominios del Catastro. Esta sesión **sí tuvo salida** y ejecutó la prueba
+decisiva: llamada real al servicio libre (200, sin bloqueo, datos del caso de Santiponce, cero
+campos de valor) **más** lectura íntegra del catálogo oficial vigente (`Webservices_Libres.pdf`
+v2.6): 10 métodos en total, todos descriptivos o de localización, ninguno de valor — ni
+siquiera la etiqueta del esquema llamada literalmente «datos económicos del inmueble» lleva un
+importe. `SECAccvr.aspx`, visitado sin identificarse, exige Cl@ve/DNIe/certificado antes de
+cualquier campo. Es gratuito y público —cualquiera puede consultarlo, no solo su titular— pero
+**exige una credencial PERSONAL en cada consulta**. *Público* no es *anónimo*, y para un SaaS
+que analiza subastas de muchos clientes **eso no automatiza**.
 
 **Por qué importa:** la 17-C se planificó con el valor de referencia como fuente recomendada
 precisamente por ser gratis, oficial y ligada a la referencia catastral que el anuncio ya trae.
 Esa premisa se sostiene en todo menos en lo que hacía falta: **no se puede llamar sin una
-persona detrás.** Con eso sobre la mesa, la fuente recomendada de la fase puede cambiar, y
-**la decisión es del responsable del producto, no de la sesión** (así se pidió).
+persona detrás.** Con eso confirmado, **la decisión de qué fuente alternativa usar es del
+responsable del producto, no de la sesión** (así se pidió).
 
-**⚠️ Y la comprobación tiene un límite grande, declarado:** no se pudo ejecutar la prueba
-decisiva. La política de salida del entorno **bloquea todos los dominios del Catastro**, `boe.es`
-y `datos.gob.es`. Lo que hay es evidencia documental triangulada **más** la ausencia medida en
-tres librerías comunitarias independientes que envuelven los servicios libres y **ninguna**
-expone el valor. **Antes de cerrar la fuente por definitiva, la llamada hay que hacerla desde
-una red sin ese bloqueo**: son diez minutos y convierte «muy probable» en «seguro».
-
-**▶️ QUÉ TIENE QUE HACER LA PRÓXIMA SESIÓN QUE RETOME LA 17-C, antes que nada:** la llamada real
-desde una red sin el bloqueo de salida. Los cuatro pasos concretos —con la referencia catastral
-del caso de Santiponce ya puesta— están en la ficha de la 17-C. **Hasta tener esa confirmación,
-ninguna de las tres rutas alternativas se descarta ni se explora**, y la fuente recomendada de la
-fase sigue sin decidir.
-
-Detalle completo en la ficha de la Fase 17-C (`docs/PLAN_FASES.md`).
+**▶️ QUÉ TIENE QUE DECIDIR EL RESPONSABLE AHORA:** con la duda técnica cerrada, la pregunta ya no
+es «¿hay API?» sino «¿qué ruta alternativa?» — descarga masiva alfanumérica del Catastro
+(identificación + licencia), consulta masiva por fichero de la Sede, o dato como **entrada del
+usuario** (ya soportado por el ADR-0015, campo opcional + carencia declarada, pero con una
+pista incómoda: si nadie va a teclear comparables subasta por subasta, un valor de referencia
+que hay que teclear cae en el mismo problema). Detalle y evidencia completa en la ficha de la
+Fase 17-C (`docs/PLAN_FASES.md`).
 
 **Fusionados:** [#12](https://github.com/christo23ch/seis/pull/12) Fase 17-A ·
 [#13](https://github.com/christo23ch/seis/pull/13) puerta (a) ·
@@ -145,15 +204,19 @@ agotado.** Lo que queda pide, en este orden:
 2. **Dominio y hosting** (H11 + DA-3 Vercel sin ratificar) → desbloquea la **Fase 11-B
    (despliegue)**, y con ella todo lo que solo se puede comprobar en producción: HTTPS sirviendo,
    backup restaurado con tiempo medido, alarma recibida, correo llegado a una bandeja real.
-3. **HTML real del BOE** → desbloquea la **17-B**, que no cierra sin el puente captación→análisis
-   ni sin decidir el modo de notificación por defecto.
+3. **HTML real del BOE** → desbloquea la **17-B**, que no cierra sin decidir el modo de
+   notificación por defecto (el puente captación→análisis ya existe).
 4. **Contenido humano**: el texto comercial de la landing y `/ayuda` —hoy provisional y dicho en
    el propio fichero— y el `MANUAL_DE_USUARIO.md`, que sigue sin existir.
 5. **Textos legales del abogado**, que la Fase 14 dejó con marcador de pendiente.
 
 Lo que sí se puede hacer sin nada de lo anterior: la **Fase 19 (analítica)** necesita alta en
-Plausible, y la **17-C (comparables)** puede arrancar por su primera tarea —comprobar si el valor
-de referencia del Catastro tiene servicio web libre—, que es investigación y no requiere paneles.
+Plausible. La primera tarea de la **17-C** —comprobar si el valor de referencia del Catastro
+tiene servicio web libre— ya está hecha (no lo tiene); lo que falta es la decisión del
+responsable sobre la fuente alternativa.
+
+6. **Abrir el PR de `checkpoint/5f6-simulaciones-informes`** hacia `main`, con la revisión
+   humana de siempre. Es la única tarea de esta lista que no espera a nadie de fuera.
 
 ---
 
@@ -186,17 +249,23 @@ esa misma fase introducía.
 | **9.5** · Migraciones | ✅ | `0005_esquema_base` + `0006_self_service`, ambas con `downgrade`. 13 tests. CI propia |
 | **10** · Alta self-service | ✅ | `registro_service.py`, 6 endpoints públicos, `TokenConsumido`. 45 + 38 tests |
 | **11-A** · Infraestructura (agnóstica) | ✅ | Sondas separadas (`salud.py`), staging estricto, `red.py`, purga, beat separado, CI completa. 7 ADRs |
-| **11-B** · Despliegue real | ⬜ | Sin `render.yaml` ni runbook en `main`. Semilla en el PR #6 cerrado |
+| **11-B** · Despliegue real | ⬜ | Sin `render.yaml` en el repo (comprobado 2026-09-30). Semilla en el PR #6 cerrado |
 | **12** · Notificaciones + scoring | ✅ | `Alerta`, `Notificacion`, `notificadores/`, matcher, digest. 18 tests |
 | **13** · Stripe | 📋 | `FASE_13_PLAN_EJECUCION.md` y su mapa de impacto. Cero código |
-| **14** · RGPD | ⬜ | Sin consentimientos, export ni borrado de cuenta |
-| **15** · Landing | ⬜ | La raíz `/` sigue bajo `(app)`, protegida |
-| **16** · Seguridad | ⬜ | Sin `AUDITORIA_SEGURIDAD.md`; rate limiting solo en auth |
-| **17** · Captación real | ⬜ | **No existe `app/ingesta/`.** `api/captacion.py` es un POST manual |
+| **14** · RGPD | ✅ | PR #15, migración `0008_rgpd`. Falta el texto del abogado |
+| **15** · Landing | ✅ | PR #23 y #24, migración `0009_onboarding` |
+| **16** · Seguridad | ✅ | PR #16, `docs/AUDITORIA_SEGURIDAD.md` |
+| **17-A** · Captación, andamiaje | ✅ | PR #12, `app/ingesta/boe.py`, migración `0007_dedupe_subasta` |
+| **17-B** · Captación real (BOE) | ⬜ | Selectores sin ajustar: espera el HTML real del portal |
+| **17-C** · Comparables automáticos | 📋 | Planificada (PR #18, #25); la fuente recomendada cae; decisión abierta |
+| **0'** · Sistema de diseño | ✅ | `docs/DESIGN_SYSTEM.md` |
+| **Línea de producto 1-4** | ✅ | Puente captación→análisis, corte sin ancla, `ComparableUsado` (`0010`), detalle de valoración (`0011`). Commit `4a6f61d` |
+| **Línea de producto 5C-5F.7** | ✅ en rama | Catálogo, simulaciones (`0012`-`0015`), informes oficiales, API y UI. Rama `checkpoint/5f6-simulaciones-informes`, **sin fusionar** |
 | **18-20** | ⬜ | — |
 
-**Cifras medidas:** 43 endpoints · 19 ficheros de test · `backend/app` 6.719 líneas ·
-`backend/tests` 5.564 (ratio 0,83) · frontend 3.292 líneas **con cero tests**.
+**Cifras medidas el 2026-09-30:** 46 ficheros `test_*.py` en `backend/tests` · suite 828 passed,
+9 skipped, 0 failed (SQLite) · frontend **sin tests unitarios** (solo e2e).
+[VERIFICAR: número de endpoints y líneas de `backend/app` hoy — no recontados en esta sesión.]
 
 ---
 
@@ -234,28 +303,180 @@ Los **nueve** endpoints que devuelven o crean datos de análisis filtran por
 - ~~La CI ejecutaba 13 de 162 tests~~ → ejecuta la suite completa y el build del frontend.
 - ~~`GET /tareas` sin aislamiento~~ y ~~filtro *fail-open*~~ → cerrados, con tests.
 
-### Abierta
+### Cerrada después de la auditoría (comprobado en el código el 2026-09-30)
+- ~~`init_db.main()` sin test~~ → `tests/test_siembra.py` (puerta a).
+- ~~La CI no levanta PostgreSQL~~ → job `postgres` + `tests/test_postgres.py` (puerta b).
+- ~~`/health/listo` sin límite de tasa~~ → limitado en `app/api/salud.py` (Fase 16).
+- ~~`UniqueConstraint` importado y nunca aplicado~~ → aplicado en `models.py` (dedupe de
+  subastas, migración `0007`, y pasos de onboarding).
+- ~~El ITP se liquidaba sobre la puja~~ → `app/engine/fiscal.py`, base = mayor de los valores.
+- ~~Override de tipo incorrecto = 500~~ y ~~body con campos desconocidos aceptado~~ → 422
+  (5F.7.1).
+- ~~La hoja `version` salía como parámetro cambiado en la comparación~~ → `de3498f`.
+- ~~`pytest` borraba `seis_dev.db`~~ → `9db44b3`.
+- ~~Diálogo de confirmación duplicado~~ y ~~«Volver a la configuración original» activo con
+  otra escritura en curso~~ → `4df5de8`.
+- ~~Herramientas de revisión visual inservibles en Windows~~ → `medir-desborde.mjs` acepta
+  `CHROMIUM_PATH` (5F.7.9).
+- ~~Escalera degenerada sin tratamiento en la interfaz (Frontend 9)~~ → 5G.3: escalón «Límite»
+  «No utilizable», sin cifra ni línea de adjudicación; métricas y comparación dicen «No
+  utilizable» (la comparación trae `escalera_degenerada` del motor).
+- ~~Formato de 4 cifras distinto (Frontend 10)~~ → 5G.3: `eur` con `useGrouping: "always"`
+  («7.600 €»).
+- ~~Sin cotas de rango en los overrides (Backend 4, en parte)~~ → 5G.4-A: los rangos concretos
+  del catálogo son vinculantes (422) en simulaciones y edición global. Siguen sin validarse las
+  listas vacías y los parámetros con rango `pendiente_de_definir` (ver Backend 4).
+- ~~`capital.coste_capital_anual` sin rango ni advertencia (Backend 12)~~ → 5G.4-A, ADR-0016:
+  rango 0–0,15, aviso desde 0,06, advertencia e impacto definidos.
+- ~~¿ROI y TIR netos del coste de capital? (Backend 13)~~ → 5G.4-A: decidido explicarlo (el
+  informe y la interfaz dicen que solo descuenta el precio límite). La comparación TIR − coste
+  de capital y el VAN quedan diseñados para la 5H (auditoría, E6).
+- ~~Punto decimal en el informe (Backend 15)~~ → 5G.4-B: «25,0 %», «RVC 1,08».
+- ~~Ninguna e2e corre en la CI (Pruebas 1)~~ → 5G.4-C: job `e2e`.
+- ~~`e2e/correr.sh` no funciona en Windows (Entorno 1)~~ y ~~dos nombres para el navegador
+  (Entorno 2)~~ → 5G.4-C: lanzador alineado con `correr_simulaciones.sh` y
+  `frontend/scripts/navegador.mjs`.
+- ~~`/app` desbordaba a 390 px con datos~~ → 5G.4-C: la tabla del panel (y la de la comparativa)
+  en un contenedor con desplazamiento propio. Defecto previo a 5G.4, medido también sobre
+  `9c41bbe`.
+- ~~La Escalera de precios desbordaba 8 px a 390 px en Linux/macOS~~ → `b74abd0`: escalones que
+  encogen por debajo de `sm`. La e2e mide ahora también con la monoespaciada ancha forzada.
+- ~~Con hipoteca, el precio límite contaba dos veces la parte financiada (Backend 16)~~ → 5H.1-B
+  (`5cb0634`, `1386faa`, ADR-0018): coste de capital solo sobre el capital propio.
+- ~~`coste_capital()` sin definir, §19 irreproducible, «TIR ≈ 23 %» mal etiquetada, colchón de
+  plazo sin implementar, sin VAN (Backend 18, en parte)~~ → 5H.1-A/C/D: VAN y diferencial
+  (ADR-0017), colchón (ADR-0019), §9.1 definido y §19 regenerado con las cifras del motor.
+- ~~El PDF oficial no lleva su id, fecha ni procedencia (deuda D5)~~ → 5G.1: cabecera, bloque
+  inicial y pie con la identificación leída de la fila `Informe`; la vista previa de
+  `/informe.pdf` lleva «VISTA PREVIA — NO OFICIAL».
 
-**Huecos de cobertura** (documentados por la propia Fase 11-A; ninguno bloqueaba su fusión):
+### Abierta — lista consolidada
 
-1. **`init_db.main()` no lo ejecuta ningún test.** El más peligroso: sin `create_all` en
-   staging y producción, una mutación plausible deja la instalación **sin reglas, sin
-   parámetros y sin administrador**, y no se detecta hasta el despliegue.
-2. **La CI no levanta PostgreSQL.** Tres caminos exclusivos de ese motor no se ejecutan en
-   ninguna parte: `SET LOCAL statement_timeout`, `with_for_update(skip_locked=True)` y un
-   rollback silencioso.
-3. **La purga en modo `borrar` nunca ha corrido por la ruta de la tarea.** Nace desactivada
-   (`informar`); el día que se active, se estrenaría a las 04:30 en producción.
-4. **`/health/listo` sin límite de tasa.**
+Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VERIFICAR].
 
-**Otra deuda:**
-- Frontend: **cero tests** (3.292 líneas) y **cero linting** (sin configuración de ESLint y con
-  `eslint.ignoreDuringBuilds: true`). Lo único que lo protege es el chequeo de tipos de `next build`.
-- 2 vulnerabilidades de producción restantes: el `postcss@8.4.31` que Next fija internamente.
-  Forzar un `overrides` arriesga el build para un vector nulo en tiempo de compilación.
-- `models.py`: `UniqueConstraint` importado y **nunca aplicado** a ninguna tabla. Lo necesitará
-  el dedupe de la Fase 17.
-- Cero TODO/FIXME en el código. Las dos migraciones tienen `downgrade` y cubren las 22 tablas.
+**Backend**
+
+1. **`riesgos.bandas_ra = []` en un override da 500.** `m12_decision.py:39` usa `next()` sin
+   valor por defecto; la validación de forma acepta una lista vacía. Arreglarlo es tocar el
+   motor o añadir una regla de contenido.
+2. **Carrera descartar/validar.** `descartar_simulacion` no pasa por `_analisis_bloqueado`
+   (`simulacion_service.py:402`), así que un descartar y un validar simultáneos sobre la misma
+   simulación pueden dejarla descartada y en uso a la vez. La interfaz lo mitiga (una sola
+   escritura a la vez por análisis); la API no. Además, SQLite ignora `FOR UPDATE`.
+3. **`obtener_configuracion_actual` no mira el estado** de la simulación apuntada
+   (`simulacion_service.py:509`). Hoy solo `validar` y `seleccionar` mueven el puntero, y los
+   dos lo comprueban.
+4. **Validación de contenido incompleta.** Desde 5G.4-A los rangos concretos del catálogo son
+   vinculantes, pero las listas vacías, los tramos desordenados y los parámetros cuyo rango sigue
+   `pendiente_de_definir` (p. ej. `rvc_min`, ratios de adjudicación) se aceptan sin aviso.
+5. *(Resuelta en 5G.1: ver arriba. Se conserva el número para no renumerar.)*
+6. **El listado de simulaciones no trae `version_parametros_base`**, y el aviso pide el
+   detalle completo (con el `resultado` entero) solo para ese campo.
+7. **Los 3 parámetros fijos `perfiles.rentista.*`** (`catalogo.py:652`…) no llevan marca de
+   perfil: en un análisis de otro perfil la UI no puede señalarlos.
+8. **Fechas sin zona horaria con SQLite** (en PostgreSQL sí la llevan): el navegador las lee
+   como hora local.
+9. **Los 422 de pydantic llegan en inglés** y con `detail` como lista; el frontend los
+   convierte a texto (`textoDeDetalle`) pero el mensaje es poco legible.
+10. `GET /analisis/{id}/informe.pdf` sigue existiendo por compatibilidad aunque la UI ya no lo
+    ofrece. No es un defecto; conviene decidir si se retira.
+11. [VERIFICAR: si una clave editable faltara en el árbol vigente, el catálogo o la validación
+    darían 500 en vez de clasificarla. Hoy las 103 claves resuelven; no reproducido.]
+12. *(Resuelta en 5G.4-A: ver «Cerrada» arriba.)*
+13. *(Resuelta en 5G.4-A: ver «Cerrada» arriba.)*
+14. **Análisis y simulaciones ya guardados conservan el texto anterior a 5G.2** (plan de puja
+    con «60,011 €» y, si la escalera era degenerada, la instrucción de cargar el límite) hasta
+    que se reanalicen: su `resultado` no se regenera. Los informes oficiales ya emitidos lo
+    conservan por diseño (Markdown congelado).
+
+15. *(Resuelta en 5G.4-B: ver «Cerrada» arriba.)*
+16. *(Resuelta en 5H.1-B: ver «Cerrada» arriba.)*
+17. **El «depósito del 5%» de la condición de la regla T2 `SEM-EJEC-01`** sale sin espacio
+    antes de «%». Es texto de una regla versionada (`rules/catalogo.yaml`), no de un módulo:
+    corregirlo exige una versión nueva de la regla. `test_formato_espanol_5g4.py` lo tiene
+    localizado como única excepción.
+18. **Puntos de la auditoría que quedan para la 5H.2** (todos cambian el caso dorado o
+    necesitan decisión): calendario de la TIR con los plazos reales de M06 (E3), nueva
+    definición del precio límite (E2 b), coste del depósito (E5), perfil rentista según §9.2
+    (E4) y rentabilidad del ICO (E8). Estado punto a punto en
+    `docs/AUDITORIA_MOTOR_ESPECIFICACION.md`.
+19. **Los intereses del préstamo se calculan a plazo P50 dentro de un precio límite estresado a
+    P80** (`m06_costes.py:78`): −774 € de P_límite bruto en el caso con hipoteca si se usara P80.
+    Fuera de la 5H.1 (ADR-0018, alcance 1): cambia `c_v`, que es único para toda la escalera.
+20. **`financiacion.ltv` no tiene validación** (`contracts.py`, `ltv: float = 0.0`): acepta
+    negativos o mayores que 1. El coste de capital y el colchón ya no dan abonos (`max(0, …)`),
+    pero M06 y M09 calculan con el valor tal cual. Señalado en la revisión de código de 5H.1-B.
+21. **Supuestos revisables del colchón de plazo** (ADR-0019): beneficio base y no pesimista, y
+    sin descontar el coste de oportunidad del plazo ya previsto. Si se quiere una lectura más
+    prudente, el ADR describe la alternativa.
+
+**Frontend**
+
+1. **Sin tests unitarios y sin ESLint**: no hay configuración de ESLint y
+   `next.config.mjs` tiene `eslint.ignoreDuringBuilds: true`. Lo protegen `tsc` y las e2e.
+2. **`Button` no anuncia `aria-busy`** en su estado de carga (`components/ui.tsx`).
+3. **Valores de parámetro en bruto** («0.015», con punto) en el editor y la comparación
+   (`String(v)`); el editor acepta coma al escribir, pero no la usa al mostrar.
+4. **Las etiquetas y formatos de los 12 campos de la comparación** están escritos en el
+   frontend (`CAMPOS`, `comparacion.tsx:146`); si el backend cambia un campo, hay que tocarlos.
+5. **El histórico de informes no se refresca solo** si otra persona emite uno: solo se
+   invalida tras una emisión propia.
+6. **`Detalle.entrada` es `any`** (`lib/types.ts:42`).
+7. **Falta el favicon**: 404 en la consola de cada página.
+8. [VERIFICAR: longitud de la página a 390 px con «Mostrar todos» en la comparación (~9.800 px
+   medidos en 5F.7.7) y si «Usar esta configuración» sigue ocupando dos líneas — no
+   re-medido.]
+9. *(Resuelta en 5G.3: ver «Cerrada» arriba.)*
+10. *(Resuelta en 5G.3: ver «Cerrada» arriba.)*
+11. **`resultado.tsx` usa colores del semáforo para cosas que no son semáforo:** los estados del
+    checklist (`ok` → `sem-verde`, `pendiente` → `sem-amarillo`) y la viñeta de las
+    condiciones (`sem-amarillo`). `sem-rojo` como color de error sí es la convención de
+    `ui.tsx` (`Campo`, `ErrorBox`, botón `peligro`). Falta un token de estado neutro.
+12. **El editor global de `/app/parametros` no muestra el aviso del coste de capital**: es un
+    editor libre de JSON sin los metadatos del catálogo. Recibe el 422 con el rango, pero no el
+    aviso de 0,06.
+13. **`medir-desborde.mjs` mide solo el estado inicial**: la tabla de `/app/comparativa` no
+    aparece hasta seleccionar análisis, así que su contenedor de 5G.4-C no lo cubre ninguna
+    medida automática.
+14. **La etiqueta «P adj. …» de la Escalera de precios queda tapada por el escalón «Límite»**
+    (`components/resultado.tsx`): la línea de adjudicación va antes que los escalones en el DOM
+    y estos, `relative`, se pintan encima. Visto en una captura a 390 px en 5G.4; el orden del
+    DOM no ha cambiado desde antes de la fase, así que es previo. Sin corregir.
+
+**Pruebas**
+
+1. *(Resuelta en 5G.4-C: job `e2e` en la CI.)*
+2. **El botón del aviso desactivado durante otra escritura** (`4df5de8`) no se ha probado en el
+   navegador; la e2e solo cubre el caso en reposo.
+3. **La marca «difiere del original»** del editor no se ha visto nunca en el navegador: la base
+   de prueba no tenía deriva de conocimiento.
+4. [VERIFICAR: qué son los 9 tests omitidos en SQLite — en septiembre eran 8, los exclusivos de
+   PostgreSQL.]
+5. **Carrera en el paso 4 de `simulaciones.mjs`** (intermitente, anterior a la 5H.1): tras ver
+   «En uso» en la lista, lee el aviso de configuración sin esperar a que su consulta se
+   refresque. Falló una vez en local en la 5H.1-B y pasó al repetir. Corrección propuesta:
+   esperar con `waitForFunction` hasta que el aviso diga «Mostrando la simulación», como ya
+   hace el paso 6.
+
+**Entorno**
+
+1. *(Resuelta en 5G.4-C.)*
+2. *(Resuelta en 5G.4-C.)*
+3. **Las dos e2e compilan en `frontend/.next`** y regenera `next-env.d.ts`: no puede
+   convivir con un `next dev` sobre esa carpeta, y `next-env.d.ts` hay que restaurarlo después.
+4. **`main` local va un commit por delante de `origin/main`** (`90fab7b`, docs de la 17-C) sin
+   publicar.
+5. La purga en modo `borrar` sigue sin estrenarse por la ruta de la tarea: es la regla (c) de
+   `PLAN_FASES.md` §2-bis, no una tarea.
+6. [VERIFICAR: si siguen las 2 vulnerabilidades de producción del `postcss` que fija Next — no
+   se ha ejecutado `npm audit` en esta sesión.]
+7. **La duración de la suite varía con la carga de la máquina:** 27 min 20 s en una ejecución
+   y 2 min 39 s y 2 min 10 s en las dos siguientes, con el mismo código (2026-10-01). Ningún
+   test pasa de 4 s (`--durations=25`) y crear y borrar la base temporal cuesta ~0,23 s por
+   módulo. Defender tiene la protección en tiempo real activa y consumía ~21 % de un núcleo
+   durante la suite. Propuesta: ejecutar siempre con `--durations=25`; si vuelve a pasar,
+   mirar qué procesos corrían a la vez y, solo entonces, pedir a un administrador que excluya
+   los directorios `seis-pytest-*` del análisis en tiempo real.
 
 ---
 
@@ -272,17 +493,38 @@ Los **nueve** endpoints que devuelven o crean datos de análisis filtran por
 
 ## 6 · Avance estimado
 
-**~70 % del código · ~55 % del camino hasta el primer cliente de pago.**
+**50 % de las fases del plan hasta el lanzamiento** (6 de 12), con el criterio explícito de
+`docs/PLAN_FASES.md` §5-bis: fases hechas sobre fases del plan, **sin ponderar** por tamaño.
+No es una estimación de esfuerzo restante; es un recuento que cualquiera puede rehacer.
 
-Sube desde el 60/50 de la auditoría inicial, que se hizo sin conocer la Fase 11-A.
+> El «~70 % del código · ~55 % del camino» que figuraba aquí era una estimación a ojo del
+> 2026-09-08. Se sustituye por el recuento porque aquella cifra no decía cómo se había
+> obtenido y no se podía comprobar.
 
-A favor: el motor está blindado; el aislamiento multi-tenant es correcto en los nueve
-endpoints; hay 402 tests con ratio test:código de 0,83 en backend; y la infraestructura
-agnóstica del proveedor está resuelta y documentada con ADRs.
+A favor: el motor está blindado; el aislamiento multi-tenant responde 404 también en las rutas
+nuevas de simulaciones e informes; hay 828 tests en verde; y el flujo captación → análisis →
+simulación → informe oficial existe de punta a punta, con una e2e que lo recorre.
 
 En contra, y por este orden:
-- **El producto todavía no puede cumplir su promesa.** Sin conector de ingesta (Fase 17), las
-  alertas de la Fase 12 vigilan un caudal que no existe: las subastas solo entran tecleadas.
+- **El caudal todavía no es real.** El conector BOE existe, pero sin ajustar al HTML real
+  (17-B): las subastas entran tecleadas.
 - **No hay nada desplegado.** La 11-A dejó el repositorio listo; falta la 11-B y el hosting.
-- **No se puede cobrar** (Fase 13) ni **operar legalmente con datos reales** (Fase 14).
-- El frontend sigue siendo la capa menos protegida y la única que ve el cliente.
+- **No se puede cobrar** (Fase 13, cero código).
+- **Sin comparables automáticos** (17-C), todo análisis al que nadie teclee comparables sale
+  rojo por falta de ancla de mercado.
+- El frontend sigue sin tests unitarios ni ESLint.
+
+---
+
+## 7 · Pendiente de verificar
+
+Lo que esta actualización (2026-09-30) no pudo comprobar en el repositorio ni en `git log`:
+
+- Que siga sin haber PR abiertos en GitHub.
+- Número de endpoints y líneas de `backend/app` hoy.
+- Si una clave editable ausente del árbol vigente daría 500 (backend 11).
+- Longitud de la página a 390 px con «Mostrar todos» y el salto de línea de «Usar esta
+  configuración» (frontend 8).
+- Qué son los 9 tests omitidos en SQLite (pruebas 4).
+- Si siguen las 2 vulnerabilidades del `postcss` de Next (entorno 6).
+- Las subfases 5B, 5F.2 y 5F.5 y las fechas de cada subfase de la línea 5x (ver `CHANGELOG.md`).

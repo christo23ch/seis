@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from app.engine.contracts import AnalisisInput, EscaleraPrecios, PujaResultado
+from app.engine.formato import eur, pct
 
 
 def _ratio_segmento(inp: AnalisisInput, params) -> float:
@@ -50,12 +51,24 @@ def ejecutar(inp: AnalisisInput, params, hechos: dict, escalera: EscaleraPrecios
                   if rvc >= b["min"]), "inviable")
 
     deposito = inp.subasta.deposito_pct * vt
+    # Fase 5G.2: solo redacción. Importes con `formato.eur` (antes `:,.0f`, que
+    # escribía «7,600 €»), y con la escalera degenerada (§9.3, marca de M12) el
+    # plan no instruye a cargar límites ni a pujar: no hay límite utilizable.
+    if escalera.degenerada:
+        tacticas = [
+            "No cargar límites ni pujar: la escalera de precios es degenerada (§9.3); "
+            "la estructura de costes consume el valor y no hay precio límite utilizable",
+        ]
+    else:
+        tacticas = [
+            f"Cargar límites en la interfaz antes de abrir la puja: objetivo {eur(escalera.p_objetivo)} · "
+            f"máximo {eur(escalera.p_max)} · límite absoluto {eur(escalera.p_limite)} (infranqueable por software)",
+            "Pujar siempre el tramo mínimo; sin pujas psicológicas redondas",
+            "Entrar tarde con límites precargados: la extensión automática del cierre neutraliza el sniping; la ventaja es la disciplina",
+        ]
     plan = [
-        f"Cargar límites en la interfaz antes de abrir la puja: objetivo {escalera.p_objetivo:,.0f} € · "
-        f"máximo {escalera.p_max:,.0f} € · límite absoluto {escalera.p_limite:,.0f} € (infranqueable por software)",
-        "Pujar siempre el tramo mínimo; sin pujas psicológicas redondas",
-        "Entrar tarde con límites precargados: la extensión automática del cierre neutraliza el sniping; la ventaja es la disciplina",
-        f"Depósito requerido: {deposito:,.0f} € ({inp.subasta.deposito_pct:.0%} del valor de subasta)",
+        *tacticas,
+        f"Depósito requerido: {eur(deposito)} ({pct(inp.subasta.deposito_pct, 0)} del valor de subasta)",
         "Si aparece información nueva durante la subasta, re-análisis exprés; si el semáforo cae, retirada",
     ]
     if banda == "ajustado":

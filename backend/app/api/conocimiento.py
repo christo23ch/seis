@@ -11,6 +11,7 @@ from app import models
 from app.api.deps import get_current_user, require_superadmin
 from app.core.db import get_db
 from app.services import conocimiento_service as cs
+from app.services.simulacion_service import OverrideInvalidoError
 
 router = APIRouter(tags=["conocimiento"])
 
@@ -74,6 +75,8 @@ def actualizar_parametro(body: ParametroUpdate, db: Session = Depends(get_db),
         cs.set_parametro(db, body.clave, body.valor, body.fuente_legal, admin.email)
     except ValueError as e:
         raise HTTPException(400, str(e))
+    except OverrideInvalidoError as e:            # Fase 5G.4: fuera de rango
+        raise HTTPException(422, str(e))
     return {"clave": body.clave, "valor": body.valor, "vigente": True}
 
 

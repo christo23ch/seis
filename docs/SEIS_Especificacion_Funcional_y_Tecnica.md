@@ -855,7 +855,13 @@ B(P)      = VS_p − I(P)
 ROI(P)    = B(P) / I(P)
 ROI_a(P)  = (1 + ROI)^(12/plazo_meses) − 1
 TIR       = tir(flujos mensuales del calendario M06)      # bisección, determinista
+VAN_cc    = Σ f_t / (1 + r)^t,  r = (1 + cc)^(1/12) − 1    # mismos flujos que la TIR (ADR-0017)
+Δ_cc      = TIR − cc                                       # en puntos porcentuales (ADR-0017)
 ```
+
+*VAN_cc y Δ_cc (Fase 5H.1-A, ADR-0017) son informativos: no entran en el ICO, el semáforo ni la
+escalera. `cc` es `capital.coste_capital_anual`, tasa efectiva anual; la equivalencia mensual es
+la misma con la que se anualiza la TIR, así que VAN_cc = 0 exactamente cuando cc = TIR.*
 
 **Fórmulas (rentista / buy&hold):**
 
@@ -1096,7 +1102,25 @@ B(P) ≥ m·I(P)   ⇔   VS_p − I(P) ≥ m·I(P)   ⇔   I(P) ≤ VS_p/(1+m)
 | `P_ideal` | `P(m_exc, VS_p, C_F^P50)` con `m_exc = 1,35·m*` | precio de entrada "excelente": objetivo interno de puja |
 | `P_objetivo` | `P(m*, VS_p, C_F^P50)` | cumple exactamente el margen objetivo del perfil ajustado a riesgo |
 | `P_max` | `min[ P(m_min, VS_p, C_F^P50) ; P_pes ]` donde `P_pes` resuelve `B_pesimista(P)=piso` con `VS_pes` y `C_F^P80` | máximo recomendado: margen mínimo en base **y** superviviente al pesimista |
-| `P_límite` | `P(0, VS_p, C_F^P80) − coste_capital(plazo)` | punto de indiferencia estresado; por encima, valor esperado negativo. **Bloqueo duro de software: la interfaz de puja no admite importes > P_límite bajo ninguna autorización** (P_max sí es superable con doble firma del comité, quedando auditado) |
+| `P_límite` | `P(0, VS_p, C_F^P80) − coste_capital` (definido abajo) | punto de indiferencia estresado; por encima, valor esperado negativo. **Bloqueo duro de software: la interfaz de puja no admite importes > P_límite bajo ninguna autorización** (P_max sí es superable con doble firma del comité, quedando auditado) |
+
+**Definición de `coste_capital`** (Fase 5H.1-D; [ADR-0016](../30-Decisiones/ADR/ADR-0016-coste-de-capital-como-coste-de-oportunidad.md) y [ADR-0018](../30-Decisiones/ADR/ADR-0018-coste-de-capital-solo-sobre-el-capital-propio.md)). Hasta la 5G.4 la especificación usaba la función sin definirla; esta es la fórmula del motor (`m12_decision.calcular_escalera`):
+
+```
+capital_propio = max(0, I(P_max, C_F^P80) − LTV · P_max)      # LTV = 0 si no hay hipoteca (D5)
+coste_capital  = cc · capital_propio · plazo_P80 / 12          # interés simple
+```
+
+- `cc` = `capital.coste_capital_anual`: **coste de oportunidad del capital propio** (lo que
+  rendiría en otra inversión de riesgo comparable). Rango admitido 0–0,15; por defecto 0,015.
+- La base es la inversión al **precio máximo sin redondear** con costes P80, y el plazo es el
+  **P80**: el límite es el punto de indiferencia estresado.
+- Con hipoteca, la parte financiada (`LTV · P_max`) no paga coste de oportunidad: ya paga sus
+  intereses dentro de `c_v` (§6.6).
+- En la decisión solo afecta al precio límite. ROI, ROI anualizado y TIR no lo incluyen; sí los
+  indicadores informativos VAN_cc y Δ_cc (§7.7) y el colchón de plazo (§9.5). El perfil
+  rentista tiene además su propio límite, P(y_suelo) (§9.2).
+- Sensibilidad medida en el §19 (ADR-0016): la escalera degenera a partir de cc = 6,13 %.
 
 ## 9.2 Derivación (estrategia rentista)
 
@@ -1130,7 +1154,7 @@ def escalera_precios(h: Hechos, perfil: Perfil) -> EscaleraPrecios:
         VS_pes  = VS_p * (1 - fila.stress_mercado)
         p_pes   = resolver(lambda P_: B(P_, VS_pes, CF80) - perfil.piso_pesimista)   # cerrado: lineal
         p_max   = min(P(m_min, VS_p, CF50), p_pes)
-        p_lim   = P(0.0, VS_p, CF80) - coste_capital(h.plazo_p80, h)
+        p_lim   = P(0.0, VS_p, CF80) - coste_capital      # definición en §9.1
     else:  # RENTISTA — §9.2
         ...
 
@@ -1159,6 +1183,17 @@ MS_valor  = 1 − I(P) / VS          # caída del valor de salida soportable ant
 MS_puja   = (P_max − P_actual) / P_max      # holgura restante durante la subasta (M13, en vivo)
 Colchón de plazo = meses extra soportables hasta B=0 (por coste de tenencia+capital mensual)
 ```
+
+*Colchón de plazo, tal como lo implementa el motor desde la Fase 5H.1-C
+([ADR-0019](../30-Decisiones/ADR/ADR-0019-colchon-de-plazo.md), supuestos revisables):*
+
+```
+colchón(P) = max(0, B_base(P)) / (tenencia_mensual + LTV·P·i/12 + cc · capital_propio(P)/12)
+B_base(P)  = VS_p − I(P, C_F^P50)                     capital_propio(P) = I(P, C_F^P50) − LTV·P
+```
+
+*Beneficio del escenario base; intereses del préstamo solo con hipoteca; `None` si la escalera es
+degenerada o no hay coste mensual. Informativo: no entra en el ICO ni en el semáforo.*
 
 Se reportan a P_objetivo y a P_max. Regla de semáforo asociada: Verde exige `MS_valor ≥ 15 %` a P_max.
 
@@ -1423,33 +1458,68 @@ E2 Due diligence    3–6 %             documentos (OCR+LLM), nota simple,     e
 
 # 19. Ejemplo numérico completo de extremo a extremo
 
-**Caso:** vivienda 82 m², barrio consolidado de una gran ciudad, subasta judicial (BOE). VT = 152.000 €. Estado: malo (sin visita interior). Ocupación: precario (sin título). Perfil: **flip integral**. ICI = 62 (falta certificado de comunidad y visita). ICU = 68. Comparables reformados: mediana 2.293 €/m², n=8, CV=9 %.
+> **Regenerado en la Fase 5H.1-D con las cifras REALES del motor** (`backend/tests/test_golden_caso19.py`,
+> parámetros `2026.07`, coste de capital 0,015). La versión anterior era un ejemplo redondeado
+> que no se podía reproducir ni con sus propias cifras (auditoría 5G.4, H3). Lo que cambió y por
+> qué está en el recuadro del final. La salida completa del motor para este caso es
+> `docs/SEIS_informe_ejemplo_caso19.md`.
 
-**Riesgos (P×I):** jurídico 6 · documental 6 · ocupación 12 (alto) · urbanístico 4 · técnico 9 · financiero 2 (compra en cash) · comercial 6 · liquidez 4 (DOM 75 d) · mercado 6.
-`RA_base = 25` → una dimensión Alta ⇒ `RA = max(25, 40) = 40` (banda **Medio**, fila §9.4: mult 1,0 · stress 9 % · conting 8 %+2 (ICI) = 10 %).
+**Caso:** vivienda 82 m², barrio consolidado de una gran ciudad, subasta judicial (BOE). VT = 152.000 €. Estado: malo (sin visita interior). Ocupación: precario (sin título). Perfil: **flip integral**, compra al contado. ICI = **63** (falta certificado de comunidad y visita). ICU = **66**. Comparables reformados: **7**, mediana 2.293 €/m², **CV = 5,3 %**.
 
-**Valoración:** VS = 82 × 2.293 ≈ **188.000 €**. δ_v = 2 (base) + 2 (mercado) + 0 (CV 9 %) + 2 (ICI 60–79) = 6 % → **VS_p = 176.700 €**.
+**Riesgos (P×I):** jurídico 6 · documental 6 · ocupación 12 (alto) · urbanístico 4 · técnico 9 · financiero 2 (compra al contado) · comercial 6 · liquidez 4 (DOM 75 d) · mercado 6.
+`RA_base = 25,4` → una dimensión Alta ⇒ `RA = max(25, 40) = 40` (banda **Medio**, fila §9.4: mult 1,0 · stress 9 % · conting 8 % + 2 (ICI) = 10 %).
 
-**Costes:** obra P50 = 45.900 + técnicos/licencia 4.100 = 50.000 (P80 = 60.500) · desalojo 6.500 (P80 9.500; 7 meses) · atrasos comunidad/IBI estimados al alza 2.400 · adquisición fija 2.700 · tenencia 240 €/mes × 13 m = 3.120 · comercialización 3 % VS + marketing = 6.840 · contingencia 10 % × 58.900 = 5.900.
-**C_F(P50) = 77.460 € · C_F(P80) = 86.800 €** (contingencia consumida) · **c_v = 6,4 %** (ITP 6 % + variables).
+**Valoración:** VS = 82 × 2.293 = **188.026 €**. δ_v = 2 (base) + 2 (mercado) + 0 (CV 5,3 %) + 2 (ICI 60–79) = 6 % → **VS_p = 176.744 €**.
+
+**Costes (C_F):**
+
+| Partida | P50 | P80 |
+|---|---|---|
+| Reforma (nivel media, 3 meses de obra) | 50.053 € | 61.064 € |
+| Desalojo (precario) | 6.500 € | 9.500 € |
+| Atrasos de comunidad/IBI (estimados al alza, P5) | 2.432 € | 3.235 € (× 1,33) |
+| Adquisición fija | 2.700 € | 2.700 € |
+| Tenencia (240 €/mes) | 3.120 € (13 m) | 4.368 € (18,2 m) |
+| Comercialización (3 % VS + marketing) | 6.841 € | 6.841 € |
+| Contingencia (10 % de reforma + posesión + atrasos) | 5.898 € | consumida |
+| **C_F** | **77.544 €** | **87.708 €** |
+
+**c_v = 6,4 %** (ITP 6 % + aranceles variables). Plazo total 13 meses (P50) y 18,2 (P80; el informe lo redondea a «18 m»).
 
 **Escalera de precios (§9.1):**
 
 | Peldaño | Cálculo | Resultado |
 |---|---|---|
-| P_objetivo (m* 25 %) | (176.700/1,25 − 77.460)/1,064 | **60.100 €** |
-| P_ideal (m 34 %) | (176.700/1,34 − 77.460)/1,064 | **51.100 €** |
-| P_max | min[(176.700/1,17 − 77.460)/1,064 ; pesimista B≥0 con VS_pes 160.800 y C_F 86.800] = min[69.100; 69.500] | **69.100 €** |
-| P_límite | (176.700 − 86.800)/1,064 − coste capital ≈ | **82.500 €** — infranqueable |
+| P_ideal (m 33,75 %) | (176.744/1,3375 − 77.544)/1,064 | **51.317 €** |
+| P_objetivo (m* 25 %) | (176.744/1,25 − 77.544)/1,064 | **60.011 €** |
+| P_max | min[(176.744/1,17 − 77.544)/1,064 ; pesimista con VS_pes 160.837 y C_F^P80 87.708] = min[69.097; 68.731] | **68.731 €** (manda el pesimista) |
+| P_límite | (176.744 − 87.708)/1,064 − coste_capital = 83.681 − 3.659 | **80.022 €** — infranqueable |
 
-**Rentabilidad a P_objetivo (60.100 €):** I = 141.400 · B = 35.300 · ROI 25 % · 13 meses ⇒ ROI anualizado ≈ 23 % · TIR ≈ 23 %.
-**Escenarios:** pesimista +10.100 € (positivo ✓) · base +35.300 € · optimista +61.900 €. **VE ≈ +34.300 €**. **MS_valor = 1 − 141.400/188.000 ≈ 25 %** de caída de mercado soportable.
+Coste de capital (§9.1): 0,015 · I(P_max, C_F^P80) · 18,2/12 = 0,015 · 160.837 · 1,517 = **3.659 €**. La escalera degeneraría a partir de un coste de capital de 6,13 % (ADR-0016).
 
-**Competencia (M13):** ratio histórico del segmento (judicial · vivienda ocupada · tramo 100–200k) ≈ 42 % s/VT ⇒ P_adj_esperado ≈ 63.800 €. **RVC = 69.100/63.800 = 1,08** → alcanzable.
+**Rentabilidad a P_objetivo (60.011 €):** I = 141.396 € · B = 35.349 € · **ROI 25,0 %** (por construcción, es el margen objetivo) · 13 meses ⇒ **ROI anualizado 22,9 %** · **TIR 33,9 %** (flujos mensuales: la reforma se paga entre los meses 7 y 10, no el día 0) · VAN al coste de capital 33.230 € · TIR frente a coste de capital +32,37 puntos.
+**Escenarios:** pesimista +9.278 € (positivo ✓) · base +35.349 € · optimista +53.000 €. **VE = 32.361 €**. **MS_valor = 1 − 141.396/188.026 = 24,8 %** de caída de mercado soportable. **Colchón de plazo:** 84,8 meses a P_objetivo (60,9 a P_max).
 
-**ICO (§8.5):** rentabilidad 15,0 + jurídico 11,4 + urbanístico 5,9 + financiero 7,4 + ubicación 10,2 + revalorización 6,0 + liquidez 9,4 + información 5,0 = **ICO 70**.
+**Competencia (M13):** ratio histórico del segmento (judicial · vivienda ocupada) = 42 % s/VT ⇒ P_adj_esperado = **63.840 €**. **RVC = 68.731/63.840 = 1,08** → alcanzable.
 
-**Semáforo:** ICO 70 ⇒ candidato Amarillo; regla SEM-OCU-02 (ocupación alta sin verificar) impone techo Amarillo; pesimista ≥ 0 ✓; RVC ≥ 0,90 ✓; ICI ≥ 45 ✓ ⇒ **🟡 AMARILLO con condiciones:** (1) verificación posesoria in situ antes de pujar, (2) certificado de deuda de comunidad, (3) provisión de desalojo P80 dotada. *Lectura de gestión: oportunidad real —23 % anualizado con 25 % de colchón— cuya conversión a Verde depende de dos gestiones de ~200 € y tres días. Exactamente el tipo de disciplina que el sistema debe imponer.*
+**ICO (§8.5):** rentabilidad 15,0 + jurídico 5,6 + urbanístico 4,5 + financiero 8,0 + ubicación 9,9 + revalorización 5,8 + liquidez 10,6 + información 5,0 = **ICO 64**.
+
+**Semáforo:** ICO 64 ⇒ candidato Amarillo (banda 60–74); la regla de ocupación alta sin verificar impone techo Amarillo; pesimista ≥ 0 ✓; RVC ≥ 0,90 ✓; ICI ≥ 45 ✓ ⇒ **🟡 AMARILLO con condiciones** (literales, en el orden en que las da el motor):
+(1) «Judicial: depósito del 5% y pago del remate en plazo legal sin condición suspensiva; cesión de remate solo por el ejecutante (§3.2)»,
+(2) «Solicitar certificado de deuda de la comunidad antes de la puja (deuda estimada al alza mientras tanto, P5)»,
+(3) «Verificar la situación posesoria in situ antes de pujar; dotar provisión de desalojo P80».
+*Lectura de gestión: oportunidad real —22,9 % anualizado con un 24,8 % de colchón de valor—. Las gestiones documentales (certificado de comunidad, visita) mejoran el ICI y el ICO, pero no bastan para Verde: Verde exige ICO ≥ 75 y ninguna dimensión en nivel Alto, y la ocupación sigue en Alto hasta verificar la posesión.*
+
+> **Qué cambió respecto a la versión anterior del §19 y por qué** (auditoría 5G.4, H3):
+>
+> - **C_F^P80: 86.800 € → 87.708 €.** Las partidas de la versión anterior sumaban 85.060 €, no los 86.800 € que declaraba. Además el motor estresa en P80 los atrasos (× 1,33, `atrasos.stress_p80`) y la tenencia (plazo P80, 18,2 meses), que el ejemplo dejaba en P50 (P5: la ausencia de datos penaliza).
+> - **Coste de capital: «≈» sin cálculo → 3.659 €**, con la definición de §9.1. El «82.500 €» de P_límite implicaba unos 1.992 € sin fórmula; el motor da **80.022 €**.
+> - **«TIR ≈ 23 %» era el ROI anualizado (22,9 %).** La TIR del motor, con flujos mensuales, es **33,9 %**. Se dan las dos cifras con su etiqueta; la diferencia sale del calendario de pagos de la reforma (auditoría E3).
+> - **VS_p 176.700 → 176.744 €, P_objetivo 60.100 → 60.011 €, P_ideal 51.100 → 51.317 €, P_max 69.100 → 68.731 €** (manda la rama pesimista, no el margen mínimo). La versión anterior redondeaba VS y C_F, y su m de P_ideal (34 %) no era 1,35 · 25 % = 33,75 %.
+> - **ICI 62 → 63, ICU 68 → 66, comparables 8 (CV 9 %) → 7 (CV 5,3 %), ICO 70 → 64**: son los valores del caso de test, que es el que el motor ejecuta y la suite vigila.
+> - **Escenarios y VE** recalculados con esos costes: pesimista +10.100 → +9.278 €, optimista +61.900 → +53.000 €, VE 34.300 → 32.361 €; MS_valor 25 % → 24,8 %.
+> - **Nuevos desde la 5H.1:** VAN al coste de capital y diferencial (§7.7, ADR-0017) y colchón de plazo (§9.5, ADR-0019).
+
 
 ---
 

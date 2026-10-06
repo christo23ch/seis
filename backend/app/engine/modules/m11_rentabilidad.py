@@ -86,6 +86,40 @@ def _tir_anual(flujos: list[float]) -> float:
     return (1 + r_mensual) ** 12 - 1
 
 
+def _van(flujos: list[float], tasa_anual: float) -> float:
+    """VAN de los flujos mensuales a una tasa EFECTIVA anual (Fase 5H.1-A, ADR-0017).
+
+    Se descuenta al mes con `(1 + tasa)^(1/12) − 1`: la misma equivalencia con la que
+    `_tir_anual` anualiza, así que el VAN es 0 exactamente cuando la tasa es la TIR.
+    """
+    r = (1 + tasa_anual) ** (1 / 12) - 1
+    return sum(f / (1 + r) ** t for t, f in enumerate(flujos))
+
+
+def colchon_plazo(p: float, costes: CostesResultado, vs_p: float, inp: AnalisisInput,
+                  cc_anual: float) -> float | None:
+    """Colchón de plazo (§9.5, Fase 5H.1-C, ADR-0019): meses EXTRA que aguanta la operación,
+    a precio `p`, antes de que el beneficio base llegue a cero.
+
+        B(P) / (tenencia_mensual + intereses_mensuales(P) + cc · capital_propio(P) / 12)
+
+    con B(P) = VS_p − I(P, C_F^P50) (escenario base, no el pesimista), capital propio como
+    en el precio límite (D5, ADR-0018) y, con hipoteca, los intereses del préstamo que cada
+    mes de más genera. Sin beneficio ⇒ 0; sin coste mensual que lo agote ⇒ `None`.
+    Informativo: no entra en el ICO, el semáforo ni la escalera.
+    """
+    f = inp.financiacion
+    i_total = fiscal.inversion(p, costes, costes.c_f_p50)
+    beneficio = vs_p - i_total
+    financiado = f.ltv * p if f.tipo == "hipoteca" else 0.0
+    intereses = financiado * (f.interes_anual_pct / 100.0) / 12.0
+    capital_propio = max(0.0, i_total - financiado)
+    mensual = costes.tenencia_mensual + intereses + cc_anual * capital_propio / 12.0
+    if mensual <= 0:
+        return None
+    return round(max(0.0, beneficio) / mensual, 1)
+
+
 def construir_escenarios(inp: AnalisisInput, params, hechos: dict, val: ValoracionResultado,
                          costes: CostesResultado, vs_p: float, banda_ra: str,
                          potencial: int, ici: int) -> list[ParametrosEscenario]:
@@ -132,6 +166,10 @@ def evaluar(p: float, escenarios: list[ParametrosEscenario], costes: CostesResul
     flujos = _flujos_detallados(p, esc_base, costes, d, n)
     tir = _tir_anual(flujos)
     ve = sum(o.probabilidad * o.beneficio for o in outs)
+    # Fase 5H.1-A: mismos flujos, escenario y precio que la TIR; solo informativos.
+    cc = float(params.get("capital.coste_capital_anual"))
+    van_cc = round(_van(flujos, cc), 2)
+    diferencial_cc = round((round(tir, 4) - cc) * 100, 2)
 
     # Métricas rentista (si aplica)
     y_neta = dscr = coc = None
@@ -152,4 +190,5 @@ def evaluar(p: float, escenarios: list[ParametrosEscenario], costes: CostesResul
         precio_evaluado=round(p, 2), inversion_total=base.coste_total, beneficio=base.beneficio,
         roi=base.roi, roi_anualizado=base.roi_anualizado, tir_anual=round(tir, 4),
         valor_esperado=round(ve, 2), escenarios=outs, y_neta=y_neta, dscr=dscr, cash_on_cash=coc,
+        van_coste_capital=van_cc, diferencial_tir_coste_capital=diferencial_cc,
     )
