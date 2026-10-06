@@ -61,6 +61,11 @@ class Subasta(Base):
     fecha_cierre: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     estado: Mapped[str] = mapped_column(String(16), default="abierta", index=True)
     subastas_desiertas_previas: Mapped[int] = mapped_column(SmallInteger, default=0)
+    # Fase 5J-1 (ADR-0022, migración 0016): datos del procedimiento declarados en el
+    # alta. Anulables: NULL = fila anterior a la fase o subasta captada sin ese dato.
+    procedimiento: Mapped[str | None] = mapped_column(String(16))
+    regimen_judicial: Mapped[str | None] = mapped_column(String(10))
+    cantidad_reclamada: Mapped[float | None] = mapped_column(Numeric(14, 2))
     datos_brutos: Mapped[dict] = mapped_column(PortableJSON, default=dict)
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     activos: Mapped[list["Activo"]] = relationship(back_populates="subasta")
@@ -84,6 +89,8 @@ class Activo(Base):
     anio_construccion: Mapped[int | None] = mapped_column(SmallInteger)
     estado_conservacion: Mapped[str | None] = mapped_column(String(16))
     es_vivienda_habitual: Mapped[bool | None] = mapped_column(Boolean)
+    # Fase 5J-1: «si» | «no» | «no_consta»; NULL = fila anterior a la fase (0016).
+    vivienda_habitual_ejecutado: Mapped[str | None] = mapped_column(String(10))
     vpo: Mapped[bool] = mapped_column(Boolean, default=False)
     atributos: Mapped[dict] = mapped_column(PortableJSON, default=dict)
     subasta: Mapped[Subasta] = relationship(back_populates="activos")
