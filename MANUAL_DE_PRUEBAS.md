@@ -234,6 +234,39 @@ Pulsa **Guardar análisis** → detalle con ocho pestañas. La pestaña **Vista 
 2. **Motor de reglas** → en `SEM-EJEC-01` pulsa *Nueva versión*, cambia el texto de la condición, justifica y publica: el historial muestra la vigencia cerrada y los nuevos análisis usan la redacción v2.
 3. **Administración** → crea un usuario rol **lector**; entra con él: puede consultar, pero *Nueva inversión* y las ediciones devuelven acceso denegado (403).
 
+### Pruebas del alta mínima y de la validación guiada (Fase 5I)
+
+En **Nueva inversión**, con un usuario analista o administrador:
+
+1. **Alta mínima.** Rellena solo los obligatorios, marcados con «*»: valor de subasta (paso 1),
+   superficie (2), municipio (5) y el €/m² del comparable (6). Avanza con «Siguiente» hasta
+   **Calcular decisión**: aparece el resultado, sin 422. **Guardar análisis** lleva al detalle.
+2. **Coma decimal y miles.** Escribe «152.000» en el valor de subasta, «82,5» en la superficie y
+   «2.293» en el €/m²: el detalle guarda 152000, 82,5 y 2293. En tasas y coordenadas el punto
+   es decimal: «3.5» de interés es 3,5.
+3. **Valores por defecto.** Los campos con valor del contrato lo muestran escrito (depósito 5,
+   indicadores 50…); si lo vacías, el marcador dice «Por defecto: …». Los que el motor estima
+   (atrasos, tenencia, ITP, costes fijos, baremos de reforma) quedan vacíos con su valor T3 en
+   la ayuda.
+4. **Validación guiada.** Pulsa «Siguiente» con el valor de subasta vacío: el paso no avanza,
+   aparece «Campo obligatorio» en rojo bajo el campo, un aviso arriba y el foco va al campo.
+   Escribe «ochenta» en la superficie (paso 2): «Introduzca un número». Añade un comparable sin
+   €/m² (paso 6): los dos se marcan y el foco va al primero.
+5. **Depósito en euros.** En «Depósito en» elige **Importe (€)** y escribe 7.600 con un valor de
+   subasta de 152.000: la ayuda dice «7.600 € = 5 % del valor de subasta». Un importe mayor que
+   el valor de subasta da «No puede superar el valor de subasta».
+6. **Estado «No consta».** Viene seleccionado por defecto. El resultado es el de «malo»; el
+   informe dice «estado de conservación **no consta**: se asume «malo» (P5)…» y el checklist
+   lleva el ítem de verificación, pendiente (ADR-0020).
+7. **Coordenadas desde la provincia.** En el paso 5 elige una provincia con lat/lng vacías: se
+   rellenan con las de la capital y la etiqueta dice «aproximada (provincia)». Si ya habías
+   escrito una latitud, no se toca. Volver a «Seleccione…» quita las aproximadas.
+8. **Antigüedad.** En el campo «Antigüedad (meses)» de un comparable, el valor no baja de 0 con
+   la flecha ↓ (es un campo de texto); «-1» da «No puede ser negativo».
+
+Lo recorren las e2e `frontend/e2e/nueva-inversion.mjs` y `validacion-alta.mjs`, que lanza
+`e2e/correr_simulaciones.sh`.
+
 ### Pruebas de simulaciones (pestaña **Simulaciones** del detalle)
 
 Parte del análisis guardado arriba. Encima de las pestañas, el aviso debe decir **«Configuración original del análisis»**.

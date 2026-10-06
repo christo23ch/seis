@@ -10,8 +10,21 @@
 
 ## Frentes abiertos
 
-**Actualizado:** 2026-10-04 · **Rama de trabajo:** `checkpoint/5f6-simulaciones-informes` · **Suite (SQLite):** 965 passed, 18 skipped, 0 failed (9 de los omitidos son las variantes DejaVu de 5G.1/5G.2, que sí corren en CI) · **E2E:** alta y simulaciones en la CI (job `e2e`, 5G.4-C)
-**Última fase cerrada:** 5H.1 (VAN y diferencial, coste de capital solo sobre el capital propio, colchón de plazo, especificación coherente con el motor; ADR-0017 a 0019) · **Siguiente:** 5H.2, los puntos de la auditoría que SÍ cambian el caso dorado (`docs/AUDITORIA_MOTOR_ESPECIFICACION.md` §E7) · **Puerta: ABIERTA**
+**Actualizado:** 2026-10-06 · **Rama de trabajo:** `fase/5i-formulario-alta` (sale de `checkpoint/5f6-simulaciones-informes`, `dc812ef`; publicada, sin PR) · **Suite (SQLite):** 1002 passed, 18 skipped, 0 failed · **Frontend:** 54 tests unitarios (vitest, `npm test`) · **E2E:** alta, simulaciones, alta de inversión y validación guiada en la CI (job `e2e`)
+**Última fase cerrada:** 5I (formulario de alta: el alta con opcionales vacíos, validación guiada, depósito en importe, estado «No consta», coordenadas desde la provincia; ADR-0020) · **Siguiente:** 5H.2, los puntos de la auditoría que SÍ cambian el caso dorado (`docs/AUDITORIA_MOTOR_ESPECIFICACION.md` §E7) · **Puerta: ABIERTA**
+
+### 🟡 Requisito de PRODUCTO registrado, sin implementar: perfil de inversor por cuestionario
+
+Pedido por el usuario en la prueba manual del alta (2026-10-06). **No se implementa todavía:** se
+diseñará junto con la rentabilidad del ICO (auditoría, punto E8). Nota del Vault:
+[[feat-perfil-inversor-cuestionario]].
+
+- Una pestaña de usuario con preguntas sobre cómo afronta las inversiones, el capital
+  disponible y el riesgo que asume, que **determinan el perfil recomendado**.
+- Ese perfil fija cómo se ajusta una inversión al usuario: **la misma inversión al mismo precio
+  puede puntuar distinto para dos perfiles**.
+- En «Datos generales» del alta aparece el **perfil recomendado, con opción de cambiarlo**.
+- El informe puede incluir **los perfiles que conviene simular** para la subasta analizada.
 
 ### Estado a 2026-09-30
 
@@ -51,6 +64,11 @@ publicar. Para el hash vigente, `git log --oneline -1`.
 |---|---|---|
 | Simulaciones e informes (`e2e/correr_simulaciones.sh`) | `bash e2e/correr_simulaciones.sh` | `CHROMIUM_PATH="C:/Program Files/Google/Chrome/Application/chrome.exe" bash e2e/correr_simulaciones.sh` |
 | Alta real (`e2e/correr.sh`) | `bash e2e/correr.sh` | `CHROMIUM_PATH="C:/Program Files/Google/Chrome/Application/chrome.exe" bash e2e/correr.sh` |
+
+Desde la 5I, `correr_simulaciones.sh` ejecuta además `frontend/e2e/nueva-inversion.mjs` (alta de
+una inversión por el formulario con solo los obligatorios) y `frontend/e2e/validacion-alta.mjs`
+(validación guiada), sobre la misma pila. Los tests unitarios del frontend: `cd frontend && npm
+test`.
 
 Los dos lanzadores siguen el mismo patrón desde 5G.4-C: puertos propios (8010/3010 simulaciones,
 8020/3020 alta), una base SQLite en un temporal fuera del repo, compilan el frontend en
@@ -376,8 +394,9 @@ Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VER
    perfil: en un análisis de otro perfil la UI no puede señalarlos.
 8. **Fechas sin zona horaria con SQLite** (en PostgreSQL sí la llevan): el navegador las lee
    como hora local.
-9. **Los 422 de pydantic llegan en inglés** y con `detail` como lista; el frontend los
-   convierte a texto (`textoDeDetalle`) pero el mensaje es poco legible.
+9. **Los 422 de pydantic llegan en inglés** y con `detail` como lista. *Resuelta en el alta
+   (5I-B)*: `traducir422` los lleva a cada campo en español. Sigue abierta en el resto de
+   pantallas, que usan `textoDeDetalle`.
 10. `GET /analisis/{id}/informe.pdf` sigue existiendo por compatibilidad aunque la UI ya no lo
     ofrece. No es un defecto; conviene decidir si se retira.
 11. [VERIFICAR: si una clave editable faltara en el árbol vigente, el catálogo o la validación
@@ -409,11 +428,45 @@ Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VER
 21. **Supuestos revisables del colchón de plazo** (ADR-0019): beneficio base y no pesimista, y
     sin descontar el coste de oportunidad del plazo ya previsto. Si se quiere una lectura más
     prudente, el ADR describe la alternativa.
+22. *(Resuelta en 5I.1-A: `ComparableInput.meses_antiguedad` es `ge=0` y finita; un valor
+    negativo, `inf` o `nan` es un 422 con el `loc` del campo. Ver 26 y 27.)*
+23. **`financiacion.ltv` vacío con hipoteca se envía como ausente y el motor usa 0 %**: igual que
+    antes de 5I (entonces el vacío se convertía en 0). Valorar exigirlo cuando el tipo sea
+    hipoteca.
+24. **La coordenada aproximada no se guarda como tal** (5I-E): se persiste como número, y el mapa
+    pinta el marcador en la capital como si fuera la ubicación real. No afecta a ningún cálculo
+    (el motor no usa lat/lng); para distinguirlo haría falta un indicador persistido (con
+    migración) o una nota junto al mapa.
+25. **Callejero sin implementar** (5I-E): geocodificar la dirección con una API oficial
+    (CartoCiudad o Catastro, nunca scraping) para tener la coordenada del inmueble y no la de
+    la capital. El guion `frontend/scripts/coordenadas-provincias.mjs` ya usa CartoCiudad.
+26. **Simular un análisis guardado con una antigüedad de comparable negativa da 409**
+    (5I.1-A, aceptado por el responsable). Motivo: la simulación reconstruye la entrada
+    guardada con el contrato (`simulacion_service.py`, `_reconstruir_input`), y desde `ge=0`
+    esa entrada ya no valida (`ReconstruccionInvalidaError` ⇒ 409). Afecta a cualquier valor
+    negativo que llegara a guardarse: solo −6 exacto no se guardaba (división por cero en M03);
+    por debajo de −6 el peso salía negativo y el análisis podía guardarse. **La base de
+    desarrollo no tiene ninguno**
+    (comprobado en solo lectura el 2026-10-06: 1 análisis, 7 comparables usados, 0 negativos) y
+    no hay producción. **Salida si aparece uno:** reanalizar con la antigüedad corregida, que crea
+    un análisis nuevo (los snapshots son inmutables, P1). No se «corrige» al reconstruir: poner 0
+    en silencio cambiaría el resultado de un snapshot.
+27. **Un JSON no estándar con `NaN` o `Infinity` en un campo cuya validación falla da 500, no
+    422.** FastAPI incluye el valor recibido (`input`) en el 422 y `nan`/`inf` no se pueden
+    serializar a JSON, así que falla el propio manejador del error (medido en 5I.1-A con
+    `subasta.valor_subasta = NaN`; no hay manejador propio de `RequestValidationError`). Un
+    float sin restricciones los acepta y no llega a haber 422. Efecto de 5I.1-A: en
+    `meses_antiguedad`, `inf`/`nan` por HTTP pasan de aceptarse en silencio a este 500. Solo con
+    clientes que emiten JSON no estándar (p. ej. `json.dumps` de Python); un navegador envía
+    `null`. Salida: un manejador de `RequestValidationError` que convierta los `input` no
+    finitos en texto.
 
 **Frontend**
 
-1. **Sin tests unitarios y sin ESLint**: no hay configuración de ESLint y
-   `next.config.mjs` tiene `eslint.ignoreDuringBuilds: true`. Lo protegen `tsc` y las e2e.
+1. **Sin ESLint**: no hay configuración de ESLint y `next.config.mjs` tiene
+   `eslint.ignoreDuringBuilds: true`. *Tests unitarios: desde 5I hay vitest* (`npm test`, en la
+   CI), de momento solo para la lógica pura del alta (`lib/formulario.ts`, `lib/schema.ts`,
+   `lib/errores-validacion.ts`, `lib/coordenadas.ts`, `lib/provincias.ts`).
 2. **`Button` no anuncia `aria-busy`** en su estado de carga (`components/ui.tsx`).
 3. **Valores de parámetro en bruto** («0.015», con punto) en el editor y la comparación
    (`String(v)`); el editor acepta coma al escribir, pero no la usa al mostrar.
@@ -452,11 +505,28 @@ Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VER
    de prueba no tenía deriva de conocimiento.
 4. [VERIFICAR: qué son los 9 tests omitidos en SQLite — en septiembre eran 8, los exclusivos de
    PostgreSQL.]
-5. **Carrera en el paso 4 de `simulaciones.mjs`** (intermitente, anterior a la 5H.1): tras ver
-   «En uso» en la lista, lee el aviso de configuración sin esperar a que su consulta se
-   refresque. Falló una vez en local en la 5H.1-B y pasó al repetir. Corrección propuesta:
-   esperar con `waitForFunction` hasta que el aviso diga «Mostrando la simulación», como ya
-   hace el paso 6.
+5. *(Resuelta en 5I.1-B.)* **Carrera en el paso 4 de `simulaciones.mjs`**: leía el aviso de
+   configuración nada más ver «En uso», sin esperar a que su consulta se refrescara. Ahora espera
+   a que el aviso diga lo esperado (`avisoQueDiga`). Se corrigieron además las demás carreras de
+   la misma clase: `emitir` esperaba un `[data-markdown]` que ya existía del informe anterior; el
+   paso 9 comprobaba la lista y los informes del lector sin esperar a que cargaran (y su
+   comprobación negativa podía pasar sin mirar nada); el paso 2 leía `isVisible()` antes de que
+   llegara el catálogo del editor; el paso 10 podía medir cero pestañas; y `pestana()` esperaba
+   400 ms fijos en vez de al contenido cargado. En las e2e de la 5I (`validacion-alta.mjs`,
+   `nueva-inversion.mjs`), las lecturas del foco y de la marca «aproximada» ahora esperan.
+   El paso 10 exige ahora al menos 8 pestañas medidas y `emitir` comprueba el 201 antes de leer
+   el id del informe. Verificación: `e2e/correr_simulaciones.sh` (que ejecuta, sobre la misma
+   pila, `simulaciones.mjs`, `nueva-inversion.mjs` y `validacion-alta.mjs`) 5 veces seguidas en
+   local con la versión final: 5/5 en verde, 87 comprobaciones de navegador en cada una
+   (2026-10-06). Una tanda previa, antes de corregir el foco de `validacion-alta.mjs`, dio 4/5:
+   el fallo fue esa lectura del foco, no `simulaciones.mjs`.
+6. **`test_migraciones.py` falló una vez en 5I-E por un cierre anómalo del subproceso de
+   Alembic en Windows** (código `0xC000070A`, no un fallo de esquema): pasó en las dos
+   repeticiones y en la suite siguiente; esta fase no añade migraciones. Vigilar si se repite.
+7. **La validación del importe del depósito va en dos tiempos** (5I-C): Zod no ejecuta el
+   refinamiento del objeto `subasta` mientras otro de sus campos falla, así que «No puede
+   superar el valor de subasta» aparece tras corregir el valor. Aceptado y documentado en
+   `lib/schema.ts`.
 
 **Entorno**
 

@@ -1,6 +1,7 @@
 """M05 — Estimación de reforma (§6.5). Paramétrica por baremos €/m² versionados."""
 from __future__ import annotations
 
+from app.engine.conservacion import estado_efectivo
 from app.engine.contracts import AnalisisInput, ReformaResultado
 
 
@@ -10,7 +11,7 @@ def ejecutar(inp: AnalisisInput, params, hechos: dict) -> ReformaResultado:
     nivel_perfil = params.get(f"perfiles.{inp.perfil}.nivel_reforma_defecto", "null")
 
     nivel = r.nivel_override or (nivel_perfil if nivel_perfil not in (None, "null") else None) \
-        or nivel_estado[inp.activo.estado_conservacion]
+        or nivel_estado[estado_efectivo(inp.activo.estado_conservacion, params)]   # 5I-D: «No consta»
 
     coste_m2 = r.coste_m2_override if r.coste_m2_override is not None \
         else float(params.get(f"reforma.baremos_m2.{nivel}"))

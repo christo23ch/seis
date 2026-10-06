@@ -1,6 +1,6 @@
 "use client";
 import { Loader2 } from "lucide-react";
-import { createContext, useContext, useEffect, useId, useRef, useState } from "react";
+import { cloneElement, createContext, isValidElement, useContext, useEffect, useId, useRef, useState } from "react";
 
 const cx = (...c: (string | false | undefined)[]) => c.filter(Boolean).join(" ");
 
@@ -38,10 +38,10 @@ export const Label = ({ className, ...p }: React.LabelHTMLAttributes<HTMLLabelEl
   <label className={cx("mb-1 block text-[13px] font-medium text-slate-600", className)} {...p} />
 );
 export const Input = ({ className, ...p }: React.InputHTMLAttributes<HTMLInputElement>) => (
-  <input className={cx("w-full rounded-md border border-borde-control bg-white px-3 py-2 text-sm placeholder:text-slate-400 focus:border-primario", className)} {...p} />
+  <input className={cx("w-full rounded-md border border-borde-control bg-white px-3 py-2 text-sm placeholder:text-slate-400 focus:border-primario aria-[invalid=true]:border-sem-rojo", className)} {...p} />
 );
 export const Select = ({ className, ...p }: React.SelectHTMLAttributes<HTMLSelectElement>) => (
-  <select className={cx("w-full rounded-md border border-borde-control bg-white px-3 py-2 text-sm", className)} {...p} />
+  <select className={cx("w-full rounded-md border border-borde-control bg-white px-3 py-2 text-sm aria-[invalid=true]:border-sem-rojo", className)} {...p} />
 );
 export const Textarea = ({ className, ...p }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => (
   <textarea className={cx("w-full rounded-md border border-borde-control bg-white px-3 py-2 font-cifra text-xs", className)} {...p} />
@@ -57,13 +57,38 @@ export const Check = ({ label, className, ...p }: React.InputHTMLAttributes<HTML
   </label>
 );
 
-export function Campo({ label, error, children, ayuda }: { label: string; error?: string; ayuda?: string; children: React.ReactNode }) {
+/** Campo con etiqueta, ayuda y error. Fase 5I-B: la etiqueta se asocia al
+ * control (`htmlFor`), los obligatorios llevan marca visible (`*`, oculta al
+ * lector, que oye `aria-required`) y el control recibe `aria-invalid` y
+ * `aria-describedby` hacia su error y su ayuda. El hijo debe ser UN control que
+ * acepte `id` y `aria-*` (`Input`, `Select`); lo que traiga propio se respeta:
+ * su `id` y su `aria-describedby` se conservan y se combinan. */
+export function Campo({ label, error, children, ayuda, obligatorio }:
+  { label: string; error?: string; ayuda?: string; obligatorio?: boolean; children: React.ReactNode }) {
+  const base = useId();
+  const hijo = isValidElement<Record<string, unknown>>(children) ? children : null;
+  const idControl = (hijo?.props.id as string | undefined) ?? `${base}-control`;
+  const idError = `${base}-error`;
+  const idAyuda = `${base}-ayuda`;
+  const describe = [hijo?.props["aria-describedby"] as string | undefined,
+                    error ? idError : undefined, ayuda ? idAyuda : undefined].filter(Boolean).join(" ");
+  const control = hijo
+    ? cloneElement(hijo, {
+        id: idControl,
+        "aria-invalid": error ? true : hijo.props["aria-invalid"],
+        "aria-describedby": describe || undefined,
+        "aria-required": obligatorio || hijo.props["aria-required"],
+      })
+    : children;
   return (
     <div>
-      <Label>{label}</Label>
-      {children}
-      {ayuda && !error && <p className="mt-1 text-[12px] text-slate-400">{ayuda}</p>}
-      {error && <p className="mt-1 text-[12px] text-sem-rojo">{error}</p>}
+      <Label htmlFor={hijo ? idControl : undefined}>
+        {label}
+        {obligatorio && <span className="ml-0.5 text-sem-rojo" aria-hidden="true">*</span>}
+      </Label>
+      {control}
+      {error && <p id={idError} className="mt-1 text-[12px] text-sem-rojo" data-error-campo="">{error}</p>}
+      {ayuda && <p id={idAyuda} className="mt-1 text-[12px] text-slate-500">{ayuda}</p>}
     </div>
   );
 }
@@ -86,8 +111,17 @@ export const Spinner = () => (
   </div>
 );
 
-export function ErrorBox({ mensaje }: { mensaje: string }) {
-  return <div className="rounded-md border border-sem-rojo/30 bg-sem-rojobg px-4 py-3 text-sm text-sem-rojo">{mensaje}</div>;
+/** Caja de error. `role="alert"` por defecto (un fallo que acaba de ocurrir se
+ * anuncia); un estado persistente e informativo pasa `rol="status"`. */
+export function ErrorBox({ mensaje, children, rol = "alert", ...p }:
+  { mensaje: string; children?: React.ReactNode; rol?: "alert" | "status"; ref?: React.Ref<HTMLDivElement> }
+  & React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div role={rol} {...p} className="rounded-md border border-sem-rojo/30 bg-sem-rojobg px-4 py-3 text-sm text-sem-rojo">
+      {mensaje}
+      {children}
+    </div>
+  );
 }
 
 /* Tabs mínimas controladas */

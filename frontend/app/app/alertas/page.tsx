@@ -114,7 +114,7 @@ function PestanaPreferencias() {
   return (
     <div className="space-y-5">
       {!pref.comunicaciones_activas && (
-        <ErrorBox mensaje="Las comunicaciones están desactivadas (se dio de baja). Ninguna alerta se enviará." />
+        <ErrorBox rol="status" mensaje="Las comunicaciones están desactivadas (se dio de baja). Ninguna alerta se enviará." />
       )}
       <Card>
         <CardHeader><CardTitle>Canales y modo de envío</CardTitle></CardHeader>

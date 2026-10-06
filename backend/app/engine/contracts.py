@@ -9,6 +9,10 @@ from pydantic import BaseModel, Field, model_validator
 Tipologia = Literal["vivienda", "garaje", "trastero", "local", "oficina", "nave",
                     "suelo_urbano", "suelo_rustico", "hotel", "singular"]
 EstadoConservacion = Literal["ruina", "malo", "regular", "bueno", "reformado"]
+# Fase 5I-D (ADR-0020): el inmueble analizado admite además «desconocido» («No
+# consta»); el motor usa entonces el estado de `conservacion.desconocido_usa`. Los
+# comparables NO: un testigo sin estado no se puede normalizar.
+EstadoActivo = Literal["ruina", "malo", "regular", "bueno", "reformado", "desconocido"]
 EstadoOcupacion = Literal["desconocida", "vacio", "propietario", "precario",
                           "arrendado_posterior", "arrendado_anterior", "renta_antigua"]
 Semaforo = Literal["verde", "amarillo", "naranja", "rojo"]
@@ -21,7 +25,7 @@ Dimension = Literal["juridico", "documental", "ocupacion", "urbanistico", "tecni
 class ActivoInput(BaseModel):
     tipologia: Tipologia = "vivienda"
     superficie_m2: float = Field(gt=0)
-    estado_conservacion: EstadoConservacion = "regular"
+    estado_conservacion: EstadoActivo = "regular"
     anio_construccion: int | None = None
     direccion: str | None = None
     municipio: str = ""
@@ -43,6 +47,11 @@ class SubastaInput(BaseModel):
     puja_minima: float | None = None
     tramo: float | None = None
     deposito_pct: float = 0.05
+    # Fase 5I-C: importe del depósito tal como se escribió, si se dio en euros. Solo
+    # se conserva para trazabilidad, en la entrada guardada del análisis (no en la
+    # tabla `subasta`): el formulario lo convierte a `deposito_pct` y NINGÚN módulo
+    # lo lee (`tests/test_deposito_importe_5i.py` lo vigila).
+    deposito_importe: float | None = Field(default=None, gt=0, allow_inf_nan=False)
     fecha_cierre: date | None = None
     horas_hasta_cierre: float | None = None            # si se conoce con precisión
     subastas_desiertas_previas: int = 0
@@ -86,7 +95,10 @@ class ComparableInput(BaseModel):
     precio_m2: float = Field(gt=0)
     estado: EstadoConservacion = "reformado"
     origen: Literal["portal_oferta", "testigo", "notarial", "registro"] = "testigo"
-    meses_antiguedad: float = 0.0
+    # Fase 5I.1-A: no negativa y finita. M03 pondera con 1/(1 + meses/6): con −3 el
+    # testigo pesaba el doble que uno de hoy, con −6 la API daba 500 (división por cero)
+    # y con `inf` pesaba 0 (todos los testigos con `inf` ⇒ suma de pesos 0).
+    meses_antiguedad: float = Field(default=0.0, ge=0, allow_inf_nan=False)
     superficie_m2: float | None = None
 
 

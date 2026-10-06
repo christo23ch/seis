@@ -88,11 +88,27 @@ async function sesion(cred, ancho, { fuenteAncha = false } = {}) {
   await p.waitForURL((u) => u.pathname.startsWith("/app"), { timeout: 20000 });
   return p;
 }
+/** Abre una pestaña del detalle y espera a que su contenido esté CARGADO (Fase 5I.1-B):
+ * el botón queda seleccionado (`border-primario`) y no queda ningún indicador de carga
+ * (`.animate-spin`) en la página. Antes eran 400 ms fijos, y una medida o una lectura
+ * podía caer sobre el spinner de la lista. */
 const pestana = async (p, nombre) => {
-  await p.getByRole("button", { name: nombre, exact: true }).click();
-  await p.waitForTimeout(400);
+  const boton = p.getByRole("button", { name: nombre, exact: true });
+  await boton.click();
+  await p.waitForFunction((el) => el.classList.contains("border-primario"), await boton.elementHandle(),
+    { timeout: 15000 });
+  await p.waitForFunction(() => !document.querySelector(".animate-spin"), null, { timeout: 20000 }).catch(() => {});
 };
 const aviso = async (p) => plano(await p.locator('section[aria-label="Configuración mostrada"]').innerText());
+/** Espera (sin pausas fijas) a que el aviso de configuración contenga `texto`. Fase 5I.1-B:
+ * el aviso sale de OTRA consulta que se refresca después de la acción; leerlo nada más ver
+ * el efecto en la lista era una carrera (falló en 5H.1-B y en 5I-D). Si no llega, devuelve
+ * el texto actual para que el `comprobar` falle con un mensaje legible. */
+async function avisoQueDiga(p, texto, timeout = 15000) {
+  await p.waitForFunction((t) => document.querySelector('section[aria-label="Configuración mostrada"]')
+    ?.innerText.replace(/\s+/g, " ").includes(t), texto, { timeout }).catch(() => {});
+  return aviso(p);
+}
 const fila = (p, id) => p.locator(`[data-fila="${id}"]:visible`);
 const panelCmp = (p) => p.locator('section[aria-label="Comparación con el original"]');
 const detalleInf = (p) => p.locator('section[aria-label="Informe oficial"]');
@@ -110,8 +126,14 @@ async function emitir(p) {
     p.waitForResponse((x) => x.request().method() === "POST" && /\/informes$/.test(new URL(x.url()).pathname)),
     dlg.getByRole("button", { name: "Emitir" }).click(),
   ]);
+  if (r.status() !== 201) return { texto, status: r.status(), informe: await r.json().catch(() => ({})) };
+  const informe = await r.json();
+  // El detalle del informe ya mostraba el ANTERIOR (y su [data-markdown]) desde la primera
+  // emisión: se espera a que el título sea el del nuevo, como en el paso 7.
+  await p.waitForFunction((id) => document.querySelector('section[aria-label="Informe oficial"] h3')
+    ?.innerText.includes(id), id8(informe.id), { timeout: 15000 });
   await detalleInf(p).locator("[data-markdown]").waitFor({ timeout: 15000 });
-  return { texto, status: r.status(), informe: await r.json() };
+  return { texto, status: r.status(), informe };
 }
 
 const ids = {};
@@ -147,6 +169,9 @@ try {
   // 2. Nueva simulación con coma decimal.
   await pestana(p, "Simulaciones");
   await p.getByRole("button", { name: "Nueva simulación" }).click();
+  // El editor pinta solo un spinner hasta que llega el catálogo: sin esta espera,
+  // `isVisible()` podía dar `false` antes de tiempo y el clic CERRABA un grupo abierto.
+  await p.locator('section[aria-label="Nueva simulación"]').waitFor({ timeout: 15000 });
   const campo = p.locator(`[data-parametro="${PARAMETRO}"] input`);
   if (!(await campo.isVisible())) {
     await p.locator('section[aria-label="Nueva simulación"] details[data-grupo]',
@@ -179,7 +204,9 @@ try {
   await dlg.getByRole("button", { name: "Validar" }).click();
   await esperarTextoEn(p, `[data-fila="${ids.simulacion}"]`, "En uso");
   comprobar(true, "4. la simulación queda «En uso» en la lista");
-  comprobar((await aviso(p)).includes(`Mostrando la simulación ${id8(ids.simulacion)}`), "4. el aviso muestra la simulación");
+  const avisoPaso4 = await avisoQueDiga(p, `Mostrando la simulación ${id8(ids.simulacion)}`);
+  comprobar(avisoPaso4.includes(`Mostrando la simulación ${id8(ids.simulacion)}`),
+    `4. el aviso muestra la simulación («${avisoPaso4.slice(0, 80)}»)`);
 
   // 5. Informe oficial desde la simulación.
   await pestana(p, "Informes oficiales");
@@ -193,7 +220,8 @@ try {
 
   // 6. Volver a la original y emitir otro.
   await p.getByRole("button", { name: "Volver a la configuración original" }).click();
-  await p.waitForFunction(() => document.querySelector('section[aria-label="Configuración mostrada"]')?.innerText.includes("original del análisis"), null, { timeout: 15000 });
+  const avisoPaso6 = await avisoQueDiga(p, "original del análisis");
+  comprobar(avisoPaso6.includes("original del análisis"), `6. el aviso vuelve a la original («${avisoPaso6.slice(0, 60)}»)`);
   const e2 = await emitir(p);
   comprobar(e2.texto.includes("original del análisis"), "6. la confirmación dice «original del análisis»");
   ids.informe2 = e2.informe.id;
@@ -226,6 +254,9 @@ try {
   const l = pagina = await sesion(LECTOR, 1440);
   await l.goto(`${FRONTEND}/app/inversiones/${ids.analisis}`, { waitUntil: "networkidle" });
   await pestana(l, "Simulaciones");
+  // Se ESPERA a la fila: `isVisible()` no espera, y la comprobación negativa de abajo
+  // (ningún botón de escritura) pasaría sin mirar nada si la lista aún no se ha pintado.
+  await fila(l, ids.simulacion).waitFor({ timeout: 15000 }).catch(() => {});
   comprobar(await fila(l, ids.simulacion).isVisible(), "9. el lector ve la lista de simulaciones");
   comprobar((await l.getByRole("button", { name: /Nueva simulación|Validar|Descartar|Usar esta configuración|Volver a la/ }).count()) === 0,
     "9. el lector no ve ningún botón de escritura en la pestaña ni en el aviso");
@@ -233,15 +264,21 @@ try {
   await panelCmp(l).locator(`[data-comparacion="${PARAMETRO}"]`).waitFor({ timeout: 15000 });
   comprobar(true, "9. el lector abre la comparación");
   await pestana(l, "Informes oficiales");
-  comprobar((await l.getByRole("button", { name: "Emitir informe oficial" }).count()) === 0, "9. el lector no ve «Emitir informe oficial»");
+  // Primero, que el histórico haya llegado (dos informes); después, lo que NO debe verse.
+  await l.waitForFunction(() => [...document.querySelectorAll("[data-informe]")].filter((e) => e.offsetParent).length === 2,
+    null, { timeout: 15000 }).catch(() => {});
   comprobar((await l.locator("[data-informe]:visible").count()) === 2, "9. el lector ve los 2 informes");
+  comprobar((await l.getByRole("button", { name: "Emitir informe oficial" }).count()) === 0, "9. el lector no ve «Emitir informe oficial»");
   await l.context().close();
 
   // 10. Sin desbordamiento horizontal, pestaña a pestaña y con los paneles abiertos.
   for (const { ancho, fuenteAncha } of [{ ancho: 390 }, { ancho: 1440 }, { ancho: 390, fuenteAncha: true }]) {
     const v = pagina = await sesion(ADMIN, ancho, { fuenteAncha });
     await v.goto(`${FRONTEND}/app/inversiones/${ids.analisis}`, { waitUntil: "networkidle" });
+    // Sin pestañas pintadas, el bucle no mediría nada y el paso daría verde vacío.
+    await v.locator("button.border-b-2").first().waitFor({ timeout: 15000 });
     const nombres = await v.locator("button.border-b-2").allInnerTexts();
+    comprobar(nombres.length >= 8, `10. a ${ancho} px hay ${nombres.length} pestañas que medir`);
     const malas = [];
     for (const n of nombres) {
       await pestana(v, n.trim());

@@ -7,7 +7,9 @@ import type {
 const BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") + "/api/v1";
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string) { super(message); }
+  /** `detalle`: el `detail` del backend sin resumir (Fase 5I-B). En un 422 es la
+   * lista de errores de Pydantic, que el alta traduce campo a campo. */
+  constructor(public status: number, message: string, public detalle?: unknown) { super(message); }
 }
 
 export const getToken = () => (typeof window === "undefined" ? null : localStorage.getItem("seis_token"));
@@ -40,7 +42,7 @@ async function fallo(r: Response, path: string): Promise<ApiError> {
   }
   let detail: unknown;
   try { detail = (await r.json()).detail; } catch {}
-  return new ApiError(r.status, textoDeDetalle(detail, r.status));
+  return new ApiError(r.status, textoDeDetalle(detail, r.status), detail);
 }
 
 async function req<T>(path: string, init: RequestInit = {}): Promise<T> {

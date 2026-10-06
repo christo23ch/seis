@@ -168,13 +168,18 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
+      # Fase 5I: lógica pura del formulario (conversor numérico, normalizador del
+      # envío, esquema). Sin navegador: lo que lo necesita está en las e2e.
+      - name: Tests unitarios
+        run: npm test
+
       # `npm run build` es la barrera de tipos del proyecto: TypeScript estricto,
       # y el build falla ante cualquier error de tipado.
       - name: Compilar
         run: npm run build
 
   e2e:
-    name: E2E de punta a punta (alta y simulaciones)
+    name: E2E de punta a punta (alta, simulaciones y alta de inversión)
     runs-on: ubuntu-latest
     # Fase 5G.4-C. Las dos e2e solo se ejecutaban a mano y en Windows fallaban por
     # el lanzador; aquí corren en cada push con el MISMO guion que en local.
@@ -221,5 +226,7 @@ jobs:
       - name: E2E de alta
         run: bash e2e/correr.sh
 
-      - name: E2E de simulaciones e informes oficiales
+      # Incluye, desde la Fase 5I, el alta de una inversión por el formulario con
+      # solo los obligatorios (frontend/e2e/nueva-inversion.mjs).
+      - name: E2E de simulaciones, informes oficiales y alta de inversión
         run: bash e2e/correr_simulaciones.sh

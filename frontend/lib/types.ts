@@ -45,7 +45,15 @@ export interface Detalle {
   id: string; creado_en: string; perfil: string; version_reglas: string; version_parametros: string;
   entrada: any; resultado: Resultado; simulacion_validada_id: string | null;
 }
-export interface Opciones { tipologias: string[]; fuentes: string[]; estados_conservacion: string[]; estados_ocupacion: string[]; ccaa: string[]; perfiles: Record<string, string>; }
+/** Fase 5I: lo que el motor aplica si el campo opcional va vacío (catálogo T3 vigente). */
+export interface ValoresDefecto {
+  itp_por_ccaa: Record<string, number>; tenencia_mensual: number;
+  atrasos_pct_valor_subasta: number; atrasos_minimo: number;
+  adquisicion_fija: number; tasacion_banco: number; baremos_reforma_m2: Record<string, number>;
+  /** Fase 5I-D: estado que asume el motor si el de conservación no consta. */
+  estado_conservacion_desconocido: string;
+}
+export interface Opciones { tipologias: string[]; fuentes: string[]; estados_conservacion: string[]; estados_ocupacion: string[]; ccaa: string[]; perfiles: Record<string, string>; valores_defecto: ValoresDefecto; }
 
 // Fase 9 — multi-tenancy
 export type RolOrg = "propietario" | "miembro";
