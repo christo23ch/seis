@@ -428,11 +428,8 @@ Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VER
 21. **Supuestos revisables del colchón de plazo** (ADR-0019): beneficio base y no pesimista, y
     sin descontar el coste de oportunidad del plazo ya previsto. Si se quiere una lectura más
     prudente, el ADR describe la alternativa.
-22. **El contrato acepta `meses_antiguedad` negativa en un comparable** (`ComparableInput`, sin
-    `ge=0`). Medido en 5I: con −3 meses el comparable pesa el doble que uno de hoy (M03,
-    `1/(1 + m/6)`), y con **−6 la API responde 500** (`ZeroDivisionError`). El formulario ya no
-    lo permite (5I-A); por la API sigue abierto. Arreglo de una línea en `app/engine/contracts.py`,
-    pendiente de autorización para tocar el motor.
+22. *(Resuelta en 5I.1-A: `ComparableInput.meses_antiguedad` es `ge=0` y finita; un valor
+    negativo, `inf` o `nan` es un 422 con el `loc` del campo. Ver 26 y 27.)*
 23. **`financiacion.ltv` vacío con hipoteca se envía como ausente y el motor usa 0 %**: igual que
     antes de 5I (entonces el vacío se convertía en 0). Valorar exigirlo cuando el tipo sea
     hipoteca.
@@ -443,6 +440,26 @@ Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VER
 25. **Callejero sin implementar** (5I-E): geocodificar la dirección con una API oficial
     (CartoCiudad o Catastro, nunca scraping) para tener la coordenada del inmueble y no la de
     la capital. El guion `frontend/scripts/coordenadas-provincias.mjs` ya usa CartoCiudad.
+26. **Simular un análisis guardado con una antigüedad de comparable negativa da 409**
+    (5I.1-A, aceptado por el responsable). Motivo: la simulación reconstruye la entrada
+    guardada con el contrato (`simulacion_service.py`, `_reconstruir_input`), y desde `ge=0`
+    esa entrada ya no valida (`ReconstruccionInvalidaError` ⇒ 409). Afecta a cualquier valor
+    negativo que llegara a guardarse: solo −6 exacto no se guardaba (división por cero en M03);
+    por debajo de −6 el peso salía negativo y el análisis podía guardarse. **La base de
+    desarrollo no tiene ninguno**
+    (comprobado en solo lectura el 2026-10-06: 1 análisis, 7 comparables usados, 0 negativos) y
+    no hay producción. **Salida si aparece uno:** reanalizar con la antigüedad corregida, que crea
+    un análisis nuevo (los snapshots son inmutables, P1). No se «corrige» al reconstruir: poner 0
+    en silencio cambiaría el resultado de un snapshot.
+27. **Un JSON no estándar con `NaN` o `Infinity` en un campo cuya validación falla da 500, no
+    422.** FastAPI incluye el valor recibido (`input`) en el 422 y `nan`/`inf` no se pueden
+    serializar a JSON, así que falla el propio manejador del error (medido en 5I.1-A con
+    `subasta.valor_subasta = NaN`; no hay manejador propio de `RequestValidationError`). Un
+    float sin restricciones los acepta y no llega a haber 422. Efecto de 5I.1-A: en
+    `meses_antiguedad`, `inf`/`nan` por HTTP pasan de aceptarse en silencio a este 500. Solo con
+    clientes que emiten JSON no estándar (p. ej. `json.dumps` de Python); un navegador envía
+    `null`. Salida: un manejador de `RequestValidationError` que convierta los `input` no
+    finitos en texto.
 
 **Frontend**
 

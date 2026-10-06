@@ -95,7 +95,10 @@ class ComparableInput(BaseModel):
     precio_m2: float = Field(gt=0)
     estado: EstadoConservacion = "reformado"
     origen: Literal["portal_oferta", "testigo", "notarial", "registro"] = "testigo"
-    meses_antiguedad: float = 0.0
+    # Fase 5I.1-A: no negativa y finita. M03 pondera con 1/(1 + meses/6): con −3 el
+    # testigo pesaba el doble que uno de hoy, con −6 la API daba 500 (división por cero)
+    # y con `inf` pesaba 0 (todos los testigos con `inf` ⇒ suma de pesos 0).
+    meses_antiguedad: float = Field(default=0.0, ge=0, allow_inf_nan=False)
     superficie_m2: float | None = None
 
 
