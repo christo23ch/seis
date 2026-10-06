@@ -363,3 +363,36 @@ Cada una salió de un incidente real en esta máquina de desarrollo (Windows):
    `C:/Program Files/Google/Chrome/Application/chrome.exe`). La leen todos los guiones de
    Playwright a través de `frontend/scripts/navegador.mjs`; `PLAYWRIGHT_CHROMIUM` solo se
    acepta por compatibilidad.
+
+---
+
+## Extracción de datos web (webscraping)
+
+Cuando una fase necesite obtener datos de webs (comparables, callejero,
+datos de subastas, etc.), estas son las herramientas de referencia, en
+este orden de preferencia:
+
+1. **API oficial, si existe** (Catastro, CartoCiudad/IGN, INE, BOE…).
+   Siempre antes que el scraping: es estable y no tiene riesgo legal.
+2. **Scrapling** — https://github.com/D4Vinci/Scrapling
+   Para páginas concretas y estables: extracción rápida con selectores
+   adaptativos que resisten cambios de maquetación.
+3. **ScrapeGraphAI** — https://github.com/ScrapeGraphAI/Scrapegraph-ai
+   Para páginas con estructura cambiante o heterogénea, donde describir
+   qué extraer en lenguaje natural es más robusto que mantener selectores.
+4. **Agent Reach** — <URL DEL REPOSITORIO>
+   <Para qué se usa en este proyecto>
+
+Reglas:
+- Antes de implementar un scraper, consulta el README y la versión actual
+  del repositorio (no asumas su API de memoria) y propón en un ADR qué
+  herramienta usar y por qué.
+- Respeta robots.txt y las condiciones de uso de cada web; si una web lo
+  prohíbe, no se extrae y se busca otra fuente.
+- Sin evasión de CAPTCHAs ni de sistemas antibot.
+- Frecuencia moderada, con caché y User-Agent identificable.
+- No se extraen datos personales de particulares.
+- Cada extractor tiene tests con páginas guardadas (fixtures), no contra
+  la web real, para que la suite no dependa de terceros.
+- La dependencia se añade solo en la fase que la necesita, nunca de forma
+  preventiva.
