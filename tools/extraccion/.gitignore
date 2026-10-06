@@ -1,0 +1,42 @@
+# Herramientas de extracción web — nada de lo que producen entra en el repositorio
+# salvo el código, la documentación y las fichas de fuente aprobadas.
+
+# Entornos virtuales (uno por herramienta, ver README.md)
+.venv*/
+venv*/
+
+# Cachés de Python y de las herramientas
+__pycache__/
+*.py[cod]
+.cache/
+.scrapling*/
+*.sqlite
+*.sqlite3
+*.db
+
+# Datos extraídos: se guardan en local y nunca se publican
+datos_crudos/*
+!datos_crudos/.gitkeep
+*.jsonl
+*.csv
+*.parquet
+salida*/
+
+# Sesiones de navegador, cookies y perfiles
+cookies*
+*.cookies
+*cookies*.json
+storage_state*.json
+perfil_navegador*/
+user_data*/
+
+# Claves y configuración local (API de LLM, proxies, cuentas)
+.env
+.env.*
+*.key
+*.pem
+secrets*
+credenciales*
+
+# Registros de las pruebas de humo
+*.log
