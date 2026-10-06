@@ -152,14 +152,24 @@ const REGIMENES = [
   { v: "no_se", t: "No sé (se aplica el régimen desfavorable)" },
 ];
 function CamposProcedimiento({ op }: { op?: Opciones }) {
-  const { setValue, getFieldState } = useFormContext();
+  const { setValue, getValues } = useFormContext();
   const [fuente, procedimiento] = useWatch({ name: ["subasta.fuente", "subasta.procedimiento"] });
-  const deFuente = op?.procedimiento_por_fuente?.[fuente as string];
+  // Al cambiar la fuente de A a B, el procedimiento pasa al de B solo si seguía siendo
+  // el de A: si alguien lo eligió a mano, no se toca. La referencia nace con la fuente
+  // actual, así que volver a este paso (el componente se monta de nuevo) no sincroniza.
+  // No vale `isDirty`: tras el primer `setValue` el campo difiere del valor inicial y
+  // react-hook-form lo da por modificado (medido en la e2e de la 5J-1).
+  const fuenteAnterior = useRef(fuente as string);
+  const porFuente = op?.procedimiento_por_fuente;
   useEffect(() => {
-    if (deFuente && !getFieldState("subasta.procedimiento" as never).isDirty) {
-      setValue("subasta.procedimiento" as never, deFuente as never);
-    }
-  }, [deFuente, getFieldState, setValue]);
+    const anterior = fuenteAnterior.current;
+    fuenteAnterior.current = fuente as string;
+    if (!porFuente || anterior === fuente) return;
+    const nuevo = porFuente[fuente as string];
+    const actual = getValues("subasta.procedimiento" as never) as unknown as string;
+    const seguiaLaFuente = actual === porFuente[anterior];
+    if (nuevo && seguiaLaFuente) setValue("subasta.procedimiento" as never, nuevo as never);
+  }, [fuente, porFuente, getValues, setValue]);
   const etiquetas = op?.procedimientos ?? {};
   return (
     <>
