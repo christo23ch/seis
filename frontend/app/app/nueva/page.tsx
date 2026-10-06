@@ -6,6 +6,8 @@ import { FormProvider, useFieldArray, useFormContext, useForm, useWatch, type Re
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ApiError, api } from "@/lib/api";
 import { aNumero } from "@/lib/formulario";
+import { PROVINCIAS } from "@/lib/provincias";
+import { coordenadaDeProvincia, coordenadasAlCambiarProvincia, esCoordenadaDeProvincia } from "@/lib/coordenadas";
 import { primerPasoConError, rutasConError, traducir422 } from "@/lib/errores-validacion";
 import { PASOS, RUTAS_EN_FRACCION, depositoFraccion, descartarOcultos, esquemaAnalisis, estaOculta, ocupacionConRenta, pasoDeRuta, rutasOcultas, prepararEnvio, valoresIniciales, type EntradaFormulario, type ValoresAnalisis } from "@/lib/schema";
 import type { Opciones, Resultado } from "@/lib/types";
@@ -246,16 +248,79 @@ function Paso4() {
     </div>
   );
 }
+/** Fase 5I-E: las 52 provincias en orden alfabético español. */
+const OPCIONES_PROVINCIA = [{ v: "", t: "Seleccione…" },
+  ...[...PROVINCIAS].sort((a, b) => a.provincia.localeCompare(b.provincia, "es"))
+    .map((p) => ({ v: p.provincia, t: p.provincia }))];
+/** Coordenada en el formato que se escribe en el formulario (coma decimal). */
+const aTexto = (n: number) => String(n).replace(".", ",");
+
+/** Provincia (5I-E). Al elegirla, si lat/lng están vacías —o son la aproximada de
+ * alguna provincia— se rellenan con la de su capital; al quitarla, se quita su
+ * aproximada. Nunca pisa una coordenada escrita a mano. Una región `status`
+ * anuncia el relleno al lector de pantalla (el foco sigue en el select). */
+function CampoProvincia() {
+  const { register, getValues, setValue, formState: { errors } } = useFormContext();
+  const [anuncio, setAnuncio] = useState("");
+  const actual = useWatch({ name: "activo.provincia" }) as string | undefined;
+  // Un valor anterior a la lista (texto libre) se conserva visible, no se pierde en silencio.
+  const opciones = actual && !OPCIONES_PROVINCIA.some((o) => o.v === actual)
+    ? [...OPCIONES_PROVINCIA, { v: actual, t: `${actual} (no está en la lista)` }] : OPCIONES_PROVINCIA;
+  const registro = register("activo.provincia", {
+    onChange: (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const nueva = e.target.value;
+      const c = coordenadasAlCambiarProvincia({ lat: getValues("activo.lat"), lng: getValues("activo.lng") }, nueva);
+      if (c === null) { setAnuncio(""); return; }
+      const [lat, lng] = c === "vaciar" ? ["", ""] : [aTexto(c.lat), aTexto(c.lng)];
+      setValue("activo.lat", lat, { shouldValidate: true });
+      setValue("activo.lng", lng, { shouldValidate: true });
+      setAnuncio(c === "vaciar" ? "Se han quitado las coordenadas aproximadas de la provincia anterior."
+        : `Coordenadas rellenadas con las de la capital de ${nueva}: aproximadas.`);
+    },
+  });
+  return (
+    <div>
+      <Campo label="Provincia" error={getError(errors, "activo.provincia")}
+        ayuda="Si no conoce la ubicación exacta, las coordenadas se rellenan con las de la capital de provincia.">
+        <Select {...registro}>
+          {opciones.map((o) => <option key={o.v} value={o.v}>{o.t}</option>)}
+        </Select>
+      </Campo>
+      {/* Fuera de `Campo`, que enlaza un único control. Siempre montada: una región
+          viva que aparece de golpe no siempre se anuncia. */}
+      <p role="status" className="sr-only">{anuncio}</p>
+    </div>
+  );
+}
+
+/** Latitud y longitud, con la marca «aproximada (provincia)» mientras coincidan
+ * con la de la capital (5I-E). El motor no las usa: solo el mapa. */
+function CoordenadasActivo() {
+  const [lat, lng, provincia] = useWatch({ name: ["activo.lat", "activo.lng", "activo.provincia"] });
+  const p = coordenadaDeProvincia(provincia);
+  const aproximada = !!p && esCoordenadaDeProvincia({ lat, lng }, provincia);
+  const ayuda = aproximada
+    ? `Aproximada (provincia): capital de ${p.provincia}, ${p.capital}. Cámbiela si conoce la ubicación exacta.`
+    : undefined;
+  return (
+    <>
+      <FNum name="activo.lat" negativo label={aproximada ? "Latitud — aproximada (provincia)" : "Latitud (opcional)"}
+        placeholder="p. ej. 40,4168" ayuda={ayuda} />
+      <FNum name="activo.lng" negativo label={aproximada ? "Longitud — aproximada (provincia)" : "Longitud (opcional)"}
+        placeholder="p. ej. -3,7038" ayuda={aproximada ? "Aproximada (provincia), como la latitud." : undefined} />
+    </>
+  );
+}
+
 function Paso5({ op }: { op?: Opciones }) {
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2">
         <FIn name="activo.direccion" label="Dirección" />
         <FIn name="activo.municipio" obligatorio label="Municipio" />
-        <FIn name="activo.provincia" label="Provincia" />
+        <CampoProvincia />
         <FSel name="activo.ccaa" label="Comunidad autónoma (fiscalidad T3)" opciones={aOps(op?.ccaa ?? ["madrid"])} />
-        <FNum name="activo.lat" negativo label="Latitud (opcional)" placeholder="p. ej. 40,4168" />
-        <FNum name="activo.lng" negativo label="Longitud (opcional)" placeholder="p. ej. -3,7038" />
+        <CoordenadasActivo />
       </div>
       <div>
         <h4 className="mb-3 text-sm font-semibold text-slate-700">Indicadores micro de la ubicación (0–100)</h4>

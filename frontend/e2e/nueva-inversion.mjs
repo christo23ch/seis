@@ -16,6 +16,8 @@
  *     prueba manual: con `type="number"` sin mínimo, ↓ o la rueda daban −1, −2…).
  *   · El depósito como importe (5I-C): equivalente visible y guardado como % más
  *     el importe escrito.
+ *   · Coordenadas desde la provincia (5I-E): relleno, marca de aproximada y que no
+ *     pisa una escrita a mano.
  *
  * Uso: lo ejecuta `e2e/correr_simulaciones.sh`, con su backend y su frontend propios.
  *
@@ -80,8 +82,29 @@ try {
   // 3 · Registrales y 4 · Urbanísticos: nada.
   await siguiente();
   await siguiente();
-  // 5 · Ubicación: solo el municipio.
+  // 5 · Ubicación: el municipio y (5I-E) la provincia, que rellena lat/lng con la
+  // capital y las marca como aproximadas; una escrita a mano no se pisa.
   await campo(pagina, "activo.municipio").fill(MUNICIPIO);
+  await campo(pagina, "activo.provincia").selectOption("Madrid");
+  await campo(pagina, "activo.lat").fill("40,5");
+  await campo(pagina, "activo.lng").fill("");
+  await campo(pagina, "activo.provincia").selectOption("Teruel");
+  comprobar(await campo(pagina, "activo.lat").inputValue() === "40,5",
+    "elegir provincia no pisa una latitud escrita a mano");
+  await campo(pagina, "activo.lat").fill("");
+  await campo(pagina, "activo.provincia").selectOption("Madrid");
+  await campo(pagina, "activo.provincia").selectOption("Teruel");
+  comprobar(await campo(pagina, "activo.lat").inputValue() === "40,3416"
+            && await campo(pagina, "activo.lng").inputValue() === "-1,1048",
+    `con lat/lng vacías se rellenan con la capital (Teruel: ${await campo(pagina, "activo.lat").inputValue()}, `
+    + `${await campo(pagina, "activo.lng").inputValue()})`);
+  comprobar(await pagina.getByText("Latitud — aproximada (provincia)").count() === 1,
+    "la coordenada se marca «aproximada (provincia)»");
+  // Quitar la provincia quita su aproximada (no se queda como si fuera exacta).
+  await campo(pagina, "activo.provincia").selectOption("");
+  comprobar(await campo(pagina, "activo.lat").inputValue() === "" && await campo(pagina, "activo.lng").inputValue() === "",
+    "al volver a «Seleccione…» se quitan las coordenadas aproximadas");
+  await campo(pagina, "activo.provincia").selectOption("Teruel");
   await siguiente();
   // 6 · Valoraciones: el €/m² del comparable que trae el asistente.
   await campo(pagina, "comparables.0.precio_m2").fill("2.293");
@@ -131,6 +154,9 @@ try {
     `superficie guardada como 82,5 (es ${det.entrada?.activo?.superficie_m2})`);
   comprobar(det.entrada?.subasta?.valor_subasta === 152000,
     `valor de subasta guardado como 152.000 (es ${det.entrada?.subasta?.valor_subasta})`);
+  comprobar(det.entrada?.activo?.lat === 40.3416 && det.entrada?.activo?.lng === -1.1048
+            && det.entrada?.activo?.provincia === "Teruel",
+    `la coordenada aproximada se guarda como número (${det.entrada?.activo?.lat}, ${det.entrada?.activo?.lng})`);
   // 5I-D (ADR-0020): sin tocar el estado de conservación, el alta va con «No consta».
   comprobar(det.entrada?.activo?.estado_conservacion === "desconocido",
     `el estado de conservación sin tocar se guarda como «No consta» (es ${det.entrada?.activo?.estado_conservacion})`);
