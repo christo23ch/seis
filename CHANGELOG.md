@@ -19,6 +19,57 @@ convertirse en un SaaS. Lo anterior está en el historial de git.
 
 ---
 
+## [Fase 5I] — Formulario de alta: errores, validación guiada y datos que faltan — 2026-10-06
+
+Fase de producto motivada por una prueba manual del asistente de alta («Nueva inversión»).
+Rama `fase/5i-formulario-alta`, sin PR. Cada bloque pasó por `code-reviewer` y por el revisor de
+su lenguaje (`react-reviewer`, `python-reviewer`), con 0 críticos al cerrar; CI en verde tras
+cada commit. Suite al cerrar: 1002 passed, 18 skipped, 0 failed (+37 tests de backend); 54 tests
+unitarios nuevos de frontend (vitest); dos e2e nuevas (`nueva-inversion.mjs`,
+`validacion-alta.mjs`) que corren en `e2e/correr_simulaciones.sh`.
+
+### Corregido
+- **El alta daba 422 con cualquier opcional vacío** (`f97f620` ya lo tenía; viene del commit
+  inicial). El asistente enviaba `aPayload(form.getValues())`: el texto crudo de los campos, y
+  cada opcional vacío viajaba como `""`. Ahora el envío pasa por `handleSubmit` (valores ya
+  validados) y un normalizador único, `limpiarVacios`, que omite los vacíos (5I-A).
+- **La antigüedad de un comparable podía ser negativa.** No hay ningún cálculo de antigüedad:
+  era el control, `type="number"` sin mínimo, que bajaba a −1, −2… con la flecha ↓ o la rueda.
+  Los campos numéricos son ahora texto con teclado decimal y el esquema exige ≥ 0. El backend
+  sigue aceptando negativos (ver Deuda).
+- **Los campos condicionales perdían lo tecleado al cambiar de paso** (defecto introducido en
+  5I-A y corregido en 5I-C): `shouldUnregister` los daba de baja al desmontarse el paso.
+  `rutasOcultas` es ahora la única fuente de qué está oculto.
+
+### Añadido
+- **Conversor numérico único** `aNumero`: coma decimal, punto de miles en importes, punto
+  decimal en tasas/coeficientes/coordenadas; rechaza mezclas ambiguas en vez de adivinar.
+- **Valores por defecto visibles**: valor inicial cuando es el del contrato; marcador o ayuda
+  cuando vacío significa «el motor estima» (atrasos, tenencia, ITP, costes fijos, baremos).
+  `GET /opciones` expone `valores_defecto` del catálogo T3 vigente.
+- **Validación guiada** (5I-B): obligatorios con «*»; mensaje en rojo bajo cada campo, foco y
+  desplazamiento al primero, y salto al paso que lo contiene; los 422 del backend traducidos
+  campo a campo al español (`traducir422`); `aria-invalid`/`aria-describedby` en `Campo`.
+- **Depósito como importe o porcentaje** (5I-C): conversión en un solo sitio
+  (`depositoFraccion`) con su equivalente visible; `SubastaInput.deposito_importe` opcional e
+  informativo, que el motor no lee.
+- **Estado de conservación «No consta»** (5I-D, [[ADR-0020]]): el motor asume el estado del
+  parámetro T3 `conservacion.desconocido_usa` («malo»), sin cambiar pesos ni fórmulas; aviso en
+  el informe e ítem de checklist. Es el valor por defecto del formulario (antes «regular»).
+  El parámetro se valida al escribirlo (400 con los valores admitidos).
+- **Coordenadas aproximadas desde la provincia** (5I-E): las 52 provincias con la coordenada
+  de su capital (CartoCiudad/IGN), autocompletado que no pisa lo escrito y marca «aproximada
+  (provincia)». El motor no usa lat/lng.
+- **Tests unitarios de frontend** con vitest (`npm test`, paso nuevo en la CI) y las e2e
+  `nueva-inversion.mjs` y `validacion-alta.mjs`, que corren en `e2e/correr_simulaciones.sh`.
+
+### Cambio de comportamiento
+- Un alta en la que nadie toca el estado de conservación sale ahora con «No consta» (reforma
+  media, k = 0,72), no con «regular»: precios recomendados más bajos. Intencionado (P4).
+- El caso dorado §19 no cambia ni un valor (guarda `test_invariante_5h1`). Sin migraciones.
+
+---
+
 ## [Fase 5H.1] — Motor: VAN, coste de capital sobre el capital propio, colchón de plazo y especificación coherente — 2026-10-04
 
 Puntos de la auditoría 5G.4 que **no cambian el caso dorado** (`docs/AUDITORIA_MOTOR_ESPECIFICACION.md`,
