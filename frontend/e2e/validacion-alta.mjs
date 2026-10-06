@@ -38,6 +38,14 @@ function comprobar(condicion, descripcion) {
 }
 const campo = (p, nombre) => p.locator(`[name="${nombre}"]`);
 const enfocado = (p) => p.evaluate(() => document.activeElement?.getAttribute("name") ?? null);
+/** Espera a que el foco llegue al campo y devuelve dónde está (Fase 5I.1-B). El formulario
+ * lo mueve en un `requestAnimationFrame` tras pintar: leerlo nada más ver el error en rojo
+ * era una carrera (falló 1 de 5 en la 5I.1). Si no llega, el `comprobar` falla legible. */
+async function focoEn(p, nombre) {
+  await p.waitForFunction((n) => document.activeElement?.getAttribute("name") === n, nombre, { timeout: 10000 })
+    .catch(() => {});
+  return enfocado(p);
+}
 const tituloPaso = async (p) => (await p.locator("h3", { hasText: /^Paso \d+ de 11/ }).textContent()) ?? "";
 /** Mensaje de error asociado al campo por `aria-describedby` (que puede citar
  * también la ayuda: se toma el nodo marcado como error). */
@@ -97,7 +105,7 @@ try {
   comprobar((await tituloPaso(p)).startsWith("Paso 1 de 11"), "con el valor de subasta vacío, el paso no avanza");
   comprobar(await errorDe(p, "subasta.valor_subasta") === "Campo obligatorio",
     "«Campo obligatorio» en rojo bajo el valor de subasta, enlazado por aria-describedby");
-  comprobar(await enfocado(p) === "subasta.valor_subasta", "el foco va al campo pendiente");
+  comprobar(await focoEn(p, "subasta.valor_subasta") === "subasta.valor_subasta", "el foco va al campo pendiente");
   // Con el texto: Next.js ya pinta su propio `role="alert"` (el anunciador de rutas).
   comprobar(await p.locator('[role="alert"]', { hasText: "Revise los campos marcados" }).count() === 1,
     "un aviso con role=alert resume el problema");
@@ -151,7 +159,7 @@ try {
   comprobar(await errorDe(p, "comparables.0.precio_m2") === "Campo obligatorio"
             && await errorDe(p, "comparables.1.precio_m2") === "Campo obligatorio",
     "los DOS comparables sin €/m² muestran «Campo obligatorio»");
-  comprobar(await enfocado(p) === "comparables.0.precio_m2", "el foco va al primero de ellos");
+  comprobar(await focoEn(p, "comparables.0.precio_m2") === "comparables.0.precio_m2", "el foco va al primero de ellos");
   await campo(p, "comparables.0.precio_m2").fill("2.293");
   await campo(p, "comparables.1.precio_m2").fill("2.310");
   await avanzarA(p, 7);
@@ -174,7 +182,7 @@ try {
   comprobar((await tituloPaso(p)).startsWith("Paso 2 de 11"), "ante el 422, el asistente vuelve al paso del campo (2)");
   comprobar(await errorDe(p, "activo.anio_construccion") === "Introduzca un número entero",
     "el error del backend aparece bajo su campo, en español");
-  comprobar(await enfocado(p) === "activo.anio_construccion", "con el foco en ese campo");
+  comprobar(await focoEn(p, "activo.anio_construccion") === "activo.anio_construccion", "con el foco en ese campo");
   const textoAviso = (await p.locator('[role="alert"]', { hasText: "servidor" }).first().innerText()).replace(/\s+/g, " ");
   comprobar(textoAviso.includes("Activo › atributos › banos: valor no válido"),
     "el error sin campo se muestra como mensaje general legible");

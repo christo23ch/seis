@@ -98,6 +98,8 @@ try {
             && await campo(pagina, "activo.lng").inputValue() === "-1,1048",
     `con lat/lng vacías se rellenan con la capital (Teruel: ${await campo(pagina, "activo.lat").inputValue()}, `
     + `${await campo(pagina, "activo.lng").inputValue()})`);
+  // La marca depende de un repintado tras `setValue`: se espera, no se lee al instante.
+  await pagina.getByText("Latitud — aproximada (provincia)").waitFor({ timeout: 5000 }).catch(() => {});
   comprobar(await pagina.getByText("Latitud — aproximada (provincia)").count() === 1,
     "la coordenada se marca «aproximada (provincia)»");
   // Quitar la provincia quita su aproximada (no se queda como si fuera exacta).

@@ -505,11 +505,21 @@ Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VER
    de prueba no tenía deriva de conocimiento.
 4. [VERIFICAR: qué son los 9 tests omitidos en SQLite — en septiembre eran 8, los exclusivos de
    PostgreSQL.]
-5. **Carrera en el paso 4 de `simulaciones.mjs`** (intermitente, anterior a la 5H.1): tras ver
-   «En uso» en la lista, lee el aviso de configuración sin esperar a que su consulta se
-   refresque. Falló una vez en local en la 5H.1-B y pasó al repetir. Corrección propuesta:
-   esperar con `waitForFunction` hasta que el aviso diga «Mostrando la simulación», como ya
-   hace el paso 6. **Volvió a fallar una vez en 5I-D** y pasó en las dos repeticiones siguientes.
+5. *(Resuelta en 5I.1-B.)* **Carrera en el paso 4 de `simulaciones.mjs`**: leía el aviso de
+   configuración nada más ver «En uso», sin esperar a que su consulta se refrescara. Ahora espera
+   a que el aviso diga lo esperado (`avisoQueDiga`). Se corrigieron además las demás carreras de
+   la misma clase: `emitir` esperaba un `[data-markdown]` que ya existía del informe anterior; el
+   paso 9 comprobaba la lista y los informes del lector sin esperar a que cargaran (y su
+   comprobación negativa podía pasar sin mirar nada); el paso 2 leía `isVisible()` antes de que
+   llegara el catálogo del editor; el paso 10 podía medir cero pestañas; y `pestana()` esperaba
+   400 ms fijos en vez de al contenido cargado. En las e2e de la 5I (`validacion-alta.mjs`,
+   `nueva-inversion.mjs`), las lecturas del foco y de la marca «aproximada» ahora esperan.
+   El paso 10 exige ahora al menos 8 pestañas medidas y `emitir` comprueba el 201 antes de leer
+   el id del informe. Verificación: `e2e/correr_simulaciones.sh` (que ejecuta, sobre la misma
+   pila, `simulaciones.mjs`, `nueva-inversion.mjs` y `validacion-alta.mjs`) 5 veces seguidas en
+   local con la versión final: 5/5 en verde, 87 comprobaciones de navegador en cada una
+   (2026-10-06). Una tanda previa, antes de corregir el foco de `validacion-alta.mjs`, dio 4/5:
+   el fallo fue esa lectura del foco, no `simulaciones.mjs`.
 6. **`test_migraciones.py` falló una vez en 5I-E por un cierre anómalo del subproceso de
    Alembic en Windows** (código `0xC000070A`, no un fallo de esquema): pasó en las dos
    repeticiones y en la suite siguiente; esta fase no añade migraciones. Vigilar si se repite.
