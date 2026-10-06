@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import math
 
+from app.engine.conservacion import estado_efectivo
 from app.engine.contracts import AnalisisInput, ComparableValoradoOut, ValoracionResultado
 
 
@@ -79,7 +80,8 @@ def ejecutar(inp: AnalisisInput, params, hechos: dict) -> ValoracionResultado:
     cv = (math.sqrt(var) / media) if media > 0 else 1.0
 
     vs = vs_m2 * m2                                                # salida en estado reformado
-    k_estado_activo = k_estado[inp.activo.estado_conservacion]     # Fase 4: nombrado, mismo valor
+    # Fase 5I-D: si no consta, el estado asumido (`conservacion.desconocido_usa`).
+    k_estado_activo = k_estado[estado_efectivo(inp.activo.estado_conservacion, params)]
     vm = vs_m2 * k_estado_activo * m2                               # estado actual
     p25 = _percentil(normalizados, 0.25) * m2
     p75 = _percentil(normalizados, 0.75) * m2

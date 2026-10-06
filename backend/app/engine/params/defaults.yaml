@@ -68,6 +68,9 @@ valoracion:
   cv_max_ok: 0.20
   sanidad_vt_vm: {min: 0.5, max: 1.6}   # hecho tasacion_anomala fuera de banda (§6.3)
 
+conservacion:                     # Fase 5I-D (ADR-0020)
+  desconocido_usa: malo           # estado asumido si no consta (P5); app/engine/conservacion.py
+
 reforma:
   baremos_m2: {ninguna: 0, refresco: 120, ligera: 375, media: 560, integral: 875, estructural: 1150}
   nivel_por_estado: {reformado: ninguna, bueno: refresco, regular: ligera, malo: media, ruina: estructural}

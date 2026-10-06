@@ -12,6 +12,7 @@ from datetime import date, datetime, timezone
 from sqlalchemy.orm import Session
 
 from app import models
+from app.engine.conservacion import EstadoAsumidoInvalidoError, validar_estado_asumido
 from app.engine.params.store import Parametros, cargar_defaults
 from app.engine.pipeline import cargar_catalogo
 
@@ -47,6 +48,14 @@ def set_parametro(db: Session, clave: str, valor, fuente_legal: str | None,
     # importa este módulo.
     from app.services.simulacion_service import validar_rangos
     validar_rangos(clave, valor)
+    # Fase 5I-D (ADR-0020): un estado asumido inválido para «No consta» no se
+    # descubre al analizar (500 en cada alta), sino aquí: 400 con los valores
+    # admitidos. Se comprueba sobre el conocimiento vigente con el cambio aplicado,
+    # así cubre también ediciones de `valoracion.k_estado` o `reforma.nivel_por_estado`.
+    try:
+        validar_estado_asumido(parametros_vigentes(db).con_overrides({clave: valor}))
+    except EstadoAsumidoInvalidoError as e:
+        raise ValueError(str(e)) from e
     fila = models.Parametro(clave=clave, ambito="nacional",
                             vigente_desde=date.today().isoformat(),
                             valor=valor, fuente_legal=fuente_legal)

@@ -133,7 +133,9 @@ def ejecutar_analisis(inp: AnalisisInput, params: Parametros | None = None,
                  "coste_capital_anual": params.get("capital.coste_capital_anual")}
     checklist = m14_informe.construir_checklist(inp, decision, hechos,
                                                 metodo_valoracion=valoracion.metodo)
-    informe = m14_informe.construir_informe(inp, parciales, decision, checklist)
+    informe = m14_informe.construir_informe(
+        inp, parciales, decision, checklist,
+        estado_asumido=hechos.get("activo.estado_conservacion_asumido"))
 
     return AnalisisResult(
         decision=decision, ici=ici, valoracion=valoracion, icu=icu, reforma=reforma,

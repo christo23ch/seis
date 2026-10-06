@@ -14,7 +14,7 @@ CUERPO_MINIMO = {
     "perfil": "flip_integral",
     "subasta": {"fuente": "judicial_boe", "valor_subasta": 152000, "deposito_pct": 0.05,
                 "subastas_desiertas_previas": 0},
-    "activo": {"tipologia": "vivienda", "superficie_m2": 82, "estado_conservacion": "regular",
+    "activo": {"tipologia": "vivienda", "superficie_m2": 82, "estado_conservacion": "desconocido",
                "es_vivienda_habitual": False, "vpo": False, "municipio": "Madrid", "provincia": "",
                "ccaa": "madrid"},
     "cargas": [],

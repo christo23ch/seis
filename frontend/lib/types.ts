@@ -50,6 +50,8 @@ export interface ValoresDefecto {
   itp_por_ccaa: Record<string, number>; tenencia_mensual: number;
   atrasos_pct_valor_subasta: number; atrasos_minimo: number;
   adquisicion_fija: number; tasacion_banco: number; baremos_reforma_m2: Record<string, number>;
+  /** Fase 5I-D: estado que asume el motor si el de conservación no consta. */
+  estado_conservacion_desconocido: string;
 }
 export interface Opciones { tipologias: string[]; fuentes: string[]; estados_conservacion: string[]; estados_ocupacion: string[]; ccaa: string[]; perfiles: Record<string, string>; valores_defecto: ValoresDefecto; }
 

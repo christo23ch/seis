@@ -98,6 +98,8 @@ function FSlider({ name, label }: { name: string; label: string }) {
     </div>
   );
 }
+/** Respaldo mientras llega `/opciones` (mismo orden que el backend). */
+const ESTADOS_CONSERVACION = ["desconocido", "ruina", "malo", "regular", "bueno", "reformado"];
 const cap = (s: string) => s.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
 const aOps = (xs: string[]) => xs.map((x) => ({ v: x, t: cap(x) }));
 
@@ -161,7 +163,12 @@ function Paso2({ op }: { op?: Opciones }) {
       <FSel name="activo.tipologia" label="Tipología" opciones={aOps(op?.tipologias ?? ["vivienda"])} />
       <FNum name="activo.superficie_m2" obligatorio label="Superficie construida (m²)" placeholder="p. ej. 82" />
       <FSel name="activo.estado_conservacion" label="Estado de conservación"
-        opciones={aOps(op?.estados_conservacion ?? ["regular"])} />
+        opciones={(op?.estados_conservacion ?? ESTADOS_CONSERVACION).map((v) => ({ v, t: v === "desconocido"
+          // Sin `/opciones` no se sabe qué estado asume el motor: no se afirma ninguno.
+          ? (op?.valores_defecto?.estado_conservacion_desconocido
+              ? `No consta (se asume «${op.valores_defecto.estado_conservacion_desconocido}»)` : "No consta")
+          : cap(v) }))}
+        ayuda="Si no ha visto el interior, deje «No consta»: el análisis supondrá un estado prudente y lo indicará en el informe." />
       <FNum name="activo.anio_construccion" label="Año de construcción (opcional)" placeholder="No consta" />
       <div className="space-y-2.5 sm:col-span-2">
         <FCheck name="activo.es_vivienda_habitual" label="Vivienda habitual del ejecutado (plazos posesorios reforzados)" />

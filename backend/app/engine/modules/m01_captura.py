@@ -6,6 +6,7 @@ Los adaptadores de fuentes externas y la extracción LLM se acoplan aquí en F2 
 """
 from __future__ import annotations
 
+from app.engine.conservacion import estado_efectivo
 from app.engine.contracts import AnalisisInput
 
 
@@ -16,6 +17,8 @@ def ejecutar(inp: AnalisisInput, params, hechos: dict) -> None:
         "activo.tipologia": a.tipologia,
         "activo.superficie_m2": a.superficie_m2,
         "activo.estado_conservacion": a.estado_conservacion,
+        # Fase 5I-D: el que usan M03/M05; distinto del declarado si este no consta.
+        "activo.estado_conservacion_asumido": estado_efectivo(a.estado_conservacion, params),
         "activo.vpo": a.vpo,
         "activo.es_vivienda_habitual": a.es_vivienda_habitual,
         "subasta.fuente": s.fuente,

@@ -185,6 +185,8 @@ export type ValoresAnalisis = z.output<typeof esquemaAnalisis>;
  *     marcador cuando vacío significa «el motor estima» (atrasos, tenencia,
  *     ITP, costes fijos…): escribir ahí el número cambiaría su significado, de
  *     estimación prudente a dato declarado (P4/P5).
+ *   · Estado de conservación: «No consta» (ADR-0020). Antes era «regular», un
+ *     supuesto optimista que nadie había declarado (P4).
  *   · Obligatorios VACÍOS (valor de subasta, superficie, €/m² del comparable):
  *     antes valían 0, un valor falso que parecía rellenado.
  */
@@ -193,7 +195,7 @@ export const valoresIniciales: EntradaFormulario = {
   subasta: { fuente: "judicial_boe", valor_subasta: "", puja_minima: "",
              deposito_modo: "porcentaje", deposito_pct: 5, deposito_importe: "",
              horas_hasta_cierre: "", subastas_desiertas_previas: 0, identificador_externo: "" },
-  activo: { tipologia: "vivienda", superficie_m2: "", estado_conservacion: "regular", anio_construccion: "",
+  activo: { tipologia: "vivienda", superficie_m2: "", estado_conservacion: "desconocido", anio_construccion: "",
             es_vivienda_habitual: false, vpo: false, vpo_precio_max_legal: "", ref_catastral: "",
             finca_registral: "", direccion: "", municipio: "", provincia: "", ccaa: "madrid",
             lat: "", lng: "" },

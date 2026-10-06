@@ -9,6 +9,10 @@ from pydantic import BaseModel, Field, model_validator
 Tipologia = Literal["vivienda", "garaje", "trastero", "local", "oficina", "nave",
                     "suelo_urbano", "suelo_rustico", "hotel", "singular"]
 EstadoConservacion = Literal["ruina", "malo", "regular", "bueno", "reformado"]
+# Fase 5I-D (ADR-0020): el inmueble analizado admite además «desconocido» («No
+# consta»); el motor usa entonces el estado de `conservacion.desconocido_usa`. Los
+# comparables NO: un testigo sin estado no se puede normalizar.
+EstadoActivo = Literal["ruina", "malo", "regular", "bueno", "reformado", "desconocido"]
 EstadoOcupacion = Literal["desconocida", "vacio", "propietario", "precario",
                           "arrendado_posterior", "arrendado_anterior", "renta_antigua"]
 Semaforo = Literal["verde", "amarillo", "naranja", "rojo"]
@@ -21,7 +25,7 @@ Dimension = Literal["juridico", "documental", "ocupacion", "urbanistico", "tecni
 class ActivoInput(BaseModel):
     tipologia: Tipologia = "vivienda"
     superficie_m2: float = Field(gt=0)
-    estado_conservacion: EstadoConservacion = "regular"
+    estado_conservacion: EstadoActivo = "regular"
     anio_construccion: int | None = None
     direccion: str | None = None
     municipio: str = ""

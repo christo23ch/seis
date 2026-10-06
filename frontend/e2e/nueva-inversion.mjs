@@ -131,6 +131,9 @@ try {
     `superficie guardada como 82,5 (es ${det.entrada?.activo?.superficie_m2})`);
   comprobar(det.entrada?.subasta?.valor_subasta === 152000,
     `valor de subasta guardado como 152.000 (es ${det.entrada?.subasta?.valor_subasta})`);
+  // 5I-D (ADR-0020): sin tocar el estado de conservación, el alta va con «No consta».
+  comprobar(det.entrada?.activo?.estado_conservacion === "desconocido",
+    `el estado de conservación sin tocar se guarda como «No consta» (es ${det.entrada?.activo?.estado_conservacion})`);
   comprobar(Math.abs((det.entrada?.subasta?.deposito_pct ?? 0) - 0.05) < 1e-12
             && det.entrada?.subasta?.deposito_importe === 7600,
     `depósito guardado como 5 % con el importe escrito (pct ${det.entrada?.subasta?.deposito_pct}, `

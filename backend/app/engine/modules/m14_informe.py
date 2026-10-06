@@ -6,6 +6,7 @@ afirmación, de una regla disparada o de un hecho. La narrativa LLM opcional
 """
 from __future__ import annotations
 
+from app.engine.conservacion import NO_CONSTA
 from app.engine.contracts import (AnalisisInput, AnalisisResult, ChecklistItem,
                                   DecisionFinal)
 # Fase 5G.2: un único formato de importes para M13 y M14 (`app/engine/formato.py`).
@@ -121,16 +122,34 @@ def construir_checklist(inp: AnalisisInput, dec: DecisionFinal, hechos: dict, *,
     add("F. Ejecución", "Calendario de cierre con extensiones entendido; responsable de puja designado", False, "pendiente")
     add("F. Ejecución", "Regla de retirada acordada (qué información nueva aborta la puja)", False, "pendiente")
     add("F. Ejecución", "Post-adjudicación: lista de primeras 72 h preparada", False, "pendiente")
+    # Fase 5I-D (ADR-0020): estado de conservación «No consta». AL FINAL para no
+    # desplazar la numeración de §13. No bloqueante: en subasta judicial la visita
+    # interior casi nunca es posible, y el presupuesto ya usa el estado prudente.
+    # Sigue pendiente aunque haya fotos o visita: el informe dice «no consta» hasta
+    # que se ELIJA el estado real; las fotos solo permiten hacerlo.
+    if inp.activo.estado_conservacion == NO_CONSTA:
+        asumido = hechos["activo.estado_conservacion_asumido"]
+        con_evidencia = d.fotos_interior_o_visita or inp.reforma.visita_interior
+        add("E. Técnico", "Estado de conservación verificado con visita interior o fotos interiores", False,
+            "pendiente",
+            (f"Hay fotos interiores o visita: elija el estado real en lugar de «No consta» (hoy se asume «{asumido}»)"
+             if con_evidencia else f"No consta: se asume «{asumido}» (P5)"))
     return items
 
 
 # ───────────────────────────── INFORME (§12) ─────────────────────────────
 def construir_informe(inp: AnalisisInput, res_parciales: dict, dec: DecisionFinal,
-                      checklist: list[ChecklistItem]) -> str:
+                      checklist: list[ChecklistItem], *, estado_asumido: str | None = None) -> str:
     val, icu, ref = res_parciales["valoracion"], res_parciales["icu"], res_parciales["reforma"]
     costes, ra, rent = res_parciales["costes"], res_parciales["riesgos"], res_parciales["rentabilidad"]
     puja, ici = res_parciales["puja"], res_parciales["ici"]
     a = inp.activo
+    # Fase 5I-D: «No consta» se declara como supuesto, no se presenta como dato.
+    if a.estado_conservacion == NO_CONSTA and not estado_asumido:
+        raise ValueError("estado «No consta» sin estado asumido: el pipeline debe pasarlo")
+    texto_estado = (f"estado de conservación **no consta**: se asume «{estado_asumido}» (P5) hasta "
+                    f"verificarlo con visita interior o fotos interiores"
+                    if a.estado_conservacion == NO_CONSTA else f"estado {a.estado_conservacion}")
 
     filas_riesgo = "\n".join(
         f"| {r.dimension} | {r.probabilidad}×{r.impacto} = {r.score} | {r.nivel} | "
@@ -236,7 +255,7 @@ def construir_informe(inp: AnalisisInput, res_parciales: dict, dec: DecisionFina
 {vetos}
 
 ## 2 · Activo y subasta
-{a.tipologia.capitalize()} de {a.superficie_m2:.0f} m² en {a.municipio or "—"} ({a.provincia or "—"}), estado {a.estado_conservacion}. Subasta {inp.subasta.fuente}, valor de subasta {_eur(inp.subasta.valor_subasta)}, depósito {_pct(inp.subasta.deposito_pct, 0)}. Ocupación declarada: {inp.ocupacion.estado}.
+{a.tipologia.capitalize()} de {a.superficie_m2:.0f} m² en {a.municipio or "—"} ({a.provincia or "—"}), {texto_estado}. Subasta {inp.subasta.fuente}, valor de subasta {_eur(inp.subasta.valor_subasta)}, depósito {_pct(inp.subasta.deposito_pct, 0)}. Ocupación declarada: {inp.ocupacion.estado}.
 
 ## 3 · Valoración
 {seccion_valoracion}

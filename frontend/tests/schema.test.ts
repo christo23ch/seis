@@ -208,3 +208,10 @@ describe("rutasOcultas: única fuente de los campos ocultos por su condición", 
     expect(estaOculta("activo.superficie_m2", ocultas)).toBe(false);
   });
 });
+
+describe("estado de conservación (5I-D)", () => {
+  it("por defecto «No consta», que viaja como «desconocido» (ADR-0020)", () => {
+    const cuerpo = prepararEnvio(esquemaAnalisis.parse(soloObligatorios())) as any;
+    expect(cuerpo.activo.estado_conservacion).toBe("desconocido");
+  });
+});
