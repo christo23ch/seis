@@ -380,8 +380,20 @@ este orden de preferencia:
 3. **ScrapeGraphAI** — https://github.com/ScrapeGraphAI/Scrapegraph-ai
    Para páginas con estructura cambiante o heterogénea, donde describir
    qué extraer en lenguaje natural es más robusto que mantener selectores.
-4. **Agent Reach** — <URL DEL REPOSITORIO>
-   <Para qué se usa en este proyecto>
+4. **Agent Reach** — https://github.com/Panniantong/agent-reach
+   Herramienta de investigación para Claude Code, **no parte del producto**:
+   ni el backend ni el frontend la usan. Solo en modo de comprobación, sin
+   `--system`, sin cookies y sin cuentas de redes sociales
+   (`tools/extraccion/agent-reach.md`).
+
+Las herramientas viven en `tools/extraccion/`, con entornos virtuales
+separados y fuera del entorno del backend.
+
+> **Política obligatoria: [ADR-0021 — política de extracción web](30-Decisiones/ADR/ADR-0021-politica-de-extraccion-web.md).**
+> Desarrolla las reglas de abajo: robots.txt con fallo cerrado, valores por
+> defecto anti-bot que hay que desactivar en cada herramienta, ficha por
+> fuente, trazabilidad, validación con esquema y aprobación del responsable.
+> Ninguna fuente real se toca sin su ficha aprobada.
 
 Reglas:
 - Antes de implementar un scraper, consulta el README y la versión actual

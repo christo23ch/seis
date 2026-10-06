@@ -42,6 +42,10 @@ concreto:
 - **Pruebas con páginas guardadas**, nunca contra la web real; la dependencia entra solo en la
   fase que la necesita.
 
-> ⚠️ **Pendiente en `CLAUDE.md`:** la entrada de **Agent Reach** conserva los marcadores
-> `<URL DEL REPOSITORIO>` y `<Para qué se usa en este proyecto>`. Hasta completarlos, esa
-> herramienta no puede proponerse en un ADR.
+## Política y banco de trabajo (Fase E0)
+
+- **Política obligatoria:** [[ADR-0021-politica-de-extraccion-web|ADR-0021 — política de
+  extracción web]], con la plantilla de ficha de fuente.
+- **Herramientas instaladas** en `tools/extraccion/` (entornos separados, fuera del backend):
+  Scrapling 0.4.15, ScrapeGraphAI 2.3.1 y Agent Reach 1.5.0. Agent Reach es investigación
+  de Claude Code, no producto.
