@@ -10,8 +10,8 @@
 
 ## Frentes abiertos
 
-**Actualizado:** 2026-10-07 · **Rama de trabajo:** `fase/5k-presentacion` (sale de `main`, `211fed1`, con la 5J-1 fusionada; sin PR) · **Suite (SQLite):** 1061 passed, 18 skipped, 0 failed (la 5K no toca el backend) · **Frontend:** 133 tests unitarios (vitest, `npm test`) · **E2E:** alta, simulaciones, alta de inversión, validación guiada, datos del procedimiento y presentación (1440 y 390 px) en la CI (job `e2e`) · **Migraciones:** hasta `0016`; la siguiente libre es la `0017`
-**Última fase cerrada:** 5J-1 (datos del procedimiento informativos, PR #32, ADR-0022) · **En curso:** 5K, presentación (informe maquetado, datos legibles, fórmulas, «Ver cálculo», pesos del ICO del catálogo; solo frontend) · **Siguiente:** 5J-2, con la deuda de `docs/DEUDA_PRESENTACION_MOTOR.md` · **Puerta: ABIERTA**
+**Actualizado:** 2026-10-07 · **Rama de trabajo:** `fase/5j-2a-textos-y-datos` (sale de `main`, `13941d9`, con la 5K fusionada; sin PR) · **Suite (SQLite):** 1100 passed, 18 skipped, 0 failed · **Frontend:** 141 tests unitarios (vitest, `npm test`) · **E2E:** alta, simulaciones, alta de inversión, validación guiada, datos del procedimiento y presentación (1440 y 390 px) en la CI (job `e2e`) · **Migraciones:** hasta `0016`; la siguiente libre es la `0017`
+**Última fase cerrada:** 5K, presentación (PR #33) · **En curso:** 5J-2a, textos legibles en el informe y el PDF y operandos de «Ver cálculo» como campos opcionales del resultado (ADR-0023), sin mover ninguna cifra · **Siguiente:** 5J-2b, lo que sí mueve cifras (depósito legal, táctica de puja por régimen, reglas del diseño B) · **Puerta: ABIERTA**
 
 ### 🟡 Requisito de PRODUCTO registrado, sin implementar: perfil de inversor por cuestionario
 
@@ -552,15 +552,25 @@ Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VER
 
 **Presentación (5K)**
 
-1. **La deuda de presentación que exige tocar el motor o el backend** está consolidada en
-   `docs/DEUDA_PRESENTACION_MOTOR.md` (20 puntos con archivo y dato que falta), para la 5J-2.
-   La más visible: **el PDF oficial sigue mostrando `C_F`, `c_v`, `judicial_boe`…**, porque la 5K
-   los hace legibles al mostrarlos en la interfaz y el PDF no pasa por ella.
+1. **La deuda de presentación que exige tocar el motor o el backend** está en
+   `docs/DEUDA_PRESENTACION_MOTOR.md`. La **5J-2a** resolvió los puntos 1-13 (operandos de «Ver
+   cálculo») y 15-17 (el informe y el PDF de los análisis nuevos salen sin claves internas ni
+   palabras sin tilde, ADR-0023). Quedan: los **informes oficiales ya emitidos** conservan su texto
+   congelado con los códigos de antes; el depósito del alta (18, mueve cifras); el catálogo global
+   (19-20); y las pantallas de reglas y simulaciones.
+   **Decisión pendiente del responsable:** 7 textos de la foto del §19 (3 ítems del checklist con
+   `C_F`/`c_v` y 4 condiciones «Subsanar: …») se redactan legibles en el informe, pero el dato no
+   cambia. Corregirlos en origen exige regenerar la foto (solo texto); el diff está en el ADR-0023
+   y en el resumen de la fase.
 2. **La pantalla Parámetros pide el catálogo del análisis más reciente** para los nombres y
    unidades (no hay endpoint global). Sin ningún análisis en la organización, las claves se
    humanizan.
-3. **`tests/datos/` del frontend** (informe y resultado reales del §19) hay que regenerarlos si el
-   motor cambia el informe; el comando está en `frontend/tests/datos/LEEME.md`.
+3. **`tests/datos/` del frontend** (informe y resultados reales del §19, del rentista con hipoteca y
+   de dos tramos fiscales) hay que regenerarlos si el motor cambia el informe o el resultado; el
+   comando está en `frontend/tests/datos/LEEME.md`.
+4. **`m12_decision.calcular_escalera` sigue creciendo** (pasa con mucho de 50 líneas): los
+   candidatos del rentista y los tramos fiscales podrían ir en funciones propias. Anotado en la
+   revisión de la 5J-2a; no se refactoriza sin autorización para tocar el motor.
 
 **Entorno**
 

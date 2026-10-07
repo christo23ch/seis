@@ -323,14 +323,19 @@ Solo cambia cómo se ve: ninguna cifra cambia. Con el caso §19 guardado, en su 
 1. **Vista previa (no oficial)** e **Informes oficiales → Abrir**: el informe sale maquetado, con
    títulos, tablas y casillas en el checklist. No aparece ningún `**`, `|---|` ni `#`. Las
    fórmulas salen con subíndice (C<sub>F</sub>, c<sub>v</sub>, δ<sub>v</sub>) y no hay claves con
-   barra baja («judicial (Portal de Subastas del BOE)», no «judicial_boe»).
+   barra baja («judicial (Portal de Subastas del BOE)», no «judicial_boe»). Desde la 5J-2a, en los
+   análisis nuevos es el propio motor quien redacta los nombres («Partida de costes fijos (P50)»,
+   «descuento de prudencia», «jurídico», «una dimensión alta»).
 2. A **390 px** (herramientas del navegador, modo móvil), las tablas anchas se desplazan dentro de
    su recuadro y la página no tiene desplazamiento horizontal.
 3. **Datos de entrada**: secciones por pasos del asistente («Valor de subasta 152.000 €»,
    «Depósito 5 %», «No consta» en lo vacío). «Ver JSON» enseña la entrada en bruto.
 4. **Resumen → «Ver cálculo»** en Costes, en la escalera, en Métricas de decisión, en Valoración y
-   en Riesgos: fórmula, valores sustituidos y «Resultado del motor». P_ideal, TIR, VAN, colchón y el
-   RA dicen «Cálculo no disponible aún» y qué dato falta.
+   en Riesgos: fórmula, valores sustituidos y «Resultado del motor». Desde la 5J-2a, en un análisis
+   nuevo también tienen cálculo P_ideal (margen 0,3375 en el §19), el escenario pesimista, P_límite
+   bruto, P_adj con sus ajustes, la TIR (flujos del mes 0 al 13), el VAN, el colchón (84,8 meses),
+   el plazo (7 + 3 + 3 meses) y el RA (máx(25,36, 40)). En un análisis guardado ANTES de la 5J-2a
+   esos cálculos siguen diciendo «Cálculo no disponible aún» y qué dato falta: no se inventa.
 5. **Desglose del ICO**: «Rentabilidad 15,0 / 25»; el máximo sale del catálogo del análisis.
 6. **Parámetros**: «Árbol completo vigente» en secciones plegables (Procedimiento muestra
    «20 %» con «LEC, art. 669…»); «Ver JSON» enseña el árbol. En el editor libre, al escribir
@@ -338,6 +343,21 @@ Solo cambia cómo se ve: ninguna cifra cambia. Con el caso §19 guardado, en su 
 
 Lo recorre `frontend/e2e/presentacion.mjs` en `e2e/correr_simulaciones.sh`; con
 `E2E_CAPTURAS=<directorio>` guarda capturas de cada pantalla a 1440 y 390 px.
+
+### Pruebas del PDF y de casos con dos tramos o perfil rentista (Fase 5J-2a)
+
+1. **PDF.** Emite un informe oficial de un análisis nuevo y descarga el PDF: ningún `C_F`, `c_v`,
+   `δ_v`, `judicial_boe`, `una_alta` ni palabras sin tilde («juridico», «semaforo», «avaluo»). Un
+   informe oficial emitido antes de la fase conserva su texto congelado.
+2. **Dos tramos fiscales.** En el alta del §19, paso Costes, escribe un valor de referencia del
+   Catastro de 150.000 €: en «Ver cálculo» de la escalera, P_objetivo aparece con la fórmula del
+   tramo bajo («− t × B» y «1 + c_v − t») y la nota «Tramo bajo».
+3. **Perfil rentista con hipoteca.** P_max aparece como el mínimo de sus candidatos (rentabilidad
+   exigida, DSCR estresado y cash-on-cash), cada uno con su importe.
+
+Lo cubren `backend/tests/test_textos_5j2a.py` (Markdown y texto real del PDF en nueve casos),
+`backend/tests/test_datos_calculo_5j2a.py` y `frontend/tests/calculos.test.ts`, que recalculan cada
+fórmula con resultados reales y la comparan con la cifra del motor.
 
 ### Pruebas de simulaciones (pestaña **Simulaciones** del detalle)
 
