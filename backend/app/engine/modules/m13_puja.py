@@ -83,7 +83,7 @@ def ejecutar(inp: AnalisisInput, params, hechos: dict, escalera: EscaleraPrecios
     if banda == "ajustado":
         plan.append("RVC 0,90–1,05: operación de oportunidad, no de plan — aceptar por escrito antes de pujar")
     if banda == "improbable":
-        plan.append("RVC 0,80–0,90: pujar solo P_ideal 'por si acaso', asumiendo el coste del depósito")
+        plan.append("RVC 0,80–0,90: pujar solo el precio ideal «por si acaso», asumiendo el coste del depósito")
 
     riesgo_ejecucion = [
         "Suspensión/sobreseimiento del procedimiento: capital del depósito inmovilizado sin operación",
