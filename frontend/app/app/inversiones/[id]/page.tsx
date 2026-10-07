@@ -15,6 +15,7 @@ import { InformesOficiales } from "@/components/informes/informes-oficiales";
 import { ProcedimientoPanel } from "@/components/procedimiento";
 import { Markdown } from "@/components/markdown";
 import { DatosEntrada } from "@/components/datos-entrada";
+import { TextoFormulas } from "@/components/texto-formulas";
 import { Card, CardContent, CardHeader, CardTitle, ErrorBox, Spinner, TabPanel, Tabs, TabsLista } from "@/components/ui";
 
 export default function DetalleInversion() {
@@ -117,7 +118,7 @@ export default function DetalleInversion() {
                   <MiniStat k="RVC" v={`${res.puja.rvc.toFixed(2)} (${res.puja.banda_rvc})`} />
                 </div>
                 <ul className="space-y-1.5 text-sm text-slate-700">
-                  {res.puja.plan.map((p, i) => <li key={i} className="flex gap-2"><span className="text-primario">▸</span>{p}</li>)}
+                  {res.puja.plan.map((p, i) => <li key={i} className="flex gap-2"><span className="text-primario">▸</span><span><TextoFormulas texto={p} /></span></li>)}
                 </ul>
               </CardContent>
             </Card>
@@ -125,7 +126,7 @@ export default function DetalleInversion() {
               <CardHeader><CardTitle>Riesgo de ejecución del proceso</CardTitle></CardHeader>
               <CardContent>
                 <ul className="space-y-1.5 text-sm text-slate-700">
-                  {res.puja.riesgo_ejecucion.map((p, i) => <li key={i} className="flex gap-2"><span className="text-sem-naranja">▸</span>{p}</li>)}
+                  {res.puja.riesgo_ejecucion.map((p, i) => <li key={i} className="flex gap-2"><span className="text-sem-naranja">▸</span><span><TextoFormulas texto={p} /></span></li>)}
                 </ul>
               </CardContent>
             </Card>
@@ -161,7 +162,7 @@ export default function DetalleInversion() {
 }
 const Fila = ({ k, v }: { k: string; v: string }) => (
   <div className="flex items-baseline justify-between gap-3 border-b border-slate-50 pb-1">
-    <span className="text-[12.5px] text-slate-500">{k}</span>
+    <span className="text-[12.5px] text-slate-500"><TextoFormulas texto={k} /></span>
     <span className="cifra font-semibold">{v}</span>
   </div>
 );

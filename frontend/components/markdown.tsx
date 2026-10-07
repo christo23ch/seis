@@ -2,6 +2,7 @@
 import { Fragment, useMemo } from "react";
 import { analizarMarkdown, type Bloque, type Inline } from "@/lib/markdown";
 import { cx } from "./ui";
+import { TextoFormulas } from "./texto-formulas";
 
 /** Fase 5K-A — pinta el Markdown del informe (M14) con el estilo de la app.
  *
@@ -77,7 +78,8 @@ export function EnLinea({ nodos }: { nodos: Inline[] }) {
     <>
       {nodos.map((n, i) => {
         switch (n.tipo) {
-          case "texto": return <Fragment key={i}>{n.texto}</Fragment>;
+          // Fase 5K-C: fórmulas en subíndice y claves internas legibles, solo al mostrar.
+          case "texto": return <TextoFormulas key={i} texto={n.texto} />;
           case "negrita": return <strong key={i} className="font-semibold text-tinta"><EnLinea nodos={n.hijos} /></strong>;
           case "cursiva": return <em key={i}><EnLinea nodos={n.hijos} /></em>;
           case "codigo": return <code key={i} className="rounded bg-slate-100 px-1 py-0.5 font-cifra text-[12px]">{n.texto}</code>;
