@@ -255,8 +255,10 @@ def test_m11_m12_no_cambian_ningun_valor_numerico(dorado):
     e = dorado.decision.precios
     assert (e.p_ideal, e.p_objetivo, e.p_max, e.p_limite, e.degenerada) == ESCALERA_ANTES
     # Claves nuevas de `detalle`, solo de trazabilidad: la tasa aplicada (5G.4) y la base
-    # del coste de capital, el capital propio (5H.1-B). Las demás, idénticas.
-    nuevas = {"coste_capital_anual", "capital_propio"}
+    # del coste de capital, el capital propio (5H.1-B) y los operandos de «Ver cálculo» de la
+    # 5J-2a (margen excepcional, estrés y piso del pesimista, límite bruto). Las demás, idénticas.
+    nuevas = {"coste_capital_anual", "capital_propio",
+              "m_excepcional_ajustado", "stress_mercado", "piso_pesimista", "p_limite_bruto"}
     assert {k: v for k, v in e.detalle.items() if k not in nuevas} == DETALLE_ANTES
     rt = dorado.rentabilidad
     assert {k: getattr(rt, k) for k in RENTABILIDAD_ANTES} == RENTABILIDAD_ANTES

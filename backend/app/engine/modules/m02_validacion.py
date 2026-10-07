@@ -1,7 +1,7 @@
 """M02 — Validación documental → ICI (§6.2). 100% determinista."""
 from __future__ import annotations
 
-from app.engine.contracts import AnalisisInput, ICIResultado
+from app.engine.contracts import AnalisisInput, ICIResultado, PenalizacionICI
 
 
 def _factor_frescura_nota(dias: int | None, tabla: list[dict]) -> float:
@@ -58,6 +58,8 @@ def ejecutar(inp: AnalisisInput, params, hechos: dict) -> ICIResultado:
     efecto = next(e for e in params.get("ici.efectos") if ici >= e["min"])
     res = ICIResultado(
         ici=ici, desglose=desglose, carencias=carencias, penalizaciones=penalizaciones,
+        penalizaciones_detalle=[PenalizacionICI(codigo=c, puntos=float(penal_tabla.get(c, penal_tabla["otra"])))
+                                for c in d.inconsistencias],
         efecto_delta_v_pp=float(efecto["delta_pp"]),
         efecto_contingencia_pp=float(efecto["conting_pp"]),
         techo_semaforo=efecto["techo"],

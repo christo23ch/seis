@@ -142,6 +142,44 @@ FORMATO_5G4B = [
 ]
 
 
+# Fase 5J-2a: textos legibles (`app/engine/textos.py`). Cada par es un fragmento EXACTO del
+# texto anterior y su sustituto; ninguna cifra cambia, solo nombres de códigos y símbolos.
+TEXTOS_5J2A = [
+    # §2 activo y subasta
+    ("Subasta judicial_boe,", "Subasta judicial (Portal de Subastas del BOE),", 1),
+    # §3 valoración
+    ("Método comparables_ajustados con 7 comparables", "Método: comparables ajustados, con 7 comparables", 1),
+    ("δ_v aplicado 6,0 %", "descuento de prudencia aplicado 6,0 %", 1),
+    # §5 costes
+    ("c_v = 6,40 % (ITP)", "Costes proporcionales al precio: 6,40 % (ITP)", 1),
+    ("| Partida C_F (P50) |", "| Partida de costes fijos (P50) |", 1),
+    ("| reforma | 50.053 € |", "| Reforma | 50.053 € |", 1),
+    ("| ocupacion_desalojo |", "| Ocupación y desalojo |", 1),
+    ("| atrasos_comunidad_ibi |", "| Atrasos de comunidad e IBI |", 1),
+    ("| adquisicion_fija |", "| Costes fijos de adquisición |", 1),
+    ("| tenencia |", "| Tenencia |", 1),
+    ("| comercializacion |", "| Comercialización |", 1),
+    ("| contingencia |", "| Contingencia |", 1),
+    ("| cargas_subsistentes |", "| Cargas subsistentes |", 1),
+    ("| plusvalia_municipal |", "| Plusvalía municipal |", 1),
+    ("| **Total C_F P50 / P80** |", "| **Total de costes fijos P50 / P80** |", 1),
+    # §6 riesgos
+    ("| juridico |", "| jurídico |", 1),
+    ("Subsanar: posesion_verificada; Subsanar: fotos_interior_o_visita; Subsanar: cert_comunidad; "
+     "Subsanar: ite_cee",
+     "Subsanar: posesión verificada; Subsanar: fotos interiores o visita; Subsanar: certificado de la "
+     "comunidad; Subsanar: ITE y certificado energético", 1),
+    ("| ocupacion |", "| ocupación |", 1),
+    ("| urbanistico |", "| urbanístico |", 1),
+    ("| tecnico |", "| técnico |", 1),
+    ("dominancia: una_alta)", "dominancia: una dimensión alta)", 1),
+    # §9 checklist (el texto del dato no cambia: se redacta legible)
+    ("y aplicada en c_v —", "y aplicada en costes proporcionales —", 1),
+    # §10 trazabilidad
+    ("(semaforo)", "(semáforo)", 2),
+]
+
+
 def test_sin_escalera_degenerada_el_informe_es_el_de_antes_salvo_el_formato(dorado):
     """Diferencias permitidas con el texto anterior, y ninguna más:
     - 5G.2: las cuatro cifras del plan de puja que salían con separador inglés;
@@ -151,7 +189,8 @@ def test_sin_escalera_degenerada_el_informe_es_el_de_antes_salvo_el_formato(dora
     - 5G.4-B: los fragmentos de `FORMATO_5G4B` (solo separadores decimales y «%»);
     - 5J-1: el subapartado informativo del procedimiento, al final del §8 y antes del
       §9. Su texto lo fijan `tests/test_procedimiento_5j1.py`; aquí se vigila que sea
-      lo ÚNICO añadido y que esté en su sitio."""
+      lo ÚNICO añadido y que esté en su sitio;
+    - 5J-2a: los fragmentos de `TEXTOS_5J2A` (nombres de códigos y símbolos, mismos dígitos)."""
     antes = ANTES.read_text(encoding="utf-8")
     corregido = MILES_INGLES.sub(lambda m: m.group(0).replace(",", "."), antes)
     assert corregido != antes, "premisa: el texto anterior tenía cifras en formato inglés"
@@ -163,6 +202,10 @@ def test_sin_escalera_degenerada_el_informe_es_el_de_antes_salvo_el_formato(dora
         # Mismos dígitos en el mismo orden: solo pueden cambiar separadores y espacios.
         assert re.findall(r"\d", viejo) == re.findall(r"\d", nuevo), viejo
         assert re.sub(r"[\d.,% ]", "", viejo) == re.sub(r"[\d.,% ]", "", nuevo), viejo
+        corregido = corregido.replace(viejo, nuevo)
+    for viejo, nuevo, veces in TEXTOS_5J2A:
+        assert corregido.count(viejo) == veces, viejo
+        assert re.findall(r"\d", viejo) == re.findall(r"\d", nuevo), viejo
         corregido = corregido.replace(viejo, nuevo)
     ancla = "\n\n## 9 · Checklist"
     assert corregido.count(ancla) == 1

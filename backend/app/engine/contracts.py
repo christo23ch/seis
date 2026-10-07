@@ -224,11 +224,19 @@ class AnalisisInput(BaseModel):
 
 
 # ────────────────────────── SALIDAS DE MÓDULOS ──────────────────────────
+class PenalizacionICI(BaseModel):
+    """Fase 5J-2a: penalización del ICI estructurada (el texto sigue en `penalizaciones`)."""
+    codigo: str
+    puntos: float
+
+
 class ICIResultado(BaseModel):
     ici: int
     desglose: dict[str, float]
     carencias: list[str]
     penalizaciones: list[str]
+    # Fase 5J-2a (informativo, opcional): las mismas penalizaciones con sus puntos.
+    penalizaciones_detalle: list[PenalizacionICI] | None = None
     efecto_delta_v_pp: float
     efecto_contingencia_pp: float
     techo_semaforo: Semaforo | None
@@ -305,6 +313,9 @@ class CostesResultado(BaseModel):
     base_fiscal_minima: float = 0.0
     base_fiscal_origen: str = "precio_pagado"
     tipo_base_minima: float = 0.0
+    # Fase 5J-2a (informativo, opcional): composición del plazo P50 (meses de ocupación,
+    # obra y comercialización) y el multiplicador que da el P80.
+    plazo_desglose: dict[str, float] | None = None
 
 
 class RiesgoOut(BaseModel):
@@ -316,6 +327,14 @@ class RiesgoOut(BaseModel):
     mitigable: bool = True
     condiciones: list[str] = Field(default_factory=list)
     evidencias: list[str] = Field(default_factory=list)
+    # Fase 5J-2a (informativo, opcional): las mismas evidencias como {dato, valor}.
+    evidencias_detalle: list["EvidenciaOut"] | None = None
+
+
+class EvidenciaOut(BaseModel):
+    """Fase 5J-2a: una evidencia de riesgo estructurada. `valor` None ⇒ marca sin valor."""
+    dato: str
+    valor: str | None = None
 
 
 class RAResultado(BaseModel):
@@ -324,6 +343,10 @@ class RAResultado(BaseModel):
     banda: Literal["bajo", "medio", "alto", "muy_alto", "critico"]
     dominancia_aplicada: str | None
     dimensiones: list[RiesgoOut]
+    # Fase 5J-2a (informativo, opcional): pesos de agregación usados y suelo de la
+    # dominancia aplicada. RA = máx(RA base, suelo), redondeado y ≤ 100.
+    pesos: dict[str, float] | None = None
+    suelo_dominancia: float | None = None
 
 
 class EscenarioOut(BaseModel):
@@ -353,6 +376,10 @@ class RentabilidadResultado(BaseModel):
     # resultados anteriores a la fase. No entran en el ICO, el semáforo ni la escalera.
     van_coste_capital: float | None = None              # € al coste de capital
     diferencial_tir_coste_capital: float | None = None  # TIR − coste de capital, en puntos
+    # Fase 5J-2a (informativo, opcional): flujos mensuales del escenario base con que se
+    # calculan la TIR y el VAN (índice = mes; el 0 es la compra), y la tasa del VAN.
+    flujos_base: list[float] | None = None
+    tasa_van: float | None = None
 
 
 class EscaleraPrecios(BaseModel):
@@ -362,6 +389,9 @@ class EscaleraPrecios(BaseModel):
     p_limite: float
     degenerada: bool = False
     detalle: dict[str, float] = Field(default_factory=dict)
+    # Fase 5J-2a (informativo, opcional): tramo fiscal con que se resolvió cada precio
+    # (`unico`, `bajo`, `alto` o `frontera`; ver `fiscal.resolver_con_tramo`).
+    tramos_fiscales: dict[str, str] | None = None
 
 
 class VetoOut(BaseModel):
@@ -379,13 +409,34 @@ class ReglaDisparadaOut(BaseModel):
     evidencias: list[str] = Field(default_factory=list)
 
 
+class AjusteRatio(BaseModel):
+    """Fase 5J-2a: un ajuste aplicado al ratio de adjudicación (en tanto por uno)."""
+    concepto: str
+    ajuste: float
+
+
 class PujaResultado(BaseModel):
     p_adj_esperado: float
-    ratio_base: float
+    ratio_base: float          # el ratio YA ajustado y acotado (nombre histórico)
     rvc: float
     banda_rvc: str
     plan: list[str]
     riesgo_ejecucion: list[str]
+    # Fase 5J-2a (informativo, opcional): ratio del segmento antes de ajustes, ajustes
+    # aplicados y si el resultado se acotó a [0,10; 1,10].
+    ratio_segmento: float | None = None
+    ajustes_ratio: list[AjusteRatio] | None = None
+    ratio_acotado: bool | None = None
+
+
+class ColchonDetalle(BaseModel):
+    """Fase 5J-2a: operandos del colchón de plazo a P_objetivo (`m11.colchon_plazo`)."""
+    beneficio: float
+    inversion: float
+    tenencia_mensual: float
+    intereses_mensuales: float
+    coste_capital_mensual: float
+    coste_mensual: float
 
 
 class DatoLegal(BaseModel):
@@ -458,6 +509,8 @@ class DecisionFinal(BaseModel):
     # coste de capital, a P_objetivo y a P_max. Informativo; `None` en resultados anteriores
     # o si no hay ningún coste mensual que agote el beneficio.
     colchon_plazo_meses: float | None = None
+    # Fase 5J-2a (informativo, opcional): operandos del colchón a P_objetivo.
+    colchon_detalle: ColchonDetalle | None = None
     colchon_plazo_meses_p_max: float | None = None
 
 

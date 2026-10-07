@@ -29,7 +29,8 @@ const FORMULAS: Record<string, string[]> = {
   k: ["estado", "provincia"],
   DSCR: ["estresado"],
   Y: ["neta", "req", "zona"],
-  m: ["objetivo", "minimo", "mínimo"],
+  m: ["objetivo", "minimo", "mínimo", "excepcional"],
+  F: ["t"],
 };
 const SUB_LEGIBLE: Record<string, string> = { max: "máx", limite: "límite", minimo: "mín", "mínimo": "mín", m2: "m²" };
 

@@ -117,6 +117,9 @@ def ejecutar_analisis(inp: AnalisisInput, params: Parametros | None = None,
             escalera.p_objetivo, costes, vs_p, inp, float(params.get("capital.coste_capital_anual"))),
         colchon_plazo_meses_p_max=None if escalera.degenerada else m11_rentabilidad.colchon_plazo(
             escalera.p_max, costes, vs_p, inp, float(params.get("capital.coste_capital_anual"))),
+        # Fase 5J-2a: operandos del colchón a P_objetivo (informativo).
+        colchon_detalle=None if escalera.degenerada else m11_rentabilidad.colchon_detalle(
+            escalera.p_objetivo, costes, vs_p, inp, float(params.get("capital.coste_capital_anual"))),
         rvc=puja.rvc, p_adj_esperado=puja.p_adj_esperado, vetos=vetos,
         condiciones=sorted(set(condiciones)), techos_aplicados=sorted(set(techos)),
         razones=razones, version_reglas=version_reglas, version_parametros=params.version,

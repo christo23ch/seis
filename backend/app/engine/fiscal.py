@@ -77,6 +77,12 @@ def inversion(p: float, costes: CostesResultado, c_f: float) -> float:
 
 def resolver_por_tramos(costes: CostesResultado,
                         calcular: Callable[[float, float], float]) -> float:
+    """Precio resuelto por tramos (ver `resolver_con_tramo`, que además dice cuál)."""
+    return resolver_con_tramo(costes, calcular)[0]
+
+
+def resolver_con_tramo(costes: CostesResultado,
+                       calcular: Callable[[float, float], float]) -> tuple[float, str]:
     """Invierte en P una fórmula cerrada de precio, respetando los dos tramos.
 
     `calcular(c_v_efectivo, fijo_extra)` debe ser la fórmula de siempre, parametrizada
@@ -86,14 +92,17 @@ def resolver_por_tramos(costes: CostesResultado,
 
     I(P) es continua y estrictamente creciente, así que solo uno de los dos tramos
     contiene la solución; se elige el que la contiene, no el que da mejor número.
+
+    Fase 5J-2a: devuelve también el tramo (`unico` sin base mínima; `bajo`, `alto` o
+    `frontera`), para que el resultado diga con qué fórmula se obtuvo cada precio.
     """
     b, t = costes.base_fiscal_minima, costes.tipo_base_minima
     if b <= 0 or t <= 0:
-        return calcular(costes.c_v, 0.0)
+        return calcular(costes.c_v, 0.0), "unico"
     p_bajo = calcular(costes.c_v - t, t * b)
     if p_bajo < b:
-        return p_bajo
+        return p_bajo, "bajo"
     p_alto = calcular(costes.c_v, 0.0)
     # En el empate exacto (P = B) los dos tramos coinciden; si el alto se sale de su
     # propio dominio es que la solución es justo la frontera.
-    return p_alto if p_alto >= b else b
+    return (p_alto, "alto") if p_alto >= b else (b, "frontera")

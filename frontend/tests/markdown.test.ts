@@ -99,9 +99,10 @@ describe("informe real del caso §19", () => {
     expect(desnudo(visible)).toBe(desnudo(INFORME));
   });
 
-  it("las fórmulas e identificadores con barra baja siguen siendo texto (los formatea el bloque C)", () => {
-    expect(visible).toContain("C_F (P50)");
-    expect(visible).toContain("δ_v aplicado");
+  it("desde la 5J-2a el motor redacta los nombres: ni símbolos con barra baja ni claves internas", () => {
+    expect(visible).toContain("Partida de costes fijos (P50)");
+    expect(visible).toContain("descuento de prudencia aplicado");
+    expect(visible).not.toMatch(/[^\W_]_[^\W_]/u);
   });
 });
 

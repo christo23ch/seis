@@ -19,6 +19,21 @@ convertirse en un SaaS. Lo anterior está en el historial de git.
 
 ---
 
+## [Fase 5J-2a] — Textos legibles en el informe y el PDF; operandos de «Ver cálculo» — 2026-10-07
+
+Rama `fase/5j-2a-textos-y-datos`, sin PR ([[ADR-0023]]). Ninguna cifra cambia: la guarda del §19
+(510 hojas) pasa sin tocarla. Suite: 1100 passed, 18 skipped, 0 failed (+39). Vitest: 141 (+8).
+E2E: 163 comprobaciones, 0 fallos. Sin migración.
+
+- **Textos (a):** `app/engine/textos.py`; M14 redacta con nombres legibles (costes fijos, descuento de
+  prudencia, jurídico, una dimensión alta…). Los códigos del resultado no cambian.
+- **Datos (b):** campos nuevos y opcionales con los operandos de «Ver cálculo» (escalera y tramos
+  fiscales, rentista, RA, P_adj, TIR/VAN, colchón, plazo, ICI y evidencias).
+- **Frontend:** «Ver cálculo» completa esas fórmulas; los tests las recalculan contra el motor.
+- Revisión de código: 0 críticos, 0 altos; 2 medios y 3 bajos corregidos.
+
+---
+
 ## [Fase 5K] — Presentación: informe maquetado, datos legibles, fórmulas y «Ver cálculo» — 2026-10-07
 
 Fase de solo frontend sobre `docs/INVENTARIO_PRESENTACION.md`. Rama `fase/5k-presentacion`, sin

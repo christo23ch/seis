@@ -16,36 +16,36 @@
   "ici": 63,
   "icu": 66,
   "precios": {
-   "p_ideal": 51317.0,
-   "p_objetivo": 60011.0,
-   "p_max": 68731.0,
-   "p_limite": 80022.0,
+   "p_ideal": 45420.0,
+   "p_objetivo": 54633.0,
+   "p_max": 63874.0,
+   "p_limite": 76059.0,
    "degenerada": false,
    "detalle": {
     "delta_v_aplicado": 0.0,
     "m_objetivo_ajustado": 0.25,
     "m_minimo_ajustado": 0.17,
     "vs_pesimista": 160837.44,
-    "p_por_margen_min": 69097.33,
-    "p_por_pesimista": 68730.9,
+    "p_por_margen_min": 64262.51,
+    "p_por_pesimista": 63874.18,
     "m_excepcional_ajustado": 0.3375,
     "stress_mercado": 0.09,
     "piso_pesimista": 0.0,
     "coste_capital": 3659.05,
     "coste_capital_anual": 0.015,
     "capital_propio": 160837.44,
-    "p_limite_bruto": 83681.09
+    "p_limite_bruto": 79717.81
    },
    "tramos_fiscales": {
-    "p_ideal": "unico",
-    "p_objetivo": "unico",
-    "p_por_margen_min": "unico",
-    "p_por_pesimista": "unico",
-    "p_limite": "unico"
+    "p_ideal": "bajo",
+    "p_objetivo": "bajo",
+    "p_por_margen_min": "bajo",
+    "p_por_pesimista": "bajo",
+    "p_limite": "bajo"
    }
   },
   "margen_seguridad_valor": 0.248,
-  "rvc": 1.077,
+  "rvc": 1.001,
   "p_adj_esperado": 63840.0,
   "vetos": [],
   "condiciones": [
@@ -63,12 +63,12 @@
   "version_parametros": "2026.07",
   "colchon_plazo_meses": 84.8,
   "colchon_detalle": {
-   "beneficio": 35348.67600000001,
-   "inversion": 141395.764,
+   "beneficio": 35348.84800000003,
+   "inversion": 141395.59199999998,
    "tenencia_mensual": 240.0,
    "intereses_mensuales": 0.0,
-   "coste_capital_mensual": 176.74470499999998,
-   "coste_mensual": 416.74470499999995
+   "coste_capital_mensual": 176.74448999999996,
+   "coste_mensual": 416.7444899999999
   },
   "colchon_plazo_meses_p_max": 60.9
  },
@@ -236,9 +236,9 @@
   "plazo_meses_p80": 18.2,
   "regimen_fiscal": "itp",
   "tipo_impositivo": 0.06,
-  "base_fiscal_minima": 0.0,
-  "base_fiscal_origen": "precio_pagado",
-  "tipo_base_minima": 0.0,
+  "base_fiscal_minima": 150000.0,
+  "base_fiscal_origen": "valor_referencia",
+  "tipo_base_minima": 0.06,
   "plazo_desglose": {
    "ocupacion": 7.0,
    "obra": 3.0,
@@ -420,20 +420,20 @@
   "suelo_dominancia": 40.0
  },
  "rentabilidad": {
-  "precio_evaluado": 60011.0,
-  "inversion_total": 141395.76,
-  "beneficio": 35348.68,
+  "precio_evaluado": 54633.0,
+  "inversion_total": 141395.59,
+  "beneficio": 35348.85,
   "roi": 0.25,
   "roi_anualizado": 0.2287,
   "tir_anual": 0.3387,
-  "valor_esperado": 32361.25,
+  "valor_esperado": 32361.42,
   "escenarios": [
    {
     "nombre": "pesimista",
     "probabilidad": 0.25,
     "vs": 160837.44,
-    "coste_total": 151559.46,
-    "beneficio": 9277.98,
+    "coste_total": 151559.29,
+    "beneficio": 9278.15,
     "roi": 0.0612,
     "roi_anualizado": 0.04,
     "plazo_meses": 18.2
@@ -442,8 +442,8 @@
     "nombre": "base",
     "probabilidad": 0.55,
     "vs": 176744.44,
-    "coste_total": 141395.76,
-    "beneficio": 35348.68,
+    "coste_total": 141395.59,
+    "beneficio": 35348.85,
     "roi": 0.25,
     "roi_anualizado": 0.2287,
     "plazo_meses": 13.0
@@ -452,8 +452,8 @@
     "nombre": "optimista",
     "probabilidad": 0.2,
     "vs": 186995.62,
-    "coste_total": 133995.7,
-    "beneficio": 52999.92,
+    "coste_total": 133995.53,
+    "beneficio": 53000.09,
     "roi": 0.3955,
     "roi_anualizado": 0.4361,
     "plazo_meses": 11.0
@@ -462,10 +462,10 @@
   "y_neta": null,
   "dscr": null,
   "cash_on_cash": null,
-  "van_coste_capital": 33230.42,
+  "van_coste_capital": 33230.59,
   "diferencial_tir_coste_capital": 32.37,
   "flujos_base": [
-   -74882.18,
+   -74882.01,
    -240.0,
    -240.0,
    -240.0,
@@ -485,14 +485,15 @@
  "puja": {
   "p_adj_esperado": 63840.0,
   "ratio_base": 0.42,
-  "rvc": 1.077,
-  "banda_rvc": "alcanzable",
+  "rvc": 1.001,
+  "banda_rvc": "ajustado",
   "plan": [
-   "Cargar límites en la interfaz antes de abrir la puja: objetivo 60.011 € · máximo 68.731 € · límite absoluto 80.022 € (infranqueable por software)",
+   "Cargar límites en la interfaz antes de abrir la puja: objetivo 54.633 € · máximo 63.874 € · límite absoluto 76.059 € (infranqueable por software)",
    "Pujar siempre el tramo mínimo; sin pujas psicológicas redondas",
    "Entrar tarde con límites precargados: la extensión automática del cierre neutraliza el sniping; la ventaja es la disciplina",
    "Depósito requerido: 7.600 € (5 % del valor de subasta)",
-   "Si aparece información nueva durante la subasta, re-análisis exprés; si el semáforo cae, retirada"
+   "Si aparece información nueva durante la subasta, re-análisis exprés; si el semáforo cae, retirada",
+   "RVC 0,90–1,05: operación de oportunidad, no de plan — aceptar por escrito antes de pujar"
   ],
   "riesgo_ejecucion": [
    "Suspensión/sobreseimiento del procedimiento: capital del depósito inmovilizado sin operación",
@@ -606,8 +607,8 @@
    "orden": 13,
    "texto": "Tributación de la adquisición determinada (árbol §8.7.3) y aplicada en c_v",
    "bloqueante": true,
-   "estado": "pendiente",
-   "detalle": "Régimen calculado por el motor según los datos declarados; base imponible tomada de la puja por no constar valor de referencia: el impuesto es un mínimo"
+   "estado": "ok",
+   "detalle": "Régimen calculado por el motor según los datos declarados; base imponible = 150.000 € (valor_referencia)"
   },
   {
    "grupo": "C. Fiscal",
@@ -647,7 +648,7 @@
    "texto": "Escalera de precios cargada en la interfaz de puja",
    "bloqueante": true,
    "estado": "ok",
-   "detalle": "Objetivo 60.011 € · Máx 68.731 € · Límite 80.022 €"
+   "detalle": "Objetivo 54.633 € · Máx 63.874 € · Límite 76.059 €"
   },
   {
    "grupo": "D. Económico",
@@ -718,8 +719,8 @@
    "orden": 27,
    "texto": "RVC dentro del umbral del perfil; si 0,90–1,05 aceptación explícita de 'operación de oportunidad'",
    "bloqueante": true,
-   "estado": "ok",
-   "detalle": "RVC = 1,08 · P adjudicación esperado 63.840 €"
+   "estado": "pendiente",
+   "detalle": "RVC = 1,00 · P adjudicación esperado 63.840 €"
   },
   {
    "grupo": "F. Ejecución",

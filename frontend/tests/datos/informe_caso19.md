@@ -31,44 +31,44 @@
 - (ninguno)
 
 ## 2 · Activo y subasta
-Vivienda de 82 m² en Ciudad Ejemplo (Ejemplo), estado malo. Subasta judicial_boe, valor de subasta 152.000 €, depósito 5 %. Ocupación declarada: precario.
+Vivienda de 82 m² en Ciudad Ejemplo (Ejemplo), estado malo. Subasta judicial (Portal de Subastas del BOE), valor de subasta 152.000 €, depósito 5 %. Ocupación declarada: precario.
 
 ## 3 · Valoración
-Método comparables_ajustados con 7 comparables (CV 5,3 %, confianza 76 %). VM actual 135.379 € · VS de salida 188.026 € (2.293 €/m²) · δ_v aplicado 6,0 % ⇒ **VS prudente 176.744 €**.
+Método: comparables ajustados, con 7 comparables (CV 5,3 %, confianza 76 %). VM actual 135.379 € · VS de salida 188.026 € (2.293 €/m²) · descuento de prudencia aplicado 6,0 % ⇒ **VS prudente 176.744 €**.
 
 ## 4 · Mercado y ubicación
 ICU 66 (macro 73 · micro 62). Tendencia +3,0 %/a · DOM venta 75 d · DOM alquiler 25 d · Potencial de revalorización 58/100.
 
 ## 5 · Plan de obra y costes
-Reforma nivel **media**: 50.053 € (P50) / 61.064 € (P80), 3 meses de obra. c_v = 6,40 % (ITP). **Base imponible del impuesto calculada sobre la puja, como suelo: no consta valor de referencia del Catastro ni valor declarado.** La base legal es el mayor de los tres, así que el impuesto aquí es un MÍNIMO y el real puede ser mayor. Supuesto no verificado, no dato confirmado. Plazo total 13 m (P50) / 18 m (P80). Contingencia 10 %.
+Reforma nivel **media**: 50.053 € (P50) / 61.064 € (P80), 3 meses de obra. Costes proporcionales al precio: 6,40 % (ITP). **Base imponible del impuesto calculada sobre la puja, como suelo: no consta valor de referencia del Catastro ni valor declarado.** La base legal es el mayor de los tres, así que el impuesto aquí es un MÍNIMO y el real puede ser mayor. Supuesto no verificado, no dato confirmado. Plazo total 13 m (P50) / 18 m (P80). Contingencia 10 %.
 
-| Partida C_F (P50) | Importe |
+| Partida de costes fijos (P50) | Importe |
 |---|---|
-| reforma | 50.053 € |
-| ocupacion_desalojo | 6.500 € |
-| atrasos_comunidad_ibi | 2.432 € |
-| adquisicion_fija | 2.700 € |
-| tenencia | 3.120 € |
-| comercializacion | 6.841 € |
-| contingencia | 5.898 € |
-| cargas_subsistentes | 0 € |
-| plusvalia_municipal | 0 € |
-| **Total C_F P50 / P80** | **77.544 € / 87.708 €** |
+| Reforma | 50.053 € |
+| Ocupación y desalojo | 6.500 € |
+| Atrasos de comunidad e IBI | 2.432 € |
+| Costes fijos de adquisición | 2.700 € |
+| Tenencia | 3.120 € |
+| Comercialización | 6.841 € |
+| Contingencia | 5.898 € |
+| Cargas subsistentes | 0 € |
+| Plusvalía municipal | 0 € |
+| **Total de costes fijos P50 / P80** | **77.544 € / 87.708 €** |
 
 ## 6 · Riesgos (matriz P×I, §7)
 | Dimensión | P×I | Nivel | Mitigación |
 |---|---|---|---|
-| juridico | 2×3 = 6 | medio | — |
-| documental | 2×3 = 6 | medio | Subsanar: posesion_verificada; Subsanar: fotos_interior_o_visita; Subsanar: cert_comunidad; Subsanar: ite_cee |
-| ocupacion | 4×3 = 12 | alto | — |
-| urbanistico | 2×2 = 4 | bajo | — |
-| tecnico | 3×3 = 9 | medio | Visita interior (o con cerrajero tras adjudicación) para cerrar presupuesto P50 |
+| jurídico | 2×3 = 6 | medio | — |
+| documental | 2×3 = 6 | medio | Subsanar: posesión verificada; Subsanar: fotos interiores o visita; Subsanar: certificado de la comunidad; Subsanar: ITE y certificado energético |
+| ocupación | 4×3 = 12 | alto | — |
+| urbanístico | 2×2 = 4 | bajo | — |
+| técnico | 3×3 = 9 | medio | Visita interior (o con cerrajero tras adjudicación) para cerrar presupuesto P50 |
 | financiero | 1×2 = 2 | bajo | — |
 | comercial | 2×3 = 6 | medio | — |
 | liquidez | 2×2 = 4 | bajo | — |
 | mercado | 2×3 = 6 | medio | — |
 
-Riesgo agregado **RA 40** (banda medio, dominancia: una_alta).
+Riesgo agregado **RA 40** (banda medio, dominancia: una dimensión alta).
 
 ## 7 · Análisis financiero (a precio objetivo 60.011 €)
 | Escenario | Prob. | VS | Coste total | Beneficio | ROI | ROI anual | Plazo |
@@ -134,13 +134,13 @@ _Cálculo orientativo con los parámetros legales de SEIS (versión 2026.07): no
 ## 9 · Checklist previo a la puja — bloqueantes pendientes
 - [ ] **[B]** Nota simple actualizada ≤ 5 días antes del cierre, cotejada con el edicto — _Antigüedad declarada: 10 días_
 - [ ] **[B]** Situación posesoria verificada según árbol §8.7.2 — _Estado declarado: precario_
-- [ ] **[B]** Tributación de la adquisición determinada (árbol §8.7.3) y aplicada en c_v — _Régimen calculado por el motor según los datos declarados; base imponible tomada de la puja por no constar valor de referencia: el impuesto es un mínimo_
+- [ ] **[B]** Tributación de la adquisición determinada (árbol §8.7.3) y aplicada en costes proporcionales — _Régimen calculado por el motor según los datos declarados; base imponible tomada de la puja por no constar valor de referencia: el impuesto es un mínimo_
 - [ ] **[B]** Depósito disponible y transferido en plazo — _7.600 €_
 
 ## 10 · Trazabilidad
 Reglas disparadas (versión reglas 2026.07 · parámetros 2026.07):
-- `SEM-OCU-02` v2026.07 (semaforo)
-- `SEM-DOC-01` v2026.07 (semaforo)
+- `SEM-OCU-02` v2026.07 (semáforo)
+- `SEM-DOC-01` v2026.07 (semáforo)
 - `SEM-EJEC-01` v2026.07 (puja)
 
 ---
