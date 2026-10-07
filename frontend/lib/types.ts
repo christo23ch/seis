@@ -18,12 +18,18 @@ export interface Decision {
 export interface Resultado {
   decision: Decision;
   ici: { ici: number; carencias: string[]; penalizaciones: string[]; desglose: Record<string, number> };
-  valoracion: { vm: number; vs: number; vs_m2: number; n_comparables: number; dispersion_cv: number; confianza: number; metodo: string };
+  valoracion: { vm: number; vs: number; vs_m2: number; n_comparables: number; dispersion_cv: number; confianza: number; metodo: string;
+    /** Fase 5K-D: trazabilidad que ya devolvía el backend (opcional: resultados antiguos). */
+    detalle_comparables?: { precio_ajustado_m2: number; normalizado_m2: number; peso: number }[];
+    k_estado_activo?: number | null; vs_capitalizacion?: number | null };
   icu: { icu: number; macro_score: number; micro_score: number; potencial_revalorizacion: number; dom_venta_dias: number; tendencia_5a_pct: number };
-  reforma: { nivel: string; total_p50: number; total_p80: number; plazo_obra_meses: number };
-  costes: { c_v: number; c_f_p50: number; c_f_p80: number; desglose_p50: Record<string, number>; contingencia_pct: number; plazo_meses_p50: number; plazo_meses_p80: number; regimen_fiscal: string };
+  reforma: { nivel: string; total_p50: number; total_p80: number; plazo_obra_meses: number; partidas?: Record<string, number> };
+  costes: { c_v: number; c_f_p50: number; c_f_p80: number; desglose_p50: Record<string, number>; contingencia_pct: number; plazo_meses_p50: number; plazo_meses_p80: number; regimen_fiscal: string;
+    /** Fase 5K-D: desgloses que ya devolvía el backend (opcionales: resultados antiguos). */
+    desglose_p80?: Record<string, number>; c_v_desglose?: Record<string, number>;
+    base_fiscal_minima?: number; tipo_base_minima?: number };
   riesgos: { ra: number; ra_base: number; banda: string; dominancia_aplicada: string | null; dimensiones: RiesgoDim[] };
-  rentabilidad: { inversion_total: number; beneficio: number; roi: number; roi_anualizado: number; tir_anual: number; valor_esperado: number; escenarios: EscenarioOut[]; y_neta?: number | null; dscr?: number | null;
+  rentabilidad: { precio_evaluado?: number; inversion_total: number; beneficio: number; roi: number; roi_anualizado: number; tir_anual: number; valor_esperado: number; escenarios: EscenarioOut[]; y_neta?: number | null; dscr?: number | null;
     /** Fase 5H.1-A (ADR-0017): informativos; ausentes en resultados anteriores. */
     van_coste_capital?: number | null; diferencial_tir_coste_capital?: number | null };
   puja: { p_adj_esperado: number; ratio_base: number; rvc: number; banda_rvc: string; plan: string[]; riesgo_ejecucion: string[] };

@@ -19,6 +19,50 @@ convertirse en un SaaS. Lo anterior está en el historial de git.
 
 ---
 
+## [Fase 5K] — Presentación: informe maquetado, datos legibles, fórmulas y «Ver cálculo» — 2026-10-07
+
+Fase de solo frontend sobre `docs/INVENTARIO_PRESENTACION.md`. Rama `fase/5k-presentacion`, sin
+PR. **Sin dependencias nuevas** (decisión del responsable: renderizador de Markdown propio).
+No toca `backend/` ni `app/engine/`: ninguna cifra cambia y la guarda del §19 y la suite del
+backend pasan igual (1061 passed, 18 skipped, 0 failed). Vitest: 133 tests (+69). E2E nueva `frontend/e2e/presentacion.mjs` (1440 y
+390 px) en `e2e/correr_simulaciones.sh`; la batería completa da 157 comprobaciones, 0 fallos.
+
+### Añadido
+- **A · Informe maquetado.** La vista previa y los informes oficiales pintan el Markdown de M14
+  (títulos desde h2, listas, casillas del checklist, negritas, cursivas y tablas con
+  desplazamiento propio y enfocable) en lugar de mostrarlo en crudo. `lib/markdown.ts` devuelve
+  nodos, nunca HTML. El texto congelado de los informes oficiales no cambia.
+- **B · Datos legibles.** «Datos de entrada» por los pasos del asistente, con nombres, unidades
+  y valores en español; «Árbol completo vigente» en secciones plegables con los nombres y
+  unidades del catálogo de las Simulaciones (los datos legales de la 5J-1, con artículo y
+  estado). «Ver JSON» conserva la vista anterior. El editor libre muestra el valor vigente.
+- **C · Fórmulas e identificadores.** `P_max`, `C_F`, `c_v`, `δ_v`… con subíndice, y las claves
+  internas (`ocupacion_desalojo`, `judicial_boe`, `una_alta`…) con su nombre, solo al mostrar.
+- **D · «Ver cálculo»** con fórmula, valores sustituidos y resultado del motor en ICI, C_F, c_v,
+  reforma, valoración por comparables, escalera (P_objetivo, P_max, P_límite y coste de
+  capital), RVC, ROI, inversión total, margen de seguridad y riesgo por dimensión. El frontend no
+  recalcula. Cada fórmula se verificó recalculándola en los tests con el resultado real del §19.
+  Lo que no viaja en el resultado dice «Cálculo no disponible aún» y el dato que falta.
+
+### Corregido
+- **E · Los pesos del desglose del ICO estaban escritos en el frontend** (`resultado.tsx:196`).
+  Ahora salen del catálogo y son los de los parámetros que produjeron el resultado mostrado.
+- Cabecera: RVC con coma decimal; perfil y dimensiones de riesgo con su nombre y tildes.
+- **Revisión de código (`code-reviewer`: 0 críticos, 2 altos, 3 medios), corregida antes del
+  commit final:** la reforma sumaba dos veces los extras conocidos (en M05 la obra ya los
+  incluye); con la capitalización vinculante del perfil rentista se mostraba «VS = VS_m2 × m²»,
+  que no era el VS usado; la inversión total se sustituía con P_objetivo en vez del P_eval del
+  motor; el margen de seguridad no decía que está acotado a 0; una fila de «-» en una tabla
+  desaparecía; el respaldo de identificadores reescribía nombres de fichero, correos y rutas; y el
+  aviso de pesos del ICO no distinguía «cargando» de «sin snapshot». Cada caso tiene su test.
+
+### Deuda (para la 5J-2)
+- `docs/DEUDA_PRESENTACION_MOTOR.md`: 14 datos que el resultado no trae, textos del motor con
+  claves internas (que siguen llegando así al PDF oficial), el endpoint global del catálogo y
+  pantallas de frontend fuera del alcance (reglas, simulaciones).
+
+---
+
 ## [Fase 5J-1] — Datos del procedimiento de subasta, informativos (diseño A) — 2026-10-07
 
 Primera capa del diseño elegido en la 5J-0 (C, construido A → B → C). Rama

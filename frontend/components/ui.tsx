@@ -2,7 +2,7 @@
 import { Loader2 } from "lucide-react";
 import { cloneElement, createContext, isValidElement, useContext, useEffect, useId, useRef, useState } from "react";
 
-const cx = (...c: (string | false | undefined)[]) => c.filter(Boolean).join(" ");
+export const cx = (...c: (string | false | undefined)[]) => c.filter(Boolean).join(" ");
 
 export function Button({ variante = "primario", className, cargando, children, ...p }:
   React.ButtonHTMLAttributes<HTMLButtonElement> & { variante?: "primario" | "secundario" | "peligro" | "fantasma"; cargando?: boolean }) {

@@ -316,6 +316,29 @@ rentabilidad. Con el caso §19 (sección 6), los precios siguen siendo los mismo
 
 Lo recorre la e2e `frontend/e2e/procedimiento.mjs`, que lanza `e2e/correr_simulaciones.sh`.
 
+### Pruebas de presentación (Fase 5K)
+
+Solo cambia cómo se ve: ninguna cifra cambia. Con el caso §19 guardado, en su detalle:
+
+1. **Vista previa (no oficial)** e **Informes oficiales → Abrir**: el informe sale maquetado, con
+   títulos, tablas y casillas en el checklist. No aparece ningún `**`, `|---|` ni `#`. Las
+   fórmulas salen con subíndice (C<sub>F</sub>, c<sub>v</sub>, δ<sub>v</sub>) y no hay claves con
+   barra baja («judicial (Portal de Subastas del BOE)», no «judicial_boe»).
+2. A **390 px** (herramientas del navegador, modo móvil), las tablas anchas se desplazan dentro de
+   su recuadro y la página no tiene desplazamiento horizontal.
+3. **Datos de entrada**: secciones por pasos del asistente («Valor de subasta 152.000 €»,
+   «Depósito 5 %», «No consta» en lo vacío). «Ver JSON» enseña la entrada en bruto.
+4. **Resumen → «Ver cálculo»** en Costes, en la escalera, en Métricas de decisión, en Valoración y
+   en Riesgos: fórmula, valores sustituidos y «Resultado del motor». P_ideal, TIR, VAN, colchón y el
+   RA dicen «Cálculo no disponible aún» y qué dato falta.
+5. **Desglose del ICO**: «Rentabilidad 15,0 / 25»; el máximo sale del catálogo del análisis.
+6. **Parámetros**: «Árbol completo vigente» en secciones plegables (Procedimiento muestra
+   «20 %» con «LEC, art. 669…»); «Ver JSON» enseña el árbol. En el editor libre, al escribir
+   `tenencia.mensual_defecto` aparece «Valor vigente: 240».
+
+Lo recorre `frontend/e2e/presentacion.mjs` en `e2e/correr_simulaciones.sh`; con
+`E2E_CAPTURAS=<directorio>` guarda capturas de cada pantalla a 1440 y 390 px.
+
 ### Pruebas de simulaciones (pestaña **Simulaciones** del detalle)
 
 Parte del análisis guardado arriba. Encima de las pestañas, el aviso debe decir **«Configuración original del análisis»**.

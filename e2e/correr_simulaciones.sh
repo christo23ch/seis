@@ -116,7 +116,9 @@ node "$RAIZ/frontend/e2e/nueva-inversion.mjs"; alta_inversion=$?
 node "$RAIZ/frontend/e2e/validacion-alta.mjs"; validacion=$?
 # Fase 5J-1: preguntas del procedimiento y panel de resultados (ADR-0022).
 node "$RAIZ/frontend/e2e/procedimiento.mjs"; procedimiento=$?
-alta_inversion=$((alta_inversion + validacion + procedimiento))
+# Fase 5K: presentación (informe maquetado, datos legibles, fórmulas, «Ver cálculo»), 1440 y 390 px.
+node "$RAIZ/frontend/e2e/presentacion.mjs"; presentacion=$?
+alta_inversion=$((alta_inversion + validacion + procedimiento + presentacion))
 
 if [ $navegador -ne 0 ] || [ $base -ne 0 ] || [ $alta_inversion -ne 0 ]; then
   echo "E2E: FALLÓ (navegador=$navegador base=$base alta_inversion=$alta_inversion). Registros en $E2E_DIR (usar E2E_CONSERVAR=1 para verlos)."

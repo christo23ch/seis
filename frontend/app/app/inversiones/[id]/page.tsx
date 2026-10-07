@@ -13,11 +13,19 @@ import { AvisoConfiguracion } from "@/components/simulaciones/aviso-configuracio
 import { ListaSimulaciones } from "@/components/simulaciones/lista";
 import { InformesOficiales } from "@/components/informes/informes-oficiales";
 import { ProcedimientoPanel } from "@/components/procedimiento";
+import { Markdown } from "@/components/markdown";
+import { DatosEntrada } from "@/components/datos-entrada";
+import { TextoFormulas } from "@/components/texto-formulas";
+import { VerCalculo } from "@/components/ver-calculo";
+import { calculoCf, calculoCv, calculoReforma, calculoValoracion } from "@/lib/calculos";
+import { usePesosIco } from "@/lib/ico";
 import { Card, CardContent, CardHeader, CardTitle, ErrorBox, Spinner, TabPanel, Tabs, TabsLista } from "@/components/ui";
 
 export default function DetalleInversion() {
   const { id } = useParams<{ id: string }>();
   const { data, isLoading, error } = useQuery({ queryKey: ["detalle", id], queryFn: () => api.detalle(id) });
+  // Fase 5K-E: pesos del ICO de los parámetros que produjeron el resultado mostrado.
+  const pesosIco = usePesosIco(id, data?.simulacion_validada_id);
 
   if (isLoading) return <Spinner />;
   if (error || !data) return <ErrorBox mensaje={(error as Error)?.message ?? "No encontrado"} />;
@@ -38,7 +46,7 @@ export default function DetalleInversion() {
           {act.tipologia ?? "Activo"} · {act.municipio ?? "—"}
         </h1>
         <p className="text-sm text-slate-500">
-          {data.perfil} · {num(act.superficie_m2 ?? 0)} m² · {fecha(data.creado_en)} ·
+          <TextoFormulas texto={data.perfil} /> · {num(act.superficie_m2 ?? 0)} m² · {fecha(data.creado_en)} ·
           análisis original: reglas v{data.version_reglas} · parámetros v{data.version_parametros}
         </p>
       </header>
@@ -62,13 +70,13 @@ export default function DetalleInversion() {
         <TabPanel valor="resumen">
           <div className="space-y-4">
             <div className="grid gap-4 xl:grid-cols-2">
-              <EscaleraPrecios d={d} />
+              <EscaleraPrecios d={d} res={res} />
               <MetricasClave res={res} />
             </div>
             <CondicionesVetos d={d} />
             <div className="grid gap-4 xl:grid-cols-2">
               <EscenariosPanel r={res.rentabilidad} />
-              <IcoDesglose d={d} />
+              <IcoDesglose d={d} pesos={pesosIco} />
             </div>
             <div className="grid gap-4 xl:grid-cols-3">
               <Card>
@@ -79,6 +87,7 @@ export default function DetalleInversion() {
                   <Fila k="VM (estado actual)" v={eur(res.valoracion.vm)} />
                   <Fila k="€/m² salida" v={eur(res.valoracion.vs_m2)} />
                   <Fila k="Comparables · CV" v={`${res.valoracion.n_comparables} · ${pct(res.valoracion.dispersion_cv)}`} />
+                  <VerCalculo calculos={[calculoValoracion(res.valoracion, act.superficie_m2)]} />
                 </CardContent>
               </Card>
               <Card>
@@ -89,6 +98,7 @@ export default function DetalleInversion() {
                   <Fila k="Reforma" v={`${res.reforma.nivel} · ${eur(res.reforma.total_p50)}`} />
                   <Fila k="Plazo (P50 / P80)" v={`${num(res.costes.plazo_meses_p50)} / ${num(res.costes.plazo_meses_p80)} meses`} />
                   <Fila k="Contingencia" v={pct(res.costes.contingencia_pct, 0)} />
+                  <VerCalculo calculos={[calculoCf(res.costes, "p50"), calculoCf(res.costes, "p80"), calculoCv(res.costes), calculoReforma(res.reforma)]} />
                 </CardContent>
               </Card>
               {lat != null && lng != null ? (
@@ -112,10 +122,10 @@ export default function DetalleInversion() {
                 <div className="mb-3 grid grid-cols-3 gap-3 text-center">
                   <MiniStat k="P. adjudicación" v={eur(res.puja.p_adj_esperado)} />
                   <MiniStat k="Ratio segmento" v={pct(res.puja.ratio_base, 0)} />
-                  <MiniStat k="RVC" v={`${res.puja.rvc.toFixed(2)} (${res.puja.banda_rvc})`} />
+                  <MiniStat k="RVC" v={`${num(res.puja.rvc, 2)} (${res.puja.banda_rvc})`} />
                 </div>
                 <ul className="space-y-1.5 text-sm text-slate-700">
-                  {res.puja.plan.map((p, i) => <li key={i} className="flex gap-2"><span className="text-primario">▸</span>{p}</li>)}
+                  {res.puja.plan.map((p, i) => <li key={i} className="flex gap-2"><span className="text-primario">▸</span><span><TextoFormulas texto={p} /></span></li>)}
                 </ul>
               </CardContent>
             </Card>
@@ -123,7 +133,7 @@ export default function DetalleInversion() {
               <CardHeader><CardTitle>Riesgo de ejecución del proceso</CardTitle></CardHeader>
               <CardContent>
                 <ul className="space-y-1.5 text-sm text-slate-700">
-                  {res.puja.riesgo_ejecucion.map((p, i) => <li key={i} className="flex gap-2"><span className="text-sem-naranja">▸</span>{p}</li>)}
+                  {res.puja.riesgo_ejecucion.map((p, i) => <li key={i} className="flex gap-2"><span className="text-sem-naranja">▸</span><span><TextoFormulas texto={p} /></span></li>)}
                 </ul>
               </CardContent>
             </Card>
@@ -144,20 +154,14 @@ export default function DetalleInversion() {
               Vista previa de la configuración actual. <b>No es un informe oficial</b>: no queda
               congelada y cambia si cambia la configuración seleccionada.
             </p>
-            <pre className="max-h-[70vh] overflow-auto whitespace-pre-wrap font-cifra text-[12.5px] leading-relaxed text-slate-700">
-              {res.informe_markdown}
-            </pre>
+            <Markdown texto={res.informe_markdown} />
           </CardContent></Card>
         </TabPanel>
 
         <TabPanel valor="oficiales"><InformesOficiales detalle={data} /></TabPanel>
 
         <TabPanel valor="datos">
-          <Card><CardContent>
-            <pre className="max-h-[70vh] overflow-auto font-cifra text-[12px] text-slate-600">
-              {JSON.stringify(data.entrada, null, 2)}
-            </pre>
-          </CardContent></Card>
+          <Card><CardContent><DatosEntrada entrada={data.entrada ?? {}} /></CardContent></Card>
         </TabPanel>
       </Tabs>
     </div>
@@ -165,7 +169,7 @@ export default function DetalleInversion() {
 }
 const Fila = ({ k, v }: { k: string; v: string }) => (
   <div className="flex items-baseline justify-between gap-3 border-b border-slate-50 pb-1">
-    <span className="text-[12.5px] text-slate-500">{k}</span>
+    <span className="text-[12.5px] text-slate-500"><TextoFormulas texto={k} /></span>
     <span className="cifra font-semibold">{v}</span>
   </div>
 );

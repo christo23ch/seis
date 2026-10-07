@@ -3,7 +3,10 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { Button, Campo, Card, CardContent, CardHeader, CardTitle, ErrorBox, Input, Spinner, Textarea } from "@/components/ui";
+import { Button, Campo, Card, CardContent, CardHeader, CardTitle, ErrorBox, Input, Spinner } from "@/components/ui";
+import { ConVerJson, SeccionPlegable } from "@/components/arbol-valores";
+import { useCatalogoParametros } from "@/lib/catalogo";
+import { construirArbol, formatearValor, valorEnRuta } from "@/lib/presentacion-valores";
 import { Save } from "lucide-react";
 
 export default function Parametros() {
@@ -11,6 +14,7 @@ export default function Parametros() {
   const { usuario } = useAuth();
   const esAdmin = usuario?.rol === "admin";
   const { data, isLoading, error } = useQuery({ queryKey: ["parametros"], queryFn: api.parametros });
+  const catalogo = useCatalogoParametros();
 
   const [itpLocal, setItpLocal] = useState<Record<string, string>>({});
   const [clave, setClave] = useState("");
@@ -23,6 +27,8 @@ export default function Parametros() {
     onSuccess: (_r, b) => {
       setMensaje(`Parámetro «${b.clave}» actualizado con vigencia desde hoy.`);
       qc.invalidateQueries({ queryKey: ["parametros"] });
+      // Fase 5K: el catálogo (valores vigentes, pesos del ICO del asistente) también cambia.
+      qc.invalidateQueries({ queryKey: ["parametros-simulables"] });
     },
     onError: (e: Error) => setMensaje(e.message),
   });
@@ -32,6 +38,8 @@ export default function Parametros() {
 
   const itp: Record<string, number> = data?.fiscal?.itp_por_ccaa ?? {};
   const secciones = Object.keys(data ?? {}).filter((k) => k !== "version");
+  // Fase 5K-B: solo para mostrar el valor vigente de la clave escrita; no valida nada.
+  const vigente = valorEnRuta(data, clave.trim());
 
   function publicarLibre() {
     let v: unknown = valor.trim();
@@ -82,7 +90,9 @@ export default function Parametros() {
         <Card>
           <CardHeader><CardTitle>Editor libre de parámetro</CardTitle></CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-3">
-            <Campo label="Clave (ruta con puntos)" ayuda="Debe existir en el árbol T3; p. ej. tenencia.mensual_defecto">
+            <Campo label="Clave (ruta con puntos)" ayuda={vigente === undefined
+              ? "Debe existir en el árbol T3; p. ej. tenencia.mensual_defecto"
+              : `Valor vigente: ${formatearValor(vigente)}`}>
               <Input value={clave} onChange={(e) => setClave(e.target.value)} placeholder="reforma.baremos_m2.media" />
             </Campo>
             <Campo label="Valor (JSON, número o texto)">
@@ -102,16 +112,18 @@ export default function Parametros() {
 
       <Card>
         <CardHeader><CardTitle>Árbol completo vigente</CardTitle></CardHeader>
-        <CardContent className="space-y-1.5">
-          {secciones.map((k) => (
-            <details key={k} className="group rounded-md border border-slate-100">
-              <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-slate-700 group-open:border-b group-open:border-slate-100">
-                {k}
-              </summary>
-              <Textarea readOnly rows={Math.min(16, JSON.stringify(data[k], null, 2).split("\n").length)}
-                className="!border-0" value={JSON.stringify(data[k], null, 2)} />
-            </details>
-          ))}
+        <CardContent>
+          {/* Fase 5K-B: secciones plegables con nombres y unidades del catálogo (si se
+              conocen) y valores en formato español; «Ver JSON» conserva el árbol crudo. */}
+          <ConVerJson json={data}>
+            <div className="space-y-1.5">
+              {secciones.map((k) => {
+                const [raiz] = construirArbol({ [k]: data[k] }, { catalogo });
+                const nodos = raiz?.tipo === "grupo" ? raiz.hijos : raiz ? [raiz] : [];
+                return <SeccionPlegable key={k} titulo={raiz?.etiqueta ?? k} nodos={nodos} />;
+              })}
+            </div>
+          </ConVerJson>
         </CardContent>
       </Card>
     </div>

@@ -1,8 +1,13 @@
 "use client";
 import { eur, num, pct, puntos, tasa } from "@/lib/format";
-import type { Decision, Resultado, RiesgoDim, Semaforo } from "@/lib/types";
+import type { Decision, Resultado, Semaforo } from "@/lib/types";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Badge, Card, CardContent, CardHeader, CardTitle } from "./ui";
+import { TextoFormulas } from "./texto-formulas";
+import { VerCalculo } from "./ver-calculo";
+import { calculoIci, calculoRiesgos, calculosEscalera, calculosMetricas } from "@/lib/calculos";
+import type { PesosIcoEstado } from "@/lib/ico";
+import { humanizar } from "@/lib/presentacion-valores";
 
 export const SEM_COLOR: Record<Semaforo, string> = { verde: "#15803D", amarillo: "#B45309", naranja: "#C2410C", rojo: "#B91C1C" };
 const SEM_BG: Record<Semaforo, string> = { verde: "bg-sem-verdebg", amarillo: "bg-sem-amarillobg", naranja: "bg-sem-naranjabg", rojo: "bg-sem-rojobg" };
@@ -24,7 +29,7 @@ export function SemaforoHero({ d }: { d: Decision }) {
         <MetricaMini etiqueta="RA" valor={`${d.ra} / 100`} />
         <MetricaMini etiqueta="ICI" valor={`${d.ici}`} />
         <MetricaMini etiqueta="ICU" valor={`${d.icu}`} />
-        <MetricaMini etiqueta="RVC" valor={d.rvc.toFixed(2)} />
+        <MetricaMini etiqueta="RVC" valor={d.rvc.toFixed(2).replace(".", ",")} />
       </div>
       {d.razones.length > 0 && <p className="mt-3 text-sm text-slate-700">{d.razones[0]}</p>}
     </div>
@@ -43,7 +48,8 @@ const MetricaMini = ({ etiqueta, valor }: { etiqueta: string; valor: string }) =
  * el límite no es utilizable: su escalón no se dibuja como el más alto ni con su
  * cifra, y la línea de adjudicación se oculta, porque no hay ningún escalón
  * válido contra el que situarla (el precio adjudicado sigue en la cabecera). */
-export function EscaleraPrecios({ d }: { d: Decision }) {
+/** `res` (opcional, Fase 5K-D): con el resultado completo se ofrece «Ver cálculo». */
+export function EscaleraPrecios({ d, res }: { d: Decision; res?: Resultado }) {
   const p = d.precios;
   const degenerada = p.degenerada;
   const escalones = [
@@ -103,6 +109,7 @@ export function EscaleraPrecios({ d }: { d: Decision }) {
           {p.degenerada && <span className="ml-1 font-semibold text-sem-rojo">Escalera degenerada: la estructura de costes consume el valor.</span>}
         </p>
         <NotaCosteCapital detalle={p.detalle} />
+        {res && <VerCalculo titulo="Ver cálculo de la escalera" calculos={calculosEscalera(res)} />}
       </CardContent>
     </Card>
   );
@@ -124,15 +131,16 @@ function NotaCosteCapital({ detalle }: { detalle: Record<string, number> | undef
 }
 
 const NIVEL_COLOR: Record<string, string> = { bajo: "#94A3B8", medio: "#B45309", alto: "#C2410C", critico: "#B91C1C" };
-export function RiesgosPanel({ riesgos }: { riesgos: { ra: number; banda: string; dominancia_aplicada: string | null; dimensiones: RiesgoDim[] } }) {
-  const data = riesgos.dimensiones.map((r) => ({ dim: r.dimension, score: r.score, nivel: r.nivel }));
+export function RiesgosPanel({ riesgos }: { riesgos: Resultado["riesgos"] }) {
+  // Fase 5K-C: nombres de dimensión con tildes («juridico» → «Jurídico»).
+  const data = riesgos.dimensiones.map((r) => ({ dim: humanizar(r.dimension), score: r.score, nivel: r.nivel }));
   return (
     <Card>
       <CardHeader className="flex items-center justify-between">
         <CardTitle>Riesgos (matriz P×I)</CardTitle>
         <span className="text-[12px] text-slate-500">
-          RA <b className="cifra">{riesgos.ra}</b> · banda <b>{riesgos.banda}</b>
-          {riesgos.dominancia_aplicada && <> · dominancia <b>{riesgos.dominancia_aplicada}</b></>}
+          RA <b className="cifra">{riesgos.ra}</b> · banda <b><TextoFormulas texto={riesgos.banda} /></b>
+          {riesgos.dominancia_aplicada && <> · dominancia <b><TextoFormulas texto={riesgos.dominancia_aplicada} /></b></>}
         </span>
       </CardHeader>
       <CardContent>
@@ -152,10 +160,11 @@ export function RiesgosPanel({ riesgos }: { riesgos: { ra: number; banda: string
         <div className="mt-3 space-y-1.5">
           {riesgos.dimensiones.filter((r) => r.condiciones.length).map((r) => (
             <div key={r.dimension} className="text-[12.5px] text-slate-600">
-              <b className="text-slate-700">{r.dimension}</b>: {r.condiciones.join("; ")}
+              <b className="text-slate-700">{humanizar(r.dimension)}</b>: <TextoFormulas texto={r.condiciones.join("; ")} />
             </div>
           ))}
         </div>
+        <VerCalculo calculos={[calculoRiesgos(riesgos)]} />
       </CardContent>
     </Card>
   );
@@ -191,25 +200,42 @@ export function EscenariosPanel({ r }: { r: Resultado["rentabilidad"] }) {
   );
 }
 
-export function IcoDesglose({ d }: { d: Decision }) {
+/** Fase 5K-E: los pesos (máximo de cada componente) vienen del catálogo, de los
+ * parámetros que produjeron este resultado (`lib/ico.ts`). Sin ellos, no se supone
+ * ninguno: se muestran los puntos sin barra ni máximo. */
+const AVISO_SIN_PESOS: Record<"sin_catalogo" | "sin_snapshot" | "sin_analisis", string> = {
+  sin_analisis: "Aún no hay ningún análisis guardado del que leer el catálogo de pesos: se muestran los puntos de cada componente sin su máximo.",
+  sin_snapshot: "Pesos no disponibles para este resultado (análisis anterior al registro de parámetros): se muestran los puntos de cada componente sin su máximo.",
+  sin_catalogo: "No se ha podido leer el catálogo de parámetros: se muestran los puntos de cada componente sin su máximo.",
+};
+
+export function IcoDesglose({ d, pesos: estado }: { d: Decision; pesos: PesosIcoEstado }) {
+  const pesos = estado.pesos;
   const entradas = Object.entries(d.ico_desglose);
-  const pesos: Record<string, number> = { rentabilidad: 25, juridico: 15, ubicacion: 15, liquidez: 12, revalorizacion: 10, financiero: 8, informacion: 8, urbanistico: 7 };
   return (
     <Card>
       <CardHeader><CardTitle>ICO {d.ico} / 100 — desglose</CardTitle></CardHeader>
       <CardContent className="space-y-2">
         {entradas.map(([k, v]) => {
-          const max = pesos[k] ?? 15;
+          const max = pesos?.[k];
           return (
-            <div key={k} className="flex items-center gap-3 text-[12.5px]">
-              <span className="w-28 shrink-0 capitalize text-slate-600">{k}</span>
-              <div className="h-2 flex-1 rounded bg-slate-100">
-                <div className="h-2 rounded bg-primario" style={{ width: `${Math.min(100, (v / max) * 100)}%` }} />
-              </div>
-              <span className="cifra w-16 text-right text-slate-500">{v.toFixed(1)} / {max}</span>
+            <div key={k} data-componente-ico={k} className="flex items-center gap-3 text-[12.5px]">
+              <span className="w-28 shrink-0 text-slate-600">{humanizar(k)}</span>
+              {max != null && max > 0 ? (
+                <div className="h-2 flex-1 rounded bg-slate-100" role="meter" aria-label={humanizar(k)}
+                  aria-valuemin={0} aria-valuemax={max} aria-valuenow={v}>
+                  <div className="h-2 rounded bg-primario" style={{ width: `${Math.min(100, (v / max) * 100)}%` }} />
+                </div>
+              ) : <span className="flex-1" />}
+              <span className="cifra w-20 shrink-0 whitespace-nowrap text-right text-slate-500">
+                {v.toFixed(1).replace(".", ",")}{max != null ? ` / ${max}` : ""}
+              </span>
             </div>
           );
         })}
+        {!pesos && estado.motivo && estado.motivo !== "cargando" && (
+          <p className="text-[12px] text-slate-500">{AVISO_SIN_PESOS[estado.motivo]}</p>
+        )}
       </CardContent>
     </Card>
   );
@@ -223,12 +249,12 @@ export function CondicionesVetos({ d }: { d: Decision }) {
       <CardContent className="space-y-2 text-sm">
         {d.vetos.map((v) => (
           <div key={v.codigo} className="rounded-md bg-sem-rojobg px-3 py-2 text-sem-rojo">
-            <b>{v.codigo}</b> — {v.motivo}
-            {v.subsanable_con && <div className="mt-0.5 text-[12.5px]">Subsanable con: {v.subsanable_con}</div>}
+            <b>{v.codigo}</b> — <TextoFormulas texto={v.motivo} />
+            {v.subsanable_con && <div className="mt-0.5 text-[12.5px]">Subsanable con: <TextoFormulas texto={v.subsanable_con} /></div>}
           </div>
         ))}
         {d.condiciones.map((c, i) => (
-          <div key={i} className="flex gap-2 text-slate-700"><span className="text-sem-amarillo">▸</span>{c}</div>
+          <div key={i} className="flex gap-2 text-slate-700"><span className="text-sem-amarillo">▸</span><span><TextoFormulas texto={c} /></span></div>
         ))}
       </CardContent>
     </Card>
@@ -259,11 +285,12 @@ export function MetricasClave({ res }: { res: Resultado }) {
         <dl className="grid grid-cols-2 gap-x-6 gap-y-2.5">
           {filas.map(([k, v]) => (
             <div key={k} className="flex items-baseline justify-between gap-3 border-b border-slate-50 pb-1.5">
-              <dt className="text-[12.5px] text-slate-500">{k}</dt>
+              <dt className="text-[12.5px] text-slate-500"><TextoFormulas texto={k} /></dt>
               <dd className="cifra text-sm font-semibold">{v}</dd>
             </div>
           ))}
         </dl>
+        <VerCalculo titulo="Ver cálculo de las métricas" calculos={[calculoIci(res.ici), ...calculosMetricas(res)]} />
       </CardContent>
     </Card>
   );
@@ -284,9 +311,9 @@ export function ChecklistLista({ items }: { items: Resultado["checklist"] }) {
                 <span className={`w-4 font-bold ${color[i.estado]}`}>{icono[i.estado]}</span>
                 <div className="flex-1">
                   <span className={i.estado === "no_aplica" ? "text-slate-400" : "text-slate-700"}>
-                    {i.bloqueante && <b className="mr-1 text-sem-rojo">[B]</b>}{i.texto}
+                    {i.bloqueante && <b className="mr-1 text-sem-rojo">[B]</b>}<TextoFormulas texto={i.texto} />
                   </span>
-                  {i.detalle && <span className="ml-1 text-slate-400">— {i.detalle}</span>}
+                  {i.detalle && <span className="ml-1 text-slate-400">— <TextoFormulas texto={i.detalle} /></span>}
                 </div>
               </div>
             ))}

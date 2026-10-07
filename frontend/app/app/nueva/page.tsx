@@ -14,6 +14,7 @@ import type { Opciones, Resultado } from "@/lib/types";
 import { Button, Campo, Card, CardContent, CardHeader, CardTitle, Check, ErrorBox, Input, Select, Spinner } from "@/components/ui";
 import { CondicionesVetos, EscaleraPrecios, EscenariosPanel, IcoDesglose, MetricasClave, RiesgosPanel, SemaforoHero } from "@/components/resultado";
 import { ProcedimientoPanel } from "@/components/procedimiento";
+import { usePesosIco } from "@/lib/ico";
 import { Check as CheckIcon, ChevronLeft, ChevronRight, Plus, RefreshCw, Save, Trash2 } from "lucide-react";
 import { rutaApp } from "@/lib/rutas";
 import { eur, num, tasa } from "@/lib/format";
@@ -567,6 +568,8 @@ function Paso10() {
 }
 function PasoResultado({ res, cargando, error, onRecalcular, onGuardar, guardando }:
   { res: Resultado | null; cargando: boolean; error?: string; onRecalcular: () => void; onGuardar: () => void; guardando: boolean }) {
+  // Fase 5K-E: `/analisis/simular` usa el conocimiento vigente: sus pesos del ICO.
+  const pesosIco = usePesosIco();
   if (cargando) return <div><Spinner /><p className="text-center text-sm text-slate-500">Ejecutando el motor M01–M14…</p></div>;
   if (error) return <div className="space-y-3"><ErrorBox mensaje={error} /><Button variante="secundario" onClick={onRecalcular}><RefreshCw className="h-4 w-4" /> Reintentar</Button></div>;
   if (!res) return null;
@@ -574,7 +577,7 @@ function PasoResultado({ res, cargando, error, onRecalcular, onGuardar, guardand
     <div className="space-y-4">
       <SemaforoHero d={res.decision} />
       <div className="grid gap-4 xl:grid-cols-2">
-        <EscaleraPrecios d={res.decision} />
+        <EscaleraPrecios d={res.decision} res={res} />
         <MetricasClave res={res} />
       </div>
       <CondicionesVetos d={res.decision} />
@@ -583,7 +586,7 @@ function PasoResultado({ res, cargando, error, onRecalcular, onGuardar, guardand
         <RiesgosPanel riesgos={res.riesgos} />
         <div className="space-y-4">
           <EscenariosPanel r={res.rentabilidad} />
-          <IcoDesglose d={res.decision} />
+          <IcoDesglose d={res.decision} pesos={pesosIco} />
         </div>
       </div>
       <div className="flex justify-end gap-3 pt-2">

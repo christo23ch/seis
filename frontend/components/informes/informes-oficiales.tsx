@@ -7,6 +7,7 @@ import { fecha } from "@/lib/format";
 import { puedeEscribir } from "@/lib/permisos";
 import type { Detalle, InformeOficialResumen, SimulacionResumen, ValorJson } from "@/lib/types";
 import { SemaforoBadge } from "@/components/resultado";
+import { Markdown } from "@/components/markdown";
 import { Button, Card, CardContent, CardHeader, CardTitle, Confirmacion, ErrorBox, Spinner } from "@/components/ui";
 import { idCorto, invalidarConfiguracion } from "@/components/simulaciones/aviso-configuracion";
 
@@ -264,10 +265,9 @@ function InformeDetalle({ analisisId, informeId, simulaciones, onCerrar, onNoExi
                 Sin snapshot de parámetros (análisis anterior al registro de parámetros).
               </p>
             )}
-            {/* El Markdown CONGELADO del informe, mostrado igual que la vista previa. */}
-            <pre data-markdown className="max-h-[70vh] overflow-auto whitespace-pre-wrap font-cifra text-[12.5px] leading-relaxed text-slate-700">
-              {i.resultado.informe_markdown}
-            </pre>
+            {/* El Markdown CONGELADO del informe, mostrado igual que la vista previa: el
+                texto no cambia, solo su presentación (Fase 5K-A). */}
+            <Markdown texto={i.resultado.informe_markdown} />
           </>
         )}
       </div>
