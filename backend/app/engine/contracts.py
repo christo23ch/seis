@@ -470,6 +470,8 @@ class AvisoAprobacion(BaseModel):
     titulo: str
     riesgo: str
     condicion: str
+    alcance: str = ""                                 # qué hace con el semáforo, redactado por el motor
+    umbrales: list[str] = []                          # los umbrales aplicados, redactados (informe e interfaz)
     datos_legales: list[DatoLegal] = []               # los umbrales aplicados, con su estado
 
 
@@ -509,6 +511,9 @@ class ProcedimientoResultado(BaseModel):
     datos_legales: list[DatoLegal]
     avisos: list[str]
     aviso_orientativo: str
+    # Fase 5J-3 (revisión, M1): la norma exige SUPERAR la mínima aprobable, no igualarla
+    # (régimen anterior: «supere el 50 %»). Falso si la rebaja la deuda («cubra») o la vivienda habitual.
+    puja_minima_estricta: bool | None = None
     # Fase 5J-3 (ADR-0027): solo si la puja máxima no alcanza la aprobación segura.
     aviso_aprobacion: AvisoAprobacion | None = None
 

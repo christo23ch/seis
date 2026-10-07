@@ -259,7 +259,7 @@ def _cambios_5j3(dorado) -> list[tuple[str, str, int]]:
     return [
         ("# 🟡 AMARILLO\n", f"# 🟠 NARANJA\n\n{procedimiento.bloque_aviso_aprobacion(aviso)}\n", 1),
         ("o límites de Verde no alcanzados\n",
-         f"o límites de Verde no alcanzados · {aviso.titulo} ⇒ techo Naranja con condición (5J-3) · "
+         f"o límites de Verde no alcanzados · {aviso.titulo} ⇒ techo Naranja con condición · "
          "Techo aplicado: naranja\n", 1),
         (f"{CESION_5J2B}\n", f"{CESION_5J3}\n- {aviso.condicion}\n", 1),
         ("- Cesión de remate solo disponible para el ejecutante: la estructura compradora final debe pujar "

@@ -317,7 +317,7 @@ def decidir_semaforo(params, ico: int, ra_res: RAResultado, rent: RentabilidadRe
     # veto. Sujeta a mejora (entre la mínima aprobable y la segura): solo condición, sin techo.
     if aviso_aprobacion is not None and aviso_aprobacion.techo_naranja:
         techos = techos + ["naranja"]
-        razones.append(f"{aviso_aprobacion.titulo} ⇒ techo Naranja con condición (5J-3)")
+        razones.append(f"{aviso_aprobacion.titulo} ⇒ techo Naranja con condición")
     for t in techos:
         if _ORDEN_SEM[t] > _ORDEN_SEM[candidato]:
             razones.append(f"Techo aplicado: {t}")

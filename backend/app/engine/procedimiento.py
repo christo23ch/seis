@@ -116,6 +116,18 @@ def _datos_legales(regimen: dict) -> list[DatoLegal]:
     return [dato(clave, nombre) for clave, nombre in NOMBRES_DATO.items() if isinstance(regimen.get(clave), dict)]
 
 
+def _minima_estricta(regimen: dict, vt: float, minimo: float | None, vivienda: bool) -> bool | None:
+    """La mínima aprobable hay que superarla, no igualarla, solo si la fija el umbral general
+    marcado `estricto` (régimen anterior: «supere el 50 %»); no si la rebaja la deuda o si manda
+    la vivienda habitual."""
+    if minimo is None:
+        return None
+    aprob = regimen.get("umbral_aprobacion_pct")
+    general = _valor(regimen, "umbral_aprobacion_pct")
+    return bool(isinstance(aprob, dict) and aprob.get("estricto") and not vivienda
+                and general is not None and abs(minimo - general * vt) < 0.005)
+
+
 def _puja_minima_aprobable(regimen: dict, vt: float, cantidad: float | None,
                            vivienda: bool) -> float | None:
     """Menor puja que la norma aprueba sin depender de la autoridad (LAJ, Mesa…).
@@ -222,6 +234,7 @@ def calcular(inp: "AnalisisInput", params: "Parametros") -> ProcedimientoResulta
         meses_inmovilizacion_asumidos=meses_norma is None,
         forma_puja=_texto(regimen, "forma_puja"),
         umbral_aprobacion_pct=round(minimo / vt, 4) if minimo is not None else None,
+        puja_minima_estricta=_minima_estricta(regimen, vt, minimo, vivienda),
         puja_minima_aprobable=round(minimo, 2) if minimo is not None else None,
         umbral_aprobacion_segura_pct=segura_pct,
         puja_aprobacion_segura=round(segura_pct * vt, 2) if segura_pct is not None else None,
@@ -379,9 +392,12 @@ def aviso_aprobacion(r: ProcedimientoResultado, escalera: EscaleraPrecios) -> Av
     p_max, vt = escalera.p_max, r.valor_subasta
     if p_max >= r.puja_aprobacion_segura or vt <= 0:
         return None
+    vivienda = r.vivienda_habitual == "si" or r.vivienda_habitual_asumida
     if r.suelo_absoluto is not None and p_max < r.suelo_absoluto:
         franja = "bajo_suelo"
-    elif r.puja_minima_aprobable is not None and p_max < r.puja_minima_aprobable:
+    elif r.puja_minima_aprobable is not None and (
+            p_max < r.puja_minima_aprobable
+            or (r.puja_minima_estricta and p_max <= r.puja_minima_aprobable)):
         franja = "discrecional"
     else:
         franja = "sujeta_a_mejora"
@@ -396,10 +412,26 @@ def aviso_aprobacion(r: ProcedimientoResultado, escalera: EscaleraPrecios) -> Av
                   f"remate se aprueba. Riesgo: perder la adjudicación después de haber ganado la subasta.")
         condicion = (f"Aprobación del remate sujeta a mejora: la puja máxima ({eur(p_max)}) no alcanza la "
                      f"aprobación segura ({segura}); asumir por escrito el riesgo de que un tercero la mejore")
+    elif franja == "discrecional" and vivienda:
+        minima = f"{eur(r.puja_minima_aprobable or 0.0)}, {pct(r.umbral_aprobacion_pct or 0.0, 0)}"
+        suelo = f"{eur(r.suelo_absoluto or 0.0)}, {pct(r.suelo_absoluto_pct or 0.0, 0)}"
+        titulo = "Remate de vivienda habitual aprobable solo si cubre la deuda"
+        riesgo = (f"{maximo} queda por debajo del umbral de la vivienda habitual del ejecutado ({minima}): "
+                  f"la ley no aprueba el remate por debajo de ese umbral salvo que la postura cubra lo "
+                  f"debido al ejecutante, y nunca por debajo del suelo ({suelo}). Riesgo: no obtener el "
+                  f"remate aunque se gane la subasta.")
+        if r.vivienda_habitual_asumida:
+            riesgo += (" No consta si es la vivienda habitual: se asume que sí, por prudencia; si no lo "
+                       "es, la aprobación dependería de los umbrales generales.")
+        condicion = (f"Remate de vivienda habitual aprobable solo si cubre la deuda: la puja máxima "
+                     f"({eur(p_max)}) queda por debajo del umbral ({minima}); confirmar en el edicto si es la "
+                     f"vivienda habitual y lo debido al ejecutante, y asumir por escrito el riesgo")
     elif franja == "discrecional":
         minima = f"{eur(r.puja_minima_aprobable or 0.0)}, {pct(r.umbral_aprobacion_pct or 0.0, 0)}"
         titulo = "Aprobación del remate a decisión del letrado"
-        riesgo = (f"{maximo} queda por debajo de la puja mínima aprobable ({minima}). Si nadie mejora la "
+        igual = " o la iguala (la norma exige superarla)" if r.puja_minima_estricta and p_max >= (
+            r.puja_minima_aprobable or 0.0) else ""
+        riesgo = (f"{maximo} queda por debajo de la puja mínima aprobable ({minima}){igual}. Si nadie mejora la "
                   f"postura, la aprobación del remate la decide {autoridad}, oídas las partes, y puede "
                   f"denegarla. Riesgo: no obtener el remate aunque se gane la subasta.")
         condicion = (f"Aprobación del remate a decisión del letrado: la puja máxima ({eur(p_max)}) queda por "
@@ -412,35 +444,49 @@ def aviso_aprobacion(r: ProcedimientoResultado, escalera: EscaleraPrecios) -> Av
                   f"Riesgo: ganar la subasta sin poder obtener el remate.")
         if r.vivienda_habitual_asumida:
             riesgo += (" No consta si es la vivienda habitual: se asume que sí, por prudencia; si no lo "
-                       "es, el suelo no se aplica y la aprobación quedaría a decisión del letrado.")
+                       "es, el suelo no se aplica y la aprobación dependería de los umbrales generales.")
         condicion = (f"Remate no aprobable si es la vivienda habitual del ejecutado: la puja máxima "
                      f"({eur(p_max)}) queda por debajo del suelo legal ({suelo}); confirmar en el edicto "
                      f"si lo es y asumir por escrito el riesgo")
     if r.regimen_asumido:
         riesgo += (" No consta cuándo se inició el procedimiento: se aplican los umbrales del régimen "
                    "de la LO 1/2025.")
-    vivienda = r.vivienda_habitual == "si" or r.vivienda_habitual_asumida
+    techo = franja != "sujeta_a_mejora"
     datos = [d for d in r.datos_legales if d.dato in _DATOS_FRANJA
              and (vivienda or not d.dato.startswith("Vivienda"))
              and (r.cantidad_reclamada is not None or d.dato != "Aprobación si la puja cubre la deuda")]
-    return AvisoAprobacion(
-        franja=franja, techo_naranja=franja != "sujeta_a_mejora", p_max=p_max, p_max_pct=round(p_max / vt, 4),
+    aviso = AvisoAprobacion(
+        franja=franja, techo_naranja=techo, p_max=p_max, p_max_pct=round(p_max / vt, 4),
+        alcance=("El semáforo queda como máximo en naranja." if techo
+                 else "No limita el semáforo: es una condición."),
         puja_aprobacion_segura=r.puja_aprobacion_segura,
         umbral_aprobacion_segura_pct=r.umbral_aprobacion_segura_pct or 0.0,
         puja_minima_aprobable=r.puja_minima_aprobable, umbral_aprobacion_pct=r.umbral_aprobacion_pct,
         suelo_absoluto=r.suelo_absoluto, suelo_absoluto_pct=r.suelo_absoluto_pct,
         vivienda_habitual_asumida=r.vivienda_habitual_asumida, regimen_asumido=r.regimen_asumido,
         titulo=titulo, riesgo=riesgo, condicion=condicion, datos_legales=datos)
+    return aviso.model_copy(update={"umbrales": umbrales_texto(aviso)})
+
+
+def _umbral(d: DatoLegal) -> str:
+    """«aprobación segura (70 %)»; un 0 es el centinela de «sin porcentaje mínimo»."""
+    if d.valor is None:
+        return d.dato.lower()
+    return f"{d.dato.lower()} ({'sin porcentaje mínimo' if d.valor == 0 else pct(d.valor, 0)})"
+
+
+def umbrales_texto(a: AvisoAprobacion) -> list[str]:
+    """Los umbrales aplicados, uno por línea, para la interfaz (mismo texto que el informe)."""
+    return [f"{_umbral(d)} — {d.articulo} ({'confirmado' if d.estado == 'confirmado' else 'sin confirmar'})"
+            for d in a.datos_legales]
 
 
 def bloque_aviso_aprobacion(a: AvisoAprobacion) -> str:
     """Bloque destacado del §1 del informe. Solo párrafos con negrita y cursiva: el
     renderizador de la interfaz y el PDF no admiten citas (`>`)."""
-    semaforo = ("El semáforo queda como máximo en naranja. " if a.techo_naranja
-                else "No limita el semáforo: es una condición. ")
-    umbrales = "; ".join(
-        f"{d.dato.lower()}{f' ({pct(d.valor, 0)})' if d.valor is not None else ''}: {d.articulo} "
-        f"({'confirmado' if d.estado == 'confirmado' else 'sin confirmar'})" for d in a.datos_legales)
+    semaforo = (a.alcance or ("El semáforo queda como máximo en naranja." if a.techo_naranja
+                              else "No limita el semáforo: es una condición.")) + " "
+    umbrales = "; ".join(a.umbrales or umbrales_texto(a))
     return (f"**Atención: {a.titulo.lower()}.** {a.riesgo}\n\n"
             f"**Umbrales aplicados:** {umbrales or 'no constan'}.\n\n"
             f"_{semaforo}Los precios, el RVC y la rentabilidad no cambian. "

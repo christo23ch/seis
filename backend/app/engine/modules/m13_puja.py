@@ -72,7 +72,8 @@ def _cesion_remate(procedimiento: ProcedimientoResultado | None) -> str:
     (LEC 647.3); antes, solo el ejecutante."""
     final = "un postor que no sea uno de ellos no puede cederlo: la estructura compradora final debe pujar directamente"
     if procedimiento is not None and procedimiento.regimen == "judicial_lec_2015":
-        return f"Cesión de remate solo disponible para el ejecutante (LEC, art. 647, apdo. 3, redacción de 2015): {final}"
+        return ("Cesión de remate solo disponible para el ejecutante (LEC, art. 647, apdo. 3, redacción de 2015): "
+                "cualquier otro postor no puede cederlo: la estructura compradora final debe pujar directamente")
     texto = ("Cesión de remate solo disponible para el ejecutante y los acreedores posteriores "
              f"(LEC, art. 647, apdo. 3, LO 1/2025): {final}")
     if procedimiento is not None and procedimiento.regimen_asumido:

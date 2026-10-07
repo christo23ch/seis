@@ -362,7 +362,7 @@
    "ra": 40,
    "razones": [
     "ICO 64 en banda 60–74 o límites de Verde no alcanzados",
-    "Remate no aprobable si es la vivienda habitual del ejecutado ⇒ techo Naranja con condición (5J-3)",
+    "Remate no aprobable si es la vivienda habitual del ejecutado ⇒ techo Naranja con condición",
     "Techo aplicado: naranja"
    ],
    "rvc": 1.064,
@@ -432,6 +432,7 @@
   },
   "procedimiento": {
    "aviso_aprobacion": {
+    "alcance": "El semáforo queda como máximo en naranja.",
     "condicion": "Remate no aprobable si es la vivienda habitual del ejecutado: la puja máxima (67.941 €) queda por debajo del suelo legal (91.200 €, 60 %); confirmar en el edicto si lo es y asumir por escrito el riesgo",
     "datos_legales": [
      {
@@ -473,13 +474,19 @@
     "puja_aprobacion_segura": 106400.0,
     "puja_minima_aprobable": 106400.0,
     "regimen_asumido": true,
-    "riesgo": "La puja máxima recomendada (67.941 €, 44,7 % del valor de subasta) queda por debajo del suelo de la vivienda habitual del ejecutado (91.200 €, 60 %): la ley no aprueba el remate por debajo de esa cifra, ni siquiera si cubre la deuda. Riesgo: ganar la subasta sin poder obtener el remate. No consta si es la vivienda habitual: se asume que sí, por prudencia; si no lo es, el suelo no se aplica y la aprobación quedaría a decisión del letrado. No consta cuándo se inició el procedimiento: se aplican los umbrales del régimen de la LO 1/2025.",
+    "riesgo": "La puja máxima recomendada (67.941 €, 44,7 % del valor de subasta) queda por debajo del suelo de la vivienda habitual del ejecutado (91.200 €, 60 %): la ley no aprueba el remate por debajo de esa cifra, ni siquiera si cubre la deuda. Riesgo: ganar la subasta sin poder obtener el remate. No consta si es la vivienda habitual: se asume que sí, por prudencia; si no lo es, el suelo no se aplica y la aprobación dependería de los umbrales generales. No consta cuándo se inició el procedimiento: se aplican los umbrales del régimen de la LO 1/2025.",
     "suelo_absoluto": 91200.0,
     "suelo_absoluto_pct": 0.6,
     "techo_naranja": true,
     "titulo": "Remate no aprobable si es la vivienda habitual del ejecutado",
     "umbral_aprobacion_pct": 0.7,
     "umbral_aprobacion_segura_pct": 0.7,
+    "umbrales": [
+     "aprobación segura (70 %) — LEC, art. 670, apdo. 1 (confirmado)",
+     "aprobación sin depender de la autoridad (50 %) — LEC, art. 670, apdo. 3, párrafo 4 (confirmado)",
+     "vivienda habitual del ejecutado: umbral (70 %) — LEC, art. 670, apdo. 3, último párrafo (confirmado)",
+     "vivienda habitual del ejecutado: suelo absoluto (60 %) — LEC, art. 670, apdo. 3, último párrafo (confirmado)"
+    ],
     "vivienda_habitual_asumida": true
    },
    "aviso_orientativo": "Cálculo orientativo con los parámetros legales de SEIS (versión 2026.07): no es asesoramiento jurídico. Confirme depósito, plazos y umbrales en el edicto y con un profesional antes de pujar. Los umbrales de aprobación no modifican la escalera de precios, el RVC ni el semáforo; el depósito exigido sí se usa en el plan de puja, y los meses de inmovilización, en el plazo de la operación.",
@@ -589,6 +596,7 @@
    "procedimiento_deducido": true,
    "puja_aprobacion_segura": 106400.0,
    "puja_minima_aprobable": 106400.0,
+   "puja_minima_estricta": false,
    "regimen": "judicial_lec_2025",
    "regimen_asumido": true,
    "regimen_nombre": "Judicial (LEC tras la LO 1/2025, procedimientos iniciados desde el 3-4-2025)",
@@ -1338,7 +1346,7 @@
    "ra": 40,
    "razones": [
     "ICO 62 en banda 60–74 o límites de Verde no alcanzados",
-    "Remate no aprobable si es la vivienda habitual del ejecutado ⇒ techo Naranja con condición (5J-3)",
+    "Remate no aprobable si es la vivienda habitual del ejecutado ⇒ techo Naranja con condición",
     "Techo aplicado: naranja"
    ],
    "rvc": 1.021,
@@ -1408,6 +1416,7 @@
   },
   "procedimiento": {
    "aviso_aprobacion": {
+    "alcance": "El semáforo queda como máximo en naranja.",
     "condicion": "Remate no aprobable si es la vivienda habitual del ejecutado: la puja máxima (65.197 €) queda por debajo del suelo legal (91.200 €, 60 %); confirmar en el edicto si lo es y asumir por escrito el riesgo",
     "datos_legales": [
      {
@@ -1449,13 +1458,19 @@
     "puja_aprobacion_segura": 106400.0,
     "puja_minima_aprobable": 106400.0,
     "regimen_asumido": true,
-    "riesgo": "La puja máxima recomendada (65.197 €, 42,9 % del valor de subasta) queda por debajo del suelo de la vivienda habitual del ejecutado (91.200 €, 60 %): la ley no aprueba el remate por debajo de esa cifra, ni siquiera si cubre la deuda. Riesgo: ganar la subasta sin poder obtener el remate. No consta si es la vivienda habitual: se asume que sí, por prudencia; si no lo es, el suelo no se aplica y la aprobación quedaría a decisión del letrado. No consta cuándo se inició el procedimiento: se aplican los umbrales del régimen de la LO 1/2025.",
+    "riesgo": "La puja máxima recomendada (65.197 €, 42,9 % del valor de subasta) queda por debajo del suelo de la vivienda habitual del ejecutado (91.200 €, 60 %): la ley no aprueba el remate por debajo de esa cifra, ni siquiera si cubre la deuda. Riesgo: ganar la subasta sin poder obtener el remate. No consta si es la vivienda habitual: se asume que sí, por prudencia; si no lo es, el suelo no se aplica y la aprobación dependería de los umbrales generales. No consta cuándo se inició el procedimiento: se aplican los umbrales del régimen de la LO 1/2025.",
     "suelo_absoluto": 91200.0,
     "suelo_absoluto_pct": 0.6,
     "techo_naranja": true,
     "titulo": "Remate no aprobable si es la vivienda habitual del ejecutado",
     "umbral_aprobacion_pct": 0.7,
     "umbral_aprobacion_segura_pct": 0.7,
+    "umbrales": [
+     "aprobación segura (70 %) — LEC, art. 670, apdo. 1 (confirmado)",
+     "aprobación sin depender de la autoridad (50 %) — LEC, art. 670, apdo. 3, párrafo 4 (confirmado)",
+     "vivienda habitual del ejecutado: umbral (70 %) — LEC, art. 670, apdo. 3, último párrafo (confirmado)",
+     "vivienda habitual del ejecutado: suelo absoluto (60 %) — LEC, art. 670, apdo. 3, último párrafo (confirmado)"
+    ],
     "vivienda_habitual_asumida": true
    },
    "aviso_orientativo": "Cálculo orientativo con los parámetros legales de SEIS (versión 2026.07): no es asesoramiento jurídico. Confirme depósito, plazos y umbrales en el edicto y con un profesional antes de pujar. Los umbrales de aprobación no modifican la escalera de precios, el RVC ni el semáforo; el depósito exigido sí se usa en el plan de puja, y los meses de inmovilización, en el plazo de la operación.",
@@ -1565,6 +1580,7 @@
    "procedimiento_deducido": true,
    "puja_aprobacion_segura": 106400.0,
    "puja_minima_aprobable": 106400.0,
+   "puja_minima_estricta": false,
    "regimen": "judicial_lec_2025",
    "regimen_asumido": true,
    "regimen_nombre": "Judicial (LEC tras la LO 1/2025, procedimientos iniciados desde el 3-4-2025)",

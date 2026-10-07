@@ -84,6 +84,10 @@ def test_ningun_numero_cambia(vivienda, subasta, monkeypatch):
 def test_el_techo_nunca_sube_un_semaforo_ni_veta():
     r = _analizar(params=cargar_defaults().con_overrides({"capital.coste_capital_anual": 0.31}))
     assert r.decision.semaforo == "rojo" and r.procedimiento.aviso_aprobacion is None   # degenerada
+    # Con el aviso y su techo, un rojo por ICO insuficiente sigue rojo; nunca hay veto.
+    sin_naranja = cargar_defaults().con_overrides({f"semaforo.{c}.ico_min": 99 for c in ("verde", "amarillo", "naranja")})
+    r = _analizar(params=sin_naranja)
+    assert r.procedimiento.aviso_aprobacion.techo_naranja and r.decision.semaforo == "rojo"
     assert not _analizar().decision.vetos
 
 
@@ -108,9 +112,9 @@ def test_el_informe_lo_destaca_bajo_el_semaforo():
                              "debajo del suelo de la vivienda habitual del ejecutado (91.200 €, 60 %)")
     assert "No consta si es la vivienda habitual: se asume que sí, por prudencia" in cabeza
     assert "No consta cuándo se inició el procedimiento" in cabeza
-    assert ("**Umbrales aplicados:** aprobación segura (70 %): LEC, art. 670, apdo. 1 (confirmado); "
-            "aprobación sin depender de la autoridad (50 %): LEC, art. 670, apdo. 3, párrafo 4 (confirmado); "
-            "vivienda habitual del ejecutado: umbral (70 %)") in cabeza
+    assert ("**Umbrales aplicados:** aprobación segura (70 %) — LEC, art. 670, apdo. 1 (confirmado); "
+            "aprobación sin depender de la autoridad (50 %) — LEC, art. 670, apdo. 3, párrafo 4 (confirmado); "
+            "vivienda habitual del ejecutado: umbral (70 %) — ") in cabeza
     assert "_El semáforo queda como máximo en naranja. Los precios, el RVC y la rentabilidad no cambian." in cabeza
 
 
@@ -120,8 +124,9 @@ def test_sujeta_a_mejora_no_limita_el_semaforo_y_lo_dice():
     assert "**Atención: aprobación del remate sujeta a mejora.**" in md
     assert "_No limita el semáforo: es una condición. " in md
     # Con la deuda informada, el umbral de «cubre la deuda» entra en los aplicados.
-    assert "aprobación si la puja cubre la deuda (40 %)" in md
-    assert not any("5J-3" in x for x in r.decision.razones)
+    assert "aprobación si la puja cubre la deuda (40 %) — " in md
+    assert not any("techo Naranja" in x for x in r.decision.razones)
+    assert r.procedimiento.aviso_aprobacion.alcance == "No limita el semáforo: es una condición."
 
 
 def test_a_decision_del_letrado():
@@ -154,8 +159,8 @@ def test_regimen_anterior_menciona_al_ejecutante():
                 "647, apdo. 3, LO 1/2025): un postor que no sea uno de ellos no puede cederlo: la estructura "
                 "compradora final debe pujar directamente"),
     ({"procedimiento": "judicial", "regimen_judicial": "anterior"},
-     "Cesión de remate solo disponible para el ejecutante (LEC, art. 647, apdo. 3, redacción de 2015): un "
-     "postor que no sea uno de ellos no puede cederlo: la estructura compradora final debe pujar directamente"),
+     "Cesión de remate solo disponible para el ejecutante (LEC, art. 647, apdo. 3, redacción de 2015): "
+     "cualquier otro postor no puede cederlo: la estructura compradora final debe pujar directamente"),
 ])
 def test_cesion_de_remate_por_regimen(subasta, esperado):
     assert _analizar(**subasta).puja.riesgo_ejecucion[-1] == esperado
@@ -181,3 +186,73 @@ def test_la_funcion_es_pura_y_determinista():
     r = _analizar()
     a = procedimiento.aviso_aprobacion(r.procedimiento, r.decision.precios)
     assert a == procedimiento.aviso_aprobacion(r.procedimiento, r.decision.precios) == r.procedimiento.aviso_aprobacion
+
+
+# ─────────────────── correcciones de la revisión de código ───────────────────
+
+def _aviso_con_p_max(r, p_max: float):
+    escalera = r.decision.precios.model_copy(update={"p_max": p_max})
+    return procedimiento.aviso_aprobacion(r.procedimiento, escalera)
+
+
+def test_regimen_anterior_igualar_el_50_no_basta():
+    """M1: la redacción de 2015 exige SUPERAR el 50 %: igualarlo cae en la franja del letrado."""
+    r = _analizar("no", procedimiento="judicial", regimen_judicial="anterior", valor_subasta=200000.0)
+    assert r.procedimiento.puja_minima_aprobable == 100000.0 and r.procedimiento.puja_minima_estricta
+    assert _aviso_con_p_max(r, 99999.0).franja == "discrecional"
+    igual = _aviso_con_p_max(r, 100000.0)
+    assert igual.franja == "discrecional" and igual.techo_naranja
+    assert "o la iguala (la norma exige superarla)" in igual.riesgo
+    assert _aviso_con_p_max(r, 100001.0).franja == "sujeta_a_mejora"
+
+
+def test_con_la_deuda_igualar_si_basta():
+    """M1: si la mínima la rebaja la deuda («cubra»), igualarla basta."""
+    r = _analizar("no", procedimiento="judicial", regimen_judicial="anterior", cantidad_reclamada=60000.0)
+    assert r.procedimiento.puja_minima_estricta is False
+    assert _aviso_con_p_max(r, r.procedimiento.puja_minima_aprobable).franja == "sujeta_a_mejora"
+
+
+def test_vivienda_habitual_por_debajo_del_70_no_decide_el_letrado():
+    """M2: con vivienda habitual, la ley no aprueba por debajo del 70 % salvo que cubra lo debido,
+    y nunca por debajo del 60 %: no hay decisión del letrado."""
+    r = _analizar("si", **POSTERIOR, valor_subasta=100000.0, cantidad_reclamada=90000.0)
+    a = _aviso_con_p_max(r, 65000.0)                     # entre el suelo (60 %) y el umbral (70 %)
+    assert a.franja == "discrecional" and a.techo_naranja
+    assert a.titulo == "Remate de vivienda habitual aprobable solo si cubre la deuda"
+    assert "salvo que la postura cubra lo debido al ejecutante, y nunca por debajo del suelo" in a.riesgo
+    assert "letrado" not in a.riesgo
+    supuesta = _aviso_con_p_max(_analizar(None, **POSTERIOR, valor_subasta=100000.0), 65000.0)
+    assert "si no lo es, la aprobación dependería de los umbrales generales" in supuesta.riesgo
+
+
+def test_en_la_aprobacion_segura_no_hay_aviso():
+    r = _analizar()
+    assert _aviso_con_p_max(r, r.procedimiento.puja_aprobacion_segura) is None
+    assert _aviso_con_p_max(r, r.procedimiento.puja_aprobacion_segura - 1).franja == "discrecional"
+
+
+def test_un_garaje_no_se_supone_vivienda_habitual():
+    base = entrada_caso_19()
+    e = base.model_copy(update={"activo": base.activo.model_copy(update={"tipologia": "garaje"})})
+    r = ejecutar_analisis(e)
+    a = r.procedimiento.aviso_aprobacion
+    assert r.procedimiento.suelo_absoluto is None
+    if a is not None:
+        assert a.franja != "bajo_suelo" and not a.vivienda_habitual_asumida
+        assert not any(d.dato.startswith("Vivienda") for d in a.datos_legales)
+
+
+def test_cubre_deuda_sin_porcentaje_minimo_se_dice_asi():
+    r = _analizar("no", procedimiento="judicial", regimen_judicial="anterior", cantidad_reclamada=60000.0,
+                  valor_subasta=110000.0)
+    md = r.informe_markdown
+    assert "aprobación si la puja cubre la deuda (sin porcentaje mínimo) — " in md
+    assert "(0 %)" not in md
+
+
+def test_los_umbrales_para_la_interfaz_son_los_del_informe():
+    a = _analizar().procedimiento.aviso_aprobacion
+    lineas = procedimiento.umbrales_texto(a)
+    assert lineas[0] == "aprobación segura (70 %) — LEC, art. 670, apdo. 1 (confirmado)"
+    assert all(linea in procedimiento.bloque_aviso_aprobacion(a) for linea in lineas)
