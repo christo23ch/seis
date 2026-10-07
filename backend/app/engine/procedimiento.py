@@ -209,7 +209,7 @@ def _avisos(r: ProcedimientoResultado, regimen: dict, regimenes: dict, inp: "Ana
         umbral = _valor(regimen, "vivienda_habitual_umbral_pct") or 0.0
         suelo = _valor(regimen, "vivienda_habitual_suelo_pct") or 0.0
         avisos.append(
-            f"No consta si es la vivienda habitual del ejecutado: se asume que sí (P4). El remate no se "
+            f"No consta si es la vivienda habitual del ejecutado: se asume que sí, por prudencia. El remate no se "
             f"aprueba por debajo del {pct(umbral, 0)} del valor de subasta ({eur(umbral * r.valor_subasta)}) "
             f"salvo que cubra lo debido al ejecutante, y nunca por debajo del {pct(suelo, 0)} "
             f"({eur(suelo * r.valor_subasta)}). Confírmelo en el edicto o en la escritura.")
@@ -224,6 +224,10 @@ def _avisos(r: ProcedimientoResultado, regimen: dict, regimenes: dict, inp: "Ana
     if r.puja_minima_aprobable is None:
         avisos.append("No hay umbrales de aprobación confirmados para este procedimiento: no se calcula "
                       "la puja mínima aprobable ni la de aprobación segura.")
+    aprob = regimen.get("umbral_aprobacion_pct")
+    if isinstance(aprob, dict) and aprob.get("estricto") and r.puja_minima_aprobable is not None:
+        avisos.append(f"La norma exige superar el {pct(float(aprob['valor']), 0)} del valor de subasta, no "
+                      f"igualarlo: la puja debe ser mayor que la mínima aprobable indicada.")
     cubre = _valor(regimen, "umbral_cubre_deuda_pct")
     if cubre is not None and inp.subasta.cantidad_reclamada is None and r.puja_minima_aprobable is not None:
         desde = "sin porcentaje mínimo" if cubre == 0 else f"desde el {pct(cubre, 0)} del valor de subasta"

@@ -25,13 +25,17 @@ Primera capa del diseño elegido en la 5J-0 (C, construido A → B → C). Rama
 `fase/5j-1-datos-procedimiento`, sin PR. Autorización expresa para tocar `app/engine/` solo para
 añadir campos y cálculos informativos ([[ADR-0022]]). **Ninguna cifra existente cambia:** la guarda
 `tests/datos/invariante_5h1.json` (510 hojas del §19) pasa sin tocarla. Suite al cerrar:
-1059 passed, 18 skipped, 0 failed (+43 tests de backend); 64 tests de vitest (+10); e2e nueva
+1061 passed, 18 skipped, 0 failed (+45 tests de backend); 64 tests de vitest (+10); e2e nueva
 `frontend/e2e/procedimiento.mjs` en `e2e/correr_simulaciones.sh` (la batería completa: 105
 comprobaciones de navegador, 0 fallos).
 
 ### Corregido
 - **El procedimiento dejaba de seguir a la fuente** tras su primer cambio automático
   (react-hook-form lo daba por modificado). Lo destapó la e2e nueva antes del commit.
+- **Revisión de código (`code-reviewer`, 0 críticos, 0 altos):** en el régimen de 2015 y en la TGSS
+  la norma exige *superar* el umbral (`estricto: true` en el parámetro y aviso en el resultado); el
+  aviso de vivienda habitual ya no muestra el código interno «P4»; un cambio de fuente antes de
+  cargar `/opciones` ya no se pierde.
 
 ### Añadido
 - **Preguntas del procedimiento en el alta:** tipo (judicial, AEAT, TGSS, notarial, extrajudicial,

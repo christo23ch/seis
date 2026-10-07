@@ -162,9 +162,12 @@ function CamposProcedimiento({ op }: { op?: Opciones }) {
   const fuenteAnterior = useRef(fuente as string);
   const porFuente = op?.procedimiento_por_fuente;
   useEffect(() => {
+    // Sin `/opciones` todavía no se sabe qué procedimiento corresponde: la referencia
+    // no avanza, y el cambio de fuente se aplica cuando lleguen.
+    if (!porFuente) return;
     const anterior = fuenteAnterior.current;
     fuenteAnterior.current = fuente as string;
-    if (!porFuente || anterior === fuente) return;
+    if (anterior === fuente) return;
     const nuevo = porFuente[fuente as string];
     const actual = getValues("subasta.procedimiento" as never) as unknown as string;
     const seguiaLaFuente = actual === porFuente[anterior];

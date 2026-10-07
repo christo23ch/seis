@@ -10,7 +10,7 @@
 
 ## Frentes abiertos
 
-**Actualizado:** 2026-10-07 · **Rama de trabajo:** `fase/5j-1-datos-procedimiento` (sale de `main`, `649804a`, con E0 y 5J-0 ya fusionadas; sin PR) · **Suite (SQLite):** 1059 passed, 18 skipped, 0 failed · **Frontend:** 64 tests unitarios (vitest, `npm test`) · **E2E:** alta, simulaciones, alta de inversión, validación guiada y datos del procedimiento en la CI (job `e2e`) · **Migraciones:** hasta `0016`; la siguiente libre es la `0017`
+**Actualizado:** 2026-10-07 · **Rama de trabajo:** `fase/5j-1-datos-procedimiento` (sale de `main`, `649804a`, con E0 y 5J-0 ya fusionadas; sin PR) · **Suite (SQLite):** 1061 passed, 18 skipped, 0 failed · **Frontend:** 64 tests unitarios (vitest, `npm test`) · **E2E:** alta, simulaciones, alta de inversión, validación guiada y datos del procedimiento en la CI (job `e2e`) · **Migraciones:** hasta `0016`; la siguiente libre es la `0017`
 **Última fase cerrada:** 5J-0 (investigación de umbrales legales, PR #31) · **En curso:** 5J-1, diseño A: datos del procedimiento informativos, sin mover ninguna cifra (ADR-0022) · **Siguiente:** 5J-2, reglas T2 del diseño B (cambia el semáforo del §19; necesita la validación jurídica de la D8 para el veto) · **Puerta: ABIERTA**
 
 ### 🟡 Requisito de PRODUCTO registrado, sin implementar: perfil de inversor por cuestionario
@@ -543,6 +543,12 @@ Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VER
    convertirse en bloqueo sin la validación jurídica (D8).
 5. **Una base de desarrollo creada con `create_all` necesita `alembic stamp 0015` y `upgrade head`**
    para recibir las columnas de la `0016` (`MANUAL_DE_PRUEBAS.md` §1 bis).
+6. **Avisos de la revisión que se dejan** (LOW): con el alta por defecto (depósito 5 %, judicial,
+   «No sé») el aviso «el depósito indicado no coincide» sale siempre, ruido que desaparece cuando
+   el valor por defecto se tome del parámetro (punto 1); `PROCEDIMIENTOS_CON_DEUDA`
+   (`frontend/lib/schema.ts`) repite qué procedimientos usan la cantidad reclamada, regla que vive
+   en el YAML; y un cliente de la API puede enviar `es_vivienda_habitual=true` con
+   `vivienda_habitual_ejecutado="no"` sin validación cruzada (el formulario no lo hace).
 
 **Entorno**
 

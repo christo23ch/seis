@@ -113,6 +113,18 @@ def test_judicial_anterior_deposito_5_plazo_40_sin_suelo_de_deuda():
     # En 2015 bastaba con cubrir lo reclamado, sin el suelo del 40 %.
     assert r.puja_minima_aprobable == 30000.0
     assert not any("no coincide" in a for a in r.avisos)
+    # En 2015 la norma dice «supere el 50 %»: se avisa de que igualarlo no basta.
+    assert any(a.startswith("La norma exige superar el 50 %") for a in r.avisos)
+
+
+def test_umbral_inclusivo_no_avisa_de_superarlo():
+    r = _calc(procedimiento="judicial", regimen_judicial="posterior", activo={"vivienda_habitual_ejecutado": "no"})
+    assert not any(a.startswith("La norma exige superar") for a in r.avisos)
+
+
+def test_ningun_aviso_muestra_codigos_internos_de_la_especificacion():
+    for r in (_calc(), _calc(procedimiento="tgss"), _calc(procedimiento="judicial", regimen_judicial="anterior")):
+        assert not any(re.search(r"\bP\d+\b", a) for a in r.avisos), r.avisos
 
 
 def test_deposito_minimo_de_1000_euros():

@@ -241,6 +241,7 @@ adjudicacion:                      # M13 capa A (§11.1) — ratios s/VT por seg
 #   · valor null  ⇒ la regla existe pero no hay dato fiable: DATO AUSENTE (P4),
 #     el motor no calcula con él y lo declara.
 #   · clave ausente ⇒ la regla no existe en ese procedimiento.
+#   · estricto: true ⇒ la norma exige SUPERAR el umbral, no igualarlo; se avisa.
 # Porcentajes en tanto por uno sobre el valor de subasta. Los artículos se escriben
 # «art. N, apdo. M» y no «N.M» porque el informe no admite dígito-punto-dígito.
 # AVISO: investigación técnica, no asesoramiento jurídico (§ gobernanza).
@@ -272,7 +273,7 @@ procedimiento:
       plazo_pago_dias: {valor: 40, unidad: naturales, articulo: "LEC, art. 670, apdo. 1 (redacción de 2015)", estado: confirmado}
       umbral_aprobacion_segura_pct: {valor: 0.70, articulo: "LEC, art. 670, apdo. 1 (redacción de 2015)", estado: confirmado}
       umbral_aprobacion_pct: {valor: 0.50, articulo: "LEC, art. 670, apdo. 4 (redacción de 2015)", estado: confirmado,
-                              nota: "La norma dice «supere el 50 %»"}
+                              estricto: true, nota: "La norma dice «supere el 50 %»"}
       # Sin suelo: bastaba con cubrir la cantidad reclamada (no había umbral del 40 %).
       umbral_cubre_deuda_pct: {valor: 0.0, articulo: "LEC, art. 670, apdo. 4 (redacción de 2015)", estado: confirmado}
       vivienda_habitual_umbral_pct: {valor: 0.70, articulo: "LEC, art. 670 (redacción de 2015)", estado: confirmado}
@@ -298,7 +299,7 @@ procedimiento:
       umbral_aprobacion_segura_pct: {valor: 0.75, articulo: "RGRSS, art. 120", estado: sin_confirmar,
                                      nota: "Hasta el 75 % puede mejorarla un tercero presentado por el deudor"}
       umbral_aprobacion_pct: {valor: 0.60, articulo: "RGRSS, art. 120", estado: sin_confirmar,
-                              nota: "Primera subasta: la postura debe superar el 60 %"}
+                              estricto: true, nota: "Primera subasta: la postura debe superar el 60 %"}
       umbral_cubre_deuda_pct: {valor: 0.25, articulo: "RGRSS, art. 120", estado: sin_confirmar}
       meses_inmovilizacion: {valor: 0.3, articulo: "RGRSS, art. 120", estado: sin_confirmar}
     notarial:
