@@ -558,10 +558,9 @@ Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VER
    palabras sin tilde, ADR-0023). Quedan: los **informes oficiales ya emitidos** conservan su texto
    congelado con los códigos de antes; el depósito del alta (18, mueve cifras); el catálogo global
    (19-20); y las pantallas de reglas y simulaciones.
-   **Decisión pendiente del responsable:** 7 textos de la foto del §19 (3 ítems del checklist con
-   `C_F`/`c_v` y 4 condiciones «Subsanar: …») se redactan legibles en el informe, pero el dato no
-   cambia. Corregirlos en origen exige regenerar la foto (solo texto); el diff está en el ADR-0023
-   y en el resumen de la fase.
+   **Decidido por el responsable (2026-10-07): se dejan como están.** Los 7 textos de la foto del
+   §19 (3 ítems del checklist con `C_F`/`c_v` y 4 condiciones «Subsanar: …») se redactan legibles
+   en el informe, pero el dato no cambia y la foto no se regenera (ADR-0023).
 2. **La pantalla Parámetros pide el catálogo del análisis más reciente** para los nombres y
    unidades (no hay endpoint global). Sin ningún análisis en la organización, las claves se
    humanizan.

@@ -49,7 +49,7 @@ del §19 y 514 del §19 con hipoteca), aparecieron 24 hojas afectadas en cada ca
    como está, y un test barre el informe y el PDF en ocho casos para detectarlo.
 3. **Los 7 textos de la foto se redactan legibles en el informe, sin cambiar el dato.** Corregirlos
    en origen cambiaría 7 hojas de la foto (solo texto, ninguna cifra) y obligaría a regenerarla.
-   Queda como alternativa para el responsable; el diff está en el CHANGELOG de la fase.
+   **El responsable decidió dejarlos como están (2026-10-07)**: la foto no se regenera.
 4. **Lo que nace solo en texto y no está en la foto se corrige en origen**: la línea del plan de
    puja «pujar solo P_ideal 'por si acaso'» (M13) pasa a «pujar solo el precio ideal «por si
    acaso»».
@@ -82,5 +82,5 @@ del §19 y 514 del §19 con hipoteca), aparecieron 24 hojas afectadas en cada ca
   foto, para ganar solo presentación.
 - **Traducir en el renderizador del PDF** (`pdf_service`): cambiaría también el PDF de informes
   oficiales congelados, y la regla de qué traducir viviría lejos de quien redacta el texto.
-- **Regenerar la foto del §19** para corregir los 7 textos en origen: posible, pero es decisión del
-  responsable y no aporta nada al informe, que ya sale legible.
+- **Regenerar la foto del §19** para corregir los 7 textos en origen: descartado por el responsable
+  (2026-10-07); no aporta nada al informe, que ya sale legible.
