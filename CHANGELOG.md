@@ -50,8 +50,9 @@ cifras**, con la tabla antes/después aprobada por el responsable. Suite: 1149 p
   escenarios del §7.
 
 ### Despliegue
-- Si la tabla `regla` tiene alguna versión vigente creada por la API, el YAML se ignora: la versión
-  2026.10 de SEM-EJEC-01 hay que crearla también en la base (ADR-0024).
+- La siembra copia el catálogo de reglas a la tabla `regla` solo si está vacía, y desde entonces el
+  motor ignora el YAML: **las bases ya inicializadas conservan SEM-EJEC-01 2026.07**. La versión
+  2026.10 solo llega a las bases nuevas (ADR-0024). Los parámetros T3 sí llegan.
 
 ### Pruebas y referencias
 - `tests/datos/invariante_5h1.json` **regenerada** con aprobación expresa; vigila también los

@@ -51,8 +51,12 @@ depósito es el 20 % del valor de subasta, con un mínimo de 1.000 € (LEC 669.
 - `m13_puja.ejecutar` y `m14_informe` aceptan el resultado del procedimiento como argumento
   opcional; sin él, conservan el texto anterior (llamadas directas y tests antiguos).
 - **Despliegue:** `reglas_vigentes` usa solo la tabla `regla` en cuanto tiene alguna fila vigente
-  y entonces ignora el YAML. En un entorno donde se haya creado cualquier versión de regla por la
-  API, el texto 2026.10 de SEM-EJEC-01 no llega solo: hay que crear esa versión también en la base.
+  y entonces ignora el YAML, y `scripts/sembrar.py` solo copia el catálogo si la tabla está vacía.
+  **Toda base inicializada con `init_db` antes de esta fase conserva SEM-EJEC-01 2026.07** («depósito
+  del 5%»): comprobado en solo lectura sobre la base de desarrollo (17 reglas sembradas, ninguna
+  creada por la API). El texto 2026.10 solo llega a las bases nuevas; en las demás hay que cargar la
+  versión nueva. Los parámetros T3 no tienen este problema: el motor parte siempre del YAML y aplica
+  encima las sobrescrituras de la base.
 - **Queda abierto** (fuera del alcance): SEM-EJEC-01 y M13 dicen «cesión de remate solo por el
   ejecutante», pero con la LO 1/2025 la tienen también los acreedores posteriores (LEC 647.3,
   investigación §2.8).
