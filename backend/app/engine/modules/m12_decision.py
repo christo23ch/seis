@@ -40,7 +40,10 @@ def agregar_ra(riesgos: list[RiesgoOut], params) -> RAResultado:
     ra = round(min(100, ra))
     banda = next(b["banda"] for b in params.get("riesgos.bandas_ra") if ra <= b["max"])
     return RAResultado(ra=ra, ra_base=round(ra_base, 2), banda=banda,
-                       dominancia_aplicada=dominancia, dimensiones=riesgos)
+                       dominancia_aplicada=dominancia, dimensiones=riesgos,
+                       # Fase 5J-2a (informativo): los pesos usados y el suelo aplicado.
+                       pesos={r.dimension: float(pesos[r.dimension]) for r in riesgos},
+                       suelo_dominancia=float(dom[dominancia]) if dominancia else None)
 
 
 # ───────────────────── δ_v y valor de salida prudente (§9.4) ─────────────────────
@@ -56,6 +59,11 @@ def calcular_delta_v(params, banda_ra: str, cv: float, ici: ICIResultado) -> flo
 
 
 # ───────────────────── CAPA 3 · Escalera de precios (§9.1–9.3) ────────────────────
+def _precio_venta_con_tramo(m: float, vs: float, c_f: float, costes: CostesResultado) -> tuple[float, str]:
+    """Como `_precio_venta`, y además el tramo fiscal resuelto (Fase 5J-2a)."""
+    return fiscal.resolver_con_tramo(costes, lambda c_v, extra: (vs / (1 + m) - c_f - extra) / (1 + c_v))
+
+
 def _precio_venta(m: float, vs: float, c_f: float, costes: CostesResultado) -> float:
     """P que deja margen `m` sobre la inversión. Dos tramos: ver app/engine/fiscal.py."""
     return fiscal.resolver_por_tramos(
@@ -75,18 +83,22 @@ def calcular_escalera(inp: AnalisisInput, params, banda_ra: str, vs_p: float,
         m_obj = float(perfil["m_objetivo"]) * float(fila["mult_m"])
         m_min = float(perfil["m_minimo"]) * float(fila["mult_m"])
         m_exc = m_obj * float(params.get("precios.m_exc_mult"))
-        p_ideal = _precio_venta(m_exc, vs_p, cf50, costes)
-        p_obj = _precio_venta(m_obj, vs_p, cf50, costes)
-        p_a = _precio_venta(m_min, vs_p, cf50, costes)
+        p_ideal, t_ideal = _precio_venta_con_tramo(m_exc, vs_p, cf50, costes)
+        p_obj, t_obj = _precio_venta_con_tramo(m_obj, vs_p, cf50, costes)
+        p_a, t_a = _precio_venta_con_tramo(m_min, vs_p, cf50, costes)
         # rama pesimista: B_pes(P) = piso·I(P) ⇒ I = VS_pes/(1+piso)
         piso = float(perfil.get("piso_pesimista_frac_i", 0.0))
         vs_pes = vs_p * (1 - float(fila["stress_mercado"]))
-        p_pes = fiscal.resolver_por_tramos(
+        p_pes, t_pes = fiscal.resolver_con_tramo(
             costes, lambda c_v, extra: (vs_pes / (1 + piso) - cf80 - extra) / (1 + c_v))
         p_max = min(p_a, p_pes)
         detalle.update({"m_objetivo_ajustado": round(m_obj, 4), "m_minimo_ajustado": round(m_min, 4),
                         "vs_pesimista": round(vs_pes, 2), "p_por_margen_min": round(p_a, 2),
-                        "p_por_pesimista": round(p_pes, 2)})
+                        "p_por_pesimista": round(p_pes, 2),
+                        # Fase 5J-2a (informativo): operandos que faltaban para «Ver cálculo».
+                        "m_excepcional_ajustado": round(m_exc, 4),
+                        "stress_mercado": float(fila["stress_mercado"]), "piso_pesimista": piso})
+        tramos = {"p_ideal": t_ideal, "p_objetivo": t_obj, "p_por_margen_min": t_a, "p_por_pesimista": t_pes}
     else:                                                     # rentista (§9.2)
         y_req = y_zona_pct + float(fila["y_req_pp"])
         if inp.zona.macro.dom_alquiler_dias > 60:
@@ -104,10 +116,13 @@ def calcular_escalera(inp: AnalisisInput, params, banda_ra: str, vs_p: float,
 
         p_ideal, p_obj = p_de_y(y_req + 1.0), p_de_y(y_req + 0.5)
         candidatos = [p_de_y(y_req)]
+        candidatos_detalle = {"p_por_rentabilidad": candidatos[0]}   # Fase 5J-2a
+        tramos = None
         if f.tipo == "hipoteca" and f.ltv > 0:
             ts = (f.interes_anual_pct + float(params.get("financiacion.stress_tipos_pp"))) / 100
             dscr_min = float(params.get("financiacion.dscr_minimo"))
             candidatos.append(rna / (dscr_min * f.ltv * ts))              # DSCR = 1,2 estresado
+            candidatos_detalle["p_por_dscr"] = candidatos[-1]
             coc = float(perfil["coc_min"])
 
             def p_de_coc(c_v_ef: float, extra: float) -> float:
@@ -115,13 +130,17 @@ def calcular_escalera(inp: AnalisisInput, params, banda_ra: str, vs_p: float,
                 return (rna - coc * (cf50 + extra)) / den if den > 0 else 0.0
 
             candidatos.append(fiscal.resolver_por_tramos(costes, p_de_coc))
+            candidatos_detalle["p_por_cash_on_cash"] = candidatos[-1]
         p_max = min(candidatos)
         p_lim_rent = p_de_y(y_suelo)
-        detalle.update({"y_req_pct": round(y_req, 3), "y_suelo_pct": round(y_suelo, 3), "rna": round(rna, 2)})
+        detalle.update({"y_req_pct": round(y_req, 3), "y_suelo_pct": round(y_suelo, 3), "rna": round(rna, 2),
+                        # Fase 5J-2a (informativo): candidatos de P_max y límite por rentabilidad.
+                        **{k: round(v, 2) for k, v in candidatos_detalle.items()},
+                        "p_limite_rentista": round(p_lim_rent, 2)})
 
     # P_límite (§9.1): indiferencia estresada − coste de capital. Infranqueable por software.
     cc_anual = float(params.get("capital.coste_capital_anual"))
-    p_lim_bruto = fiscal.resolver_por_tramos(
+    p_lim_bruto, t_lim = fiscal.resolver_con_tramo(
         costes, lambda c_v_ef, extra: (vs_p - cf80 - extra) / (1 + c_v_ef))
     i_aprox = fiscal.inversion(p_max, costes, cf80)
     # Fase 5H.1-B (ADR-0016 D5, auditoría E1): el coste de oportunidad solo se cobra al
@@ -137,11 +156,13 @@ def calcular_escalera(inp: AnalisisInput, params, banda_ra: str, vs_p: float,
     # Fase 5G.4: la tasa viaja junto al importe para que el resultado explique de
     # dónde sale (informe e interfaz); es trazabilidad, no entra en ningún cálculo.
     detalle.update({"coste_capital": round(coste_capital, 2), "coste_capital_anual": cc_anual,
-                    "capital_propio": round(capital_propio, 2)})
+                    "capital_propio": round(capital_propio, 2),
+                    "p_limite_bruto": round(p_lim_bruto, 2)})                # Fase 5J-2a
 
     escalera = EscaleraPrecios(
         p_ideal=round(p_ideal), p_objetivo=round(p_obj), p_max=round(p_max),
         p_limite=round(p_lim), detalle=detalle,
+        tramos_fiscales={**tramos, "p_limite": t_lim} if tramos is not None else None,
     )
     escalera.degenerada = not (0 < escalera.p_ideal < escalera.p_objetivo
                                < escalera.p_max < escalera.p_limite)

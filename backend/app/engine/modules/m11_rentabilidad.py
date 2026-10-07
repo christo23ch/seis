@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from app.engine import fiscal
-from app.engine.contracts import (AnalisisInput, CostesResultado, EscenarioOut,
+from app.engine.contracts import (ColchonDetalle, AnalisisInput, CostesResultado, EscenarioOut,
                                   RentabilidadResultado, ValoracionResultado)
 
 
@@ -108,16 +108,26 @@ def colchon_plazo(p: float, costes: CostesResultado, vs_p: float, inp: AnalisisI
     mes de más genera. Sin beneficio ⇒ 0; sin coste mensual que lo agote ⇒ `None`.
     Informativo: no entra en el ICO, el semáforo ni la escalera.
     """
+    d = colchon_detalle(p, costes, vs_p, inp, cc_anual)
+    if d.coste_mensual <= 0:
+        return None
+    return round(max(0.0, d.beneficio) / d.coste_mensual, 1)
+
+
+def colchon_detalle(p: float, costes: CostesResultado, vs_p: float, inp: AnalisisInput,
+                    cc_anual: float) -> ColchonDetalle:
+    """Operandos de `colchon_plazo` (Fase 5J-2a): los mismos números, sin redondear el
+    cociente. Informativo."""
     f = inp.financiacion
     i_total = fiscal.inversion(p, costes, costes.c_f_p50)
     beneficio = vs_p - i_total
     financiado = f.ltv * p if f.tipo == "hipoteca" else 0.0
     intereses = financiado * (f.interes_anual_pct / 100.0) / 12.0
     capital_propio = max(0.0, i_total - financiado)
-    mensual = costes.tenencia_mensual + intereses + cc_anual * capital_propio / 12.0
-    if mensual <= 0:
-        return None
-    return round(max(0.0, beneficio) / mensual, 1)
+    coste_capital_mensual = cc_anual * capital_propio / 12.0
+    return ColchonDetalle(beneficio=beneficio, inversion=i_total, tenencia_mensual=costes.tenencia_mensual,
+                          intereses_mensuales=intereses, coste_capital_mensual=coste_capital_mensual,
+                          coste_mensual=costes.tenencia_mensual + intereses + coste_capital_mensual)
 
 
 def construir_escenarios(inp: AnalisisInput, params, hechos: dict, val: ValoracionResultado,
@@ -191,4 +201,6 @@ def evaluar(p: float, escenarios: list[ParametrosEscenario], costes: CostesResul
         roi=base.roi, roi_anualizado=base.roi_anualizado, tir_anual=round(tir, 4),
         valor_esperado=round(ve, 2), escenarios=outs, y_neta=y_neta, dscr=dscr, cash_on_cash=coc,
         van_coste_capital=van_cc, diferencial_tir_coste_capital=diferencial_cc,
+        # Fase 5J-2a: los flujos con que se calcularon la TIR y el VAN (informativo).
+        flujos_base=[round(x, 2) for x in flujos], tasa_van=cc,
     )

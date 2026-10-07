@@ -1,7 +1,7 @@
 """M13 — Estrategia de puja y viabilidad competitiva (§11)."""
 from __future__ import annotations
 
-from app.engine.contracts import AnalisisInput, EscaleraPrecios, PujaResultado
+from app.engine.contracts import AjusteRatio, AnalisisInput, EscaleraPrecios, PujaResultado
 from app.engine.formato import eur, pct
 
 
@@ -25,11 +25,20 @@ def ejecutar(inp: AnalisisInput, params, hechos: dict, escalera: EscaleraPrecios
              vm: float) -> PujaResultado:
     vt = inp.subasta.valor_subasta
     ratio = _ratio_segmento(inp, params)
+    ratio_segmento = ratio
+    ajustes: list[AjusteRatio] = []                     # Fase 5J-2a (informativo)
 
     # Capa B (§11.1): ajustes por historial y descuento aparente
-    ratio += float(params.get("adjudicacion.ajuste_desierta_pp")) * inp.subasta.subastas_desiertas_previas
+    desiertas = float(params.get("adjudicacion.ajuste_desierta_pp")) * inp.subasta.subastas_desiertas_previas
+    ratio += desiertas
+    if inp.subasta.subastas_desiertas_previas:
+        ajustes.append(AjusteRatio(concepto=f"{inp.subasta.subastas_desiertas_previas} subasta(s) previa(s) desierta(s)",
+                                   ajuste=desiertas))
     if vm > 0 and vt / vm < 0.6:
-        ratio += float(params.get("adjudicacion.ajuste_chollo_pp"))
+        chollo = float(params.get("adjudicacion.ajuste_chollo_pp"))
+        ratio += chollo
+        ajustes.append(AjusteRatio(concepto="valor de subasta inferior al 60 % del valor de mercado", ajuste=chollo))
+    sin_acotar = ratio
     ratio = max(0.10, min(1.10, ratio))
 
     p_adj = vt * ratio
@@ -87,4 +96,6 @@ def ejecutar(inp: AnalisisInput, params, hechos: dict, escalera: EscaleraPrecios
     hechos.update({"rvc": round(rvc, 3), "p_adj_esperado": round(p_adj, 2), "p_max": escalera.p_max})
     return PujaResultado(p_adj_esperado=round(p_adj, 2), ratio_base=round(ratio, 3),
                          rvc=round(rvc, 3), banda_rvc=banda, plan=plan,
-                         riesgo_ejecucion=riesgo_ejecucion)
+                         riesgo_ejecucion=riesgo_ejecucion,
+                         ratio_segmento=round(ratio_segmento, 3), ajustes_ratio=ajustes,
+                         ratio_acotado=sin_acotar != ratio)

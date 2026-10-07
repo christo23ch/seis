@@ -1,7 +1,7 @@
 """M07 — Riesgo jurídico: dimensiones jurídico, documental y ocupación (§7.2)."""
 from __future__ import annotations
 
-from app.engine.contracts import AnalisisInput, ICIResultado, RiesgoOut
+from app.engine.contracts import AnalisisInput, ICIResultado, EvidenciaOut, RiesgoOut
 
 
 def _nivel(score: int, params) -> str:
@@ -15,11 +15,20 @@ def _nivel(score: int, params) -> str:
     return "critico"
 
 
+def evidencia_estructurada(texto: str) -> EvidenciaOut:
+    """Fase 5J-2a: «clave=valor» → {dato, valor}; una marca sin «=» → {dato, None}.
+    Es el formato con el que M07-M10 escriben sus evidencias; el texto no cambia."""
+    dato, sep, valor = texto.partition("=")
+    return EvidenciaOut(dato=dato, valor=valor if sep else None)
+
+
 def _mk(dim, p, i, params, mitigable=True, condiciones=None, evidencias=None) -> RiesgoOut:
     p, i = max(1, min(5, p)), max(1, min(5, i))
+    evidencias = evidencias or []
     return RiesgoOut(dimension=dim, probabilidad=p, impacto=i, score=p * i,
                      nivel=_nivel(p * i, params), mitigable=mitigable,
-                     condiciones=condiciones or [], evidencias=evidencias or [])
+                     condiciones=condiciones or [], evidencias=evidencias,
+                     evidencias_detalle=[evidencia_estructurada(e) for e in evidencias])
 
 
 def ejecutar(inp: AnalisisInput, params, hechos: dict, ici: ICIResultado,
