@@ -13,6 +13,7 @@ import { AvisoConfiguracion } from "@/components/simulaciones/aviso-configuracio
 import { ListaSimulaciones } from "@/components/simulaciones/lista";
 import { InformesOficiales } from "@/components/informes/informes-oficiales";
 import { ProcedimientoPanel } from "@/components/procedimiento";
+import { Markdown } from "@/components/markdown";
 import { Card, CardContent, CardHeader, CardTitle, ErrorBox, Spinner, TabPanel, Tabs, TabsLista } from "@/components/ui";
 
 export default function DetalleInversion() {
@@ -144,9 +145,7 @@ export default function DetalleInversion() {
               Vista previa de la configuración actual. <b>No es un informe oficial</b>: no queda
               congelada y cambia si cambia la configuración seleccionada.
             </p>
-            <pre className="max-h-[70vh] overflow-auto whitespace-pre-wrap font-cifra text-[12.5px] leading-relaxed text-slate-700">
-              {res.informe_markdown}
-            </pre>
+            <Markdown texto={res.informe_markdown} />
           </CardContent></Card>
         </TabPanel>
 
