@@ -27,8 +27,26 @@ export function ProcedimientoPanel({ datos }: { datos: ProcedimientoResultado | 
 }
 
 function Contenido({ datos }: { datos: ProcedimientoResultado }) {
+  const aviso = datos.aviso_aprobacion;
   return (
     <>
+      {/* 5J-3 (ADR-0027): la franja del letrado, destacada. El texto lo redacta el motor. */}
+      {aviso && (
+        <div role="alert" data-aviso-aprobacion={aviso.franja}
+             className={`rounded-md border px-3 py-2.5 ${aviso.techo_naranja
+               ? "border-sem-naranja/40 bg-sem-naranjabg" : "border-sem-amarillo/40 bg-sem-amarillobg"}`}>
+          <p className="text-sm font-semibold text-tinta">{aviso.titulo}</p>
+          <p className="mt-1 text-[13px] text-slate-700">{aviso.riesgo}</p>
+          {aviso.umbrales && aviso.umbrales.length > 0 && (
+            <ul aria-label="Umbrales aplicados" className="mt-1.5 space-y-0.5 text-[12px] text-slate-600">
+              {aviso.umbrales.map((u) => <li key={u}>· {u}</li>)}
+            </ul>
+          )}
+          <p className="mt-1.5 text-[12px] text-slate-500">
+            {aviso.alcance} Los precios, el RVC y la rentabilidad no cambian.
+          </p>
+        </div>
+      )}
       <dl className="grid gap-x-6 gap-y-2.5 sm:grid-cols-2">
         {filasProcedimiento(datos).map((f) => (
           <div key={f.clave} data-fila={f.clave} className="min-w-0 border-b border-slate-50 pb-1.5">

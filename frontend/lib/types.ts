@@ -64,6 +64,17 @@ export interface Resultado {
 export interface DatoLegal { dato: string; valor: number | null; articulo: string; estado: "confirmado" | "sin_confirmar"; nota?: string | null;
   /** 5J-2b: valor descriptivo de un dato que no es una cifra (la forma de puja). */
   texto?: string | null; }
+/** Fase 5J-3 (ADR-0027) — la puja máxima no alcanza la aprobación segura del remate. */
+export interface AvisoAprobacion {
+  franja: "sujeta_a_mejora" | "discrecional" | "bajo_suelo"; techo_naranja: boolean;
+  p_max: number; p_max_pct: number; puja_aprobacion_segura: number; umbral_aprobacion_segura_pct: number;
+  puja_minima_aprobable: number | null; umbral_aprobacion_pct: number | null;
+  suelo_absoluto: number | null; suelo_absoluto_pct: number | null;
+  vivienda_habitual_asumida: boolean; regimen_asumido: boolean;
+  titulo: string; riesgo: string; condicion: string; datos_legales: DatoLegal[];
+  /** Redactados por el motor, iguales que en el informe. */
+  alcance?: string; umbrales?: string[];
+}
 /** Fase 5J-1 — datos del procedimiento (`app/engine/procedimiento.py`). Importes `null`
  * = dato ausente (P4). Los umbrales son informativos; desde la 5J-2b el depósito, la forma
  * de puja y los meses de inmovilización entran en el cálculo (ADR-0024 a ADR-0026). */
@@ -82,6 +93,8 @@ export interface ProcedimientoResultado {
   umbral_aprobacion_segura_pct: number | null; puja_aprobacion_segura: number | null;
   suelo_absoluto_pct: number | null; suelo_absoluto: number | null;
   datos_legales: DatoLegal[]; avisos: string[]; aviso_orientativo: string;
+  /** 5J-3: ausente en resultados anteriores y cuando P_max alcanza la aprobación segura. */
+  aviso_aprobacion?: AvisoAprobacion | null;
 }
 
 export interface ListItem {

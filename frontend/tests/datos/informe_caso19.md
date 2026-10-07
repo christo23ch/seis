@@ -2,7 +2,13 @@
 
 ## 1 · Página de decisión
 
-# 🟡 AMARILLO
+# 🟠 NARANJA
+
+**Atención: remate no aprobable si es la vivienda habitual del ejecutado.** La puja máxima recomendada (67.941 €, 44,7 % del valor de subasta) queda por debajo del suelo de la vivienda habitual del ejecutado (91.200 €, 60 %): la ley no aprueba el remate por debajo de esa cifra, ni siquiera si cubre la deuda. Riesgo: ganar la subasta sin poder obtener el remate. No consta si es la vivienda habitual: se asume que sí, por prudencia; si no lo es, el suelo no se aplica y la aprobación dependería de los umbrales generales. No consta cuándo se inició el procedimiento: se aplican los umbrales del régimen de la LO 1/2025.
+
+**Umbrales aplicados:** aprobación segura (70 %) — LEC, art. 670, apdo. 1 (confirmado); aprobación sin depender de la autoridad (50 %) — LEC, art. 670, apdo. 3, párrafo 4 (confirmado); vivienda habitual del ejecutado: umbral (70 %) — LEC, art. 670, apdo. 3, último párrafo (confirmado); vivienda habitual del ejecutado: suelo absoluto (60 %) — LEC, art. 670, apdo. 3, último párrafo (confirmado).
+
+_El semáforo queda como máximo en naranja. Los precios, el RVC y la rentabilidad no cambian. Cálculo orientativo, no asesoramiento jurídico._
 
 | Métrica | Valor |
 |---|---|
@@ -20,10 +26,11 @@
 | Valor esperado (3 escenarios) | 32.301 € |
 | P. adjudicación esperado · RVC | 63.840 € · **1,06** (alcanzable) |
 
-**Razones principales:** ICO 64 en banda 60–74 o límites de Verde no alcanzados
+**Razones principales:** ICO 64 en banda 60–74 o límites de Verde no alcanzados · Remate no aprobable si es la vivienda habitual del ejecutado ⇒ techo Naranja con condición · Techo aplicado: naranja
 
 **Condiciones (si Naranja/Amarillo):**
-- Judicial: depósito según el régimen del procedimiento (20 % con la LO 1/2025; 5 % si se inició antes del 3-4-2025) y pago del remate en plazo legal sin condición suspensiva; cesión de remate solo por el ejecutante (§3.2)
+- Judicial: depósito según el régimen del procedimiento (20 % con la LO 1/2025; 5 % si se inició antes del 3-4-2025) y pago del remate en plazo legal sin condición suspensiva; cesión de remate solo por el ejecutante y, con la LO 1/2025, también por los acreedores posteriores (LEC, art. 647, apdo. 3) (§3.2)
+- Remate no aprobable si es la vivienda habitual del ejecutado: la puja máxima (67.941 €) queda por debajo del suelo legal (91.200 €, 60 %); confirmar en el edicto si lo es y asumir por escrito el riesgo
 - Solicitar certificado de deuda de la comunidad antes de la puja (deuda estimada al alza mientras tanto, P5)
 - Verificar la situación posesoria in situ antes de pujar; dotar provisión de desalojo P80
 
@@ -95,7 +102,7 @@ Ratio histórico del segmento: 42 % sobre valor de subasta.
 - Suspensión/sobreseimiento del procedimiento: capital del depósito inmovilizado sin operación
 - Pago del remate en plazo legal sin condición suspensiva de financiación (incumplir ⇒ pérdida del depósito)
 - Cargas descubiertas entre puja y pago: mitigación con nota simple ≤ 5 días antes del cierre
-- Cesión de remate solo disponible para el ejecutante: la estructura compradora final debe pujar directamente
+- Cesión de remate solo disponible para el ejecutante y los acreedores posteriores (LEC, art. 647, apdo. 3, LO 1/2025): un postor que no sea uno de ellos no puede cederlo: la estructura compradora final debe pujar directamente; si el procedimiento se inició antes del 3-4-2025, solo el ejecutante
 
 **Procedimiento y umbrales legales (orientativo)**
 
@@ -138,12 +145,14 @@ _Cálculo orientativo con los parámetros legales de SEIS (versión 2026.07): no
 - [ ] **[B]** Situación posesoria verificada según árbol §8.7.2 — _Estado declarado: precario_
 - [ ] **[B]** Tributación de la adquisición determinada (árbol §8.7.3) y aplicada en costes proporcionales — _Régimen calculado por el motor según los datos declarados; base imponible tomada de la puja por no constar valor de referencia: el impuesto es un mínimo_
 - [ ] **[B]** Depósito disponible y transferido en plazo — _30.400 €_
+- [ ] **[B]** Semáforo Verde/Amarillo, o Naranja con todas sus condiciones verificadas y firmadas — _Judicial: depósito según el régimen del procedimiento (20 % con la LO 1/2025; 5 % si se inició antes del 3-4-2025) y pago del remate en plazo legal sin condición suspensiva; cesión de remate solo por el ejecutante y, con la LO 1/2025, también por los acreedores posteriores (LEC, art. 647, apdo. 3) (§3.2); Remate no aprobable si es la vivienda habitual del ejecutado: la puja máxima (67.941 €) queda por debajo del suelo legal (91.200 €, 60 %); confirmar en el edicto si lo es y asumir por escrito el riesgo; Solicitar certificado de deuda de la comunidad antes de la puja (deuda estimada al alza mientras tanto, P5); Verificar la situación posesoria in situ antes de pujar; dotar provisión de desalojo P80_
+- [ ] **[B]** Riesgo de aprobación del remate asumido por escrito — _Remate no aprobable si es la vivienda habitual del ejecutado: la puja máxima (67.941 €) queda por debajo del suelo legal (91.200 €, 60 %); confirmar en el edicto si lo es y asumir por escrito el riesgo_
 
 ## 10 · Trazabilidad
 Reglas disparadas (versión reglas 2026.07 · parámetros 2026.07):
 - `SEM-OCU-02` v2026.07 (semáforo)
 - `SEM-DOC-01` v2026.07 (semáforo)
-- `SEM-EJEC-01` v2026.10 (puja)
+- `SEM-EJEC-01` v2026.10.07 (puja)
 
 ---
 *Informe generado por SEIS. Los parámetros legales y fiscales aplicados son datos versionados que deben validarse con asesoría profesional (§20 de la especificación). La decisión final de puja corresponde al comité de inversión.*
