@@ -17,7 +17,7 @@ import { Markdown } from "@/components/markdown";
 import { DatosEntrada } from "@/components/datos-entrada";
 import { TextoFormulas } from "@/components/texto-formulas";
 import { VerCalculo } from "@/components/ver-calculo";
-import { calculoCf, calculoCv, calculoReforma, calculoValoracion } from "@/lib/calculos";
+import { calculoCf, calculoCv, calculoPlazo, calculoReforma, calculoValoracion } from "@/lib/calculos";
 import { usePesosIco } from "@/lib/ico";
 import { Card, CardContent, CardHeader, CardTitle, ErrorBox, Spinner, TabPanel, Tabs, TabsLista } from "@/components/ui";
 
@@ -98,7 +98,7 @@ export default function DetalleInversion() {
                   <Fila k="Reforma" v={`${res.reforma.nivel} · ${eur(res.reforma.total_p50)}`} />
                   <Fila k="Plazo (P50 / P80)" v={`${num(res.costes.plazo_meses_p50)} / ${num(res.costes.plazo_meses_p80)} meses`} />
                   <Fila k="Contingencia" v={pct(res.costes.contingencia_pct, 0)} />
-                  <VerCalculo calculos={[calculoCf(res.costes, "p50"), calculoCf(res.costes, "p80"), calculoCv(res.costes), calculoReforma(res.reforma)]} />
+                  <VerCalculo calculos={[calculoCf(res.costes, "p50"), calculoCf(res.costes, "p80"), calculoCv(res.costes), calculoPlazo(res.costes), calculoReforma(res.reforma)]} />
                 </CardContent>
               </Card>
               {lat != null && lng != null ? (

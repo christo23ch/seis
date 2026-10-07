@@ -8,7 +8,8 @@
  *   · B: «Datos de entrada» y «Árbol completo vigente» sin JSON crudo ni Textarea, con
  *     nombres, unidades y valores en español; «Ver JSON» sigue disponible; el editor libre
  *     muestra el valor vigente de la clave escrita.
- *   · C: las fórmulas del informe se pintan con subíndice (no queda «C_F» visible).
+ *   · C: el informe sin símbolos con barra baja (desde la 5J-2a los redacta el motor) y las
+ *     fórmulas de «Ver cálculo» con subíndice.
  *   · D: «Ver cálculo» con fórmula, sustitución y resultado del motor, y «Cálculo no
  *     disponible aún» donde falta el dato.
  *   · E: el desglose del ICO toma sus pesos del catálogo («/ 25» en rentabilidad).
@@ -103,7 +104,16 @@ try {
     const verEscalera = p.locator("[data-ver-calculo]", { has: p.locator('[data-calculo="p_max"]') });
     await verEscalera.locator("summary").click();
     comprobar(plano(await p.locator('[data-calculo="p_max"]').innerText()).includes("69.097"), "D · P_max con sus dos candidatos sustituidos");
-    comprobar(await p.locator('[data-calculo="p_ideal"] [data-no-disponible]').count() === 1, "D · P_ideal: «Cálculo no disponible aún»");
+    // 5J-2a: el motor emite el margen excepcional: P_ideal ya tiene su cálculo.
+    comprobar(await p.locator('[data-calculo="p_ideal"] [data-no-disponible]').count() === 0
+              && plano(await p.locator('[data-calculo="p_ideal"]').innerText()).includes("0,3375"),
+      "D · P_ideal con su margen excepcional sustituido (5J-2a)");
+    comprobar(await p.locator('[data-calculo="p_max"] var').count() > 0, "C · las fórmulas de «Ver cálculo» con subíndice");
+    const verMetricas = p.locator("[data-ver-calculo]", { has: p.locator('[data-calculo="tir"]') });
+    await verMetricas.locator("summary").click();
+    comprobar(plano(await p.locator('[data-calculo="tir"]').innerText()).includes("Mes 0 (compra)")
+              && await p.locator('[data-calculo="colchon"] [data-no-disponible]').count() === 0,
+      "D · TIR con sus flujos mensuales y colchón con sus operandos (5J-2a)");
     comprobar(await sinDesborde(p), "el resumen con los cálculos abiertos no desborda");
     await captura(p, `resumen-ver-calculo-${sufijo}`);
 
@@ -116,7 +126,12 @@ try {
     comprobar(await md.locator("h2").first().innerText() === "Informe de análisis SEIS", "A · el título del informe es un h2");
     comprobar(await md.locator("table").count() >= 5, `A · tablas maquetadas (${await md.locator("table").count()})`);
     comprobar(await md.locator('[role="img"][aria-label="Pendiente"]').count() > 0, "A · los bloqueantes del checklist como casillas");
-    comprobar(await md.locator("var").count() > 0 && !/\bC_F\b|\bc_v\b|δ_v/.test(texto), "C · fórmulas con subíndice, sin «C_F», «c_v» ni «δ_v» en crudo");
+    // 5J-2a: el motor redacta los nombres; el informe ya no trae símbolos con barra baja.
+    // `innerText` respeta el `uppercase` de las cabeceras de tabla: se compara sin mayúsculas.
+    comprobar(texto.toLowerCase().includes("partida de costes fijos (p50)"),
+      "C · el informe nombra los costes fijos en vez de «C_F» (5J-2a)");
+    const conBarra = texto.match(/[^\W_]+_[^\W_]+/gu) ?? [];
+    comprobar(conBarra.length === 0, `C · el informe sin identificadores con barra baja (${conBarra.join(", ") || "ninguno"})`);
     comprobar(!/judicial_boe|ocupacion_desalojo|una_alta/.test(texto), "C · sin claves internas con barra baja");
     comprobar(await p.locator("h1").count() === 1, "accesibilidad · un solo h1 en la página");
     comprobar(await md.locator('[role="region"][tabindex="0"]').count() >= 5, "accesibilidad · las tablas son regiones enfocables");

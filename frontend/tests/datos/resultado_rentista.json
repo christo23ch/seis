@@ -3,10 +3,10 @@
   "semaforo": "amarillo",
   "ico": 64,
   "ico_desglose": {
-   "rentabilidad": 15.0,
+   "rentabilidad": 16.39,
    "juridico": 5.55,
    "urbanistico": 4.48,
-   "financiero": 8.0,
+   "financiero": 6.08,
    "ubicacion": 9.9,
    "revalorizacion": 5.8,
    "liquidez": 10.59,
@@ -16,36 +16,29 @@
   "ici": 63,
   "icu": 66,
   "precios": {
-   "p_ideal": 51317.0,
-   "p_objetivo": 60011.0,
-   "p_max": 68731.0,
-   "p_limite": 80022.0,
+   "p_ideal": 44696.0,
+   "p_objetivo": 53597.0,
+   "p_max": 63982.0,
+   "p_limite": 71087.0,
    "degenerada": false,
    "detalle": {
     "delta_v_aplicado": 0.0,
-    "m_objetivo_ajustado": 0.25,
-    "m_minimo_ajustado": 0.17,
-    "vs_pesimista": 160837.44,
-    "p_por_margen_min": 69097.33,
-    "p_por_pesimista": 68730.9,
-    "m_excepcional_ajustado": 0.3375,
-    "stress_mercado": 0.09,
-    "piso_pesimista": 0.0,
-    "coste_capital": 3659.05,
+    "y_req_pct": 6.0,
+    "y_suelo_pct": 5.7,
+    "rna": 8890.0,
+    "p_por_rentabilidad": 63981.82,
+    "p_por_dscr": 192424.24,
+    "p_por_cash_on_cash": 65623.16,
+    "p_limite_rentista": 71087.02,
+    "coste_capital": 2583.11,
     "coste_capital_anual": 0.015,
-    "capital_propio": 160837.44,
-    "p_limite_bruto": 83681.09
+    "capital_propio": 113543.09,
+    "p_limite_bruto": 80759.41
    },
-   "tramos_fiscales": {
-    "p_ideal": "unico",
-    "p_objetivo": "unico",
-    "p_por_margen_min": "unico",
-    "p_por_pesimista": "unico",
-    "p_limite": "unico"
-   }
+   "tramos_fiscales": null
   },
-  "margen_seguridad_valor": 0.248,
-  "rvc": 1.077,
+  "margen_seguridad_valor": 0.2726,
+  "rvc": 1.002,
   "p_adj_esperado": 63840.0,
   "vetos": [],
   "condiciones": [
@@ -61,16 +54,16 @@
   ],
   "version_reglas": "2026.07",
   "version_parametros": "2026.07",
-  "colchon_plazo_meses": 84.8,
+  "colchon_plazo_meses": 84.4,
   "colchon_detalle": {
-   "beneficio": 35348.67600000001,
-   "inversion": 141395.764,
+   "beneficio": 39975.52862,
+   "inversion": 136768.91138,
    "tenencia_mensual": 240.0,
-   "intereses_mensuales": 0.0,
-   "coste_capital_mensual": 176.74470499999998,
-   "coste_mensual": 416.74470499999995
+   "intereses_mensuales": 109.42720833333333,
+   "coste_capital_mensual": 124.063764225,
+   "coste_mensual": 473.49097255833334
   },
-  "colchon_plazo_meses_p_max": 60.9
+  "colchon_plazo_meses_p_max": 57.2
  },
  "ici": {
   "ici": 63,
@@ -201,18 +194,20 @@
   }
  },
  "costes": {
-  "c_v": 0.064,
+  "c_v": 0.09754,
   "c_v_desglose": {
    "itp": 0.06,
-   "aranceles_variables": 0.004
+   "aranceles_variables": 0.004,
+   "financiacion_apertura": 0.007,
+   "financiacion_intereses": 0.02654
   },
-  "c_f_p50": 77544.06,
-  "c_f_p80": 87707.76,
+  "c_f_p50": 77944.06,
+  "c_f_p80": 88107.76,
   "desglose_p50": {
    "reforma": 50052.8,
    "ocupacion_desalojo": 6500.0,
    "atrasos_comunidad_ibi": 2432.0,
-   "adquisicion_fija": 2700.0,
+   "adquisicion_fija": 3100.0,
    "tenencia": 3120.0,
    "comercializacion": 6840.78,
    "contingencia": 5898.48,
@@ -223,7 +218,7 @@
    "reforma": 61064.42,
    "ocupacion_desalojo": 9500.0,
    "atrasos_comunidad_ibi": 3234.56,
-   "adquisicion_fija": 2700.0,
+   "adquisicion_fija": 3100.0,
    "tenencia": 4368.0,
    "comercializacion": 6840.78,
    "contingencia": 0.0,
@@ -248,7 +243,7 @@
  },
  "riesgos": {
   "ra": 40,
-  "ra_base": 25.36,
+  "ra_base": 26.96,
   "banda": "medio",
   "dominancia_aplicada": "una_alta",
   "dimensiones": [
@@ -349,19 +344,21 @@
    },
    {
     "dimension": "financiero",
-    "probabilidad": 1,
-    "impacto": 2,
-    "score": 2,
-    "nivel": "bajo",
+    "probabilidad": 2,
+    "impacto": 3,
+    "score": 6,
+    "nivel": "medio",
     "mitigable": true,
-    "condiciones": [],
+    "condiciones": [
+     "Confirmar que la preaprobación no contiene condición suspensiva incompatible con el plazo de pago del remate"
+    ],
     "evidencias": [
-     "estructura=cash"
+     "estructura=hipoteca"
     ],
     "evidencias_detalle": [
      {
       "dato": "estructura",
-      "valor": "cash"
+      "valor": "hipoteca"
      }
     ]
    },
@@ -420,52 +417,52 @@
   "suelo_dominancia": 40.0
  },
  "rentabilidad": {
-  "precio_evaluado": 60011.0,
-  "inversion_total": 141395.76,
-  "beneficio": 35348.68,
-  "roi": 0.25,
-  "roi_anualizado": 0.2287,
-  "tir_anual": 0.3387,
-  "valor_esperado": 32361.25,
+  "precio_evaluado": 53597.0,
+  "inversion_total": 136768.91,
+  "beneficio": 39975.53,
+  "roi": 0.2923,
+  "roi_anualizado": 0.267,
+  "tir_anual": 0.4032,
+  "valor_esperado": 36988.1,
   "escenarios": [
    {
     "nombre": "pesimista",
     "probabilidad": 0.25,
     "vs": 160837.44,
-    "coste_total": 151559.46,
-    "beneficio": 9277.98,
-    "roi": 0.0612,
-    "roi_anualizado": 0.04,
+    "coste_total": 146932.61,
+    "beneficio": 13904.83,
+    "roi": 0.0946,
+    "roi_anualizado": 0.0614,
     "plazo_meses": 18.2
    },
    {
     "nombre": "base",
     "probabilidad": 0.55,
     "vs": 176744.44,
-    "coste_total": 141395.76,
-    "beneficio": 35348.68,
-    "roi": 0.25,
-    "roi_anualizado": 0.2287,
+    "coste_total": 136768.91,
+    "beneficio": 39975.53,
+    "roi": 0.2923,
+    "roi_anualizado": 0.267,
     "plazo_meses": 13.0
    },
    {
     "nombre": "optimista",
     "probabilidad": 0.2,
     "vs": 186995.62,
-    "coste_total": 133995.7,
-    "beneficio": 52999.92,
-    "roi": 0.3955,
-    "roi_anualizado": 0.4361,
+    "coste_total": 129368.85,
+    "beneficio": 57626.77,
+    "roi": 0.4454,
+    "roi_anualizado": 0.492,
     "plazo_meses": 11.0
    }
   ],
-  "y_neta": null,
-  "dscr": null,
-  "cash_on_cash": null,
-  "van_coste_capital": 33230.42,
-  "diferencial_tir_coste_capital": 32.37,
+  "y_neta": 0.065,
+  "dscr": 4.308,
+  "cash_on_cash": 0.0763,
+  "van_coste_capital": 37857.27,
+  "diferencial_tir_coste_capital": 38.82,
   "flujos_base": [
-   -74882.18,
+   -70255.33,
    -240.0,
    -240.0,
    -240.0,
@@ -485,14 +482,15 @@
  "puja": {
   "p_adj_esperado": 63840.0,
   "ratio_base": 0.42,
-  "rvc": 1.077,
-  "banda_rvc": "alcanzable",
+  "rvc": 1.002,
+  "banda_rvc": "ajustado",
   "plan": [
-   "Cargar límites en la interfaz antes de abrir la puja: objetivo 60.011 € · máximo 68.731 € · límite absoluto 80.022 € (infranqueable por software)",
+   "Cargar límites en la interfaz antes de abrir la puja: objetivo 53.597 € · máximo 63.982 € · límite absoluto 71.087 € (infranqueable por software)",
    "Pujar siempre el tramo mínimo; sin pujas psicológicas redondas",
    "Entrar tarde con límites precargados: la extensión automática del cierre neutraliza el sniping; la ventaja es la disciplina",
    "Depósito requerido: 7.600 € (5 % del valor de subasta)",
-   "Si aparece información nueva durante la subasta, re-análisis exprés; si el semáforo cae, retirada"
+   "Si aparece información nueva durante la subasta, re-análisis exprés; si el semáforo cae, retirada",
+   "RVC 0,90–1,05: operación de oportunidad, no de plan — aceptar por escrito antes de pujar"
   ],
   "riesgo_ejecucion": [
    "Suspensión/sobreseimiento del procedimiento: capital del depósito inmovilizado sin operación",
@@ -647,7 +645,7 @@
    "texto": "Escalera de precios cargada en la interfaz de puja",
    "bloqueante": true,
    "estado": "ok",
-   "detalle": "Objetivo 60.011 € · Máx 68.731 € · Límite 80.022 €"
+   "detalle": "Objetivo 53.597 € · Máx 63.982 € · Límite 71.087 €"
   },
   {
    "grupo": "D. Económico",
@@ -718,8 +716,8 @@
    "orden": 27,
    "texto": "RVC dentro del umbral del perfil; si 0,90–1,05 aceptación explícita de 'operación de oportunidad'",
    "bloqueante": true,
-   "estado": "ok",
-   "detalle": "RVC = 1,08 · P adjudicación esperado 63.840 €"
+   "estado": "pendiente",
+   "detalle": "RVC = 1,00 · P adjudicación esperado 63.840 €"
   },
   {
    "grupo": "F. Ejecución",

@@ -1,8 +1,12 @@
 export type Semaforo = "verde" | "amarillo" | "naranja" | "rojo";
 
-export interface Precios { p_ideal: number; p_objetivo: number; p_max: number; p_limite: number; degenerada: boolean; detalle: Record<string, number>; }
+export interface Precios { p_ideal: number; p_objetivo: number; p_max: number; p_limite: number; degenerada: boolean; detalle: Record<string, number>;
+  /** Fase 5J-2a: tramo fiscal con que se resolvió cada precio (unico | bajo | alto | frontera). */
+  tramos_fiscales?: Record<string, string> | null; }
 export interface Veto { codigo: string; motivo: string; dimension?: string | null; subsanable_con?: string | null; }
-export interface RiesgoDim { dimension: string; probabilidad: number; impacto: number; score: number; nivel: string; mitigable: boolean; condiciones: string[]; evidencias: string[]; }
+export interface RiesgoDim { dimension: string; probabilidad: number; impacto: number; score: number; nivel: string; mitigable: boolean; condiciones: string[]; evidencias: string[];
+  /** Fase 5J-2a: las mismas evidencias como {dato, valor}; ausente en resultados anteriores. */
+  evidencias_detalle?: { dato: string; valor: string | null }[] | null; }
 export interface EscenarioOut { nombre: string; probabilidad: number; vs: number; coste_total: number; beneficio: number; roi: number; roi_anualizado: number; plazo_meses: number; }
 export interface ChecklistItem { grupo: string; orden: number; texto: string; bloqueante: boolean; estado: "ok" | "pendiente" | "no_aplica"; detalle?: string | null; }
 
@@ -13,11 +17,16 @@ export interface Decision {
   version_reglas: string; version_parametros: string;
   /** Fase 5H.1-C (§9.5, ADR-0019): meses hasta beneficio cero; ausentes en resultados anteriores. */
   colchon_plazo_meses?: number | null; colchon_plazo_meses_p_max?: number | null;
+  /** Fase 5J-2a: operandos del colchón a P_objetivo. */
+  colchon_detalle?: { beneficio: number; inversion: number; tenencia_mensual: number; intereses_mensuales: number;
+                      coste_capital_mensual: number; coste_mensual: number } | null;
 }
 
 export interface Resultado {
   decision: Decision;
-  ici: { ici: number; carencias: string[]; penalizaciones: string[]; desglose: Record<string, number> };
+  ici: { ici: number; carencias: string[]; penalizaciones: string[]; desglose: Record<string, number>;
+    /** Fase 5J-2a: penalizaciones estructuradas. */
+    penalizaciones_detalle?: { codigo: string; puntos: number }[] | null };
   valoracion: { vm: number; vs: number; vs_m2: number; n_comparables: number; dispersion_cv: number; confianza: number; metodo: string;
     /** Fase 5K-D: trazabilidad que ya devolvía el backend (opcional: resultados antiguos). */
     detalle_comparables?: { precio_ajustado_m2: number; normalizado_m2: number; peso: number }[];
@@ -27,12 +36,20 @@ export interface Resultado {
   costes: { c_v: number; c_f_p50: number; c_f_p80: number; desglose_p50: Record<string, number>; contingencia_pct: number; plazo_meses_p50: number; plazo_meses_p80: number; regimen_fiscal: string;
     /** Fase 5K-D: desgloses que ya devolvía el backend (opcionales: resultados antiguos). */
     desglose_p80?: Record<string, number>; c_v_desglose?: Record<string, number>;
-    base_fiscal_minima?: number; tipo_base_minima?: number };
-  riesgos: { ra: number; ra_base: number; banda: string; dominancia_aplicada: string | null; dimensiones: RiesgoDim[] };
+    base_fiscal_minima?: number; tipo_base_minima?: number;
+    /** Fase 5J-2a: meses de ocupación, obra y comercialización, y el multiplicador del P80. */
+    plazo_desglose?: { ocupacion: number; obra: number; comercializacion: number; multiplicador_p80: number } | null };
+  riesgos: { ra: number; ra_base: number; banda: string; dominancia_aplicada: string | null; dimensiones: RiesgoDim[];
+    /** Fase 5J-2a: pesos de agregación y suelo de la dominancia aplicada. */
+    pesos?: Record<string, number> | null; suelo_dominancia?: number | null };
   rentabilidad: { precio_evaluado?: number; inversion_total: number; beneficio: number; roi: number; roi_anualizado: number; tir_anual: number; valor_esperado: number; escenarios: EscenarioOut[]; y_neta?: number | null; dscr?: number | null;
     /** Fase 5H.1-A (ADR-0017): informativos; ausentes en resultados anteriores. */
-    van_coste_capital?: number | null; diferencial_tir_coste_capital?: number | null };
-  puja: { p_adj_esperado: number; ratio_base: number; rvc: number; banda_rvc: string; plan: string[]; riesgo_ejecucion: string[] };
+    van_coste_capital?: number | null; diferencial_tir_coste_capital?: number | null;
+    /** Fase 5J-2a: flujos mensuales del escenario base (TIR y VAN) y tasa del VAN. */
+    flujos_base?: number[] | null; tasa_van?: number | null };
+  puja: { p_adj_esperado: number; ratio_base: number; rvc: number; banda_rvc: string; plan: string[]; riesgo_ejecucion: string[];
+    /** Fase 5J-2a: ratio del segmento antes de ajustes, ajustes aplicados y si se acotó. */
+    ratio_segmento?: number | null; ajustes_ratio?: { concepto: string; ajuste: number }[] | null; ratio_acotado?: boolean | null };
   checklist: ChecklistItem[];
   reglas_disparadas: { codigo: string; version: string; categoria: string }[];
   informe_markdown: string;
