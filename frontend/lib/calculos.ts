@@ -389,7 +389,7 @@ function calculoTir(res: Resultado): Calculo {
   return {
     clave: "tir", titulo: "TIR anual", disponible: true, origen: "m11_rentabilidad.py (_tir_anual)",
     formula: "Tasa mensual r tal que Σ F_t / (1 + r)^t = 0 (t = 0 … n meses, escenario base); TIR anual = (1 + r)^12 − 1",
-    sustitucion: `F_0 … F_${r.flujos_base.length - 1}: ${r.flujos_base.length} flujos mensuales (detalle abajo)`,
+    sustitucion: `F_t: ${r.flujos_base.length} flujos mensuales, del mes 0 al ${r.flujos_base.length - 1} (detalle abajo)`,
     resultado: pct(r.tir_anual),
     filas: filasFlujos(r.flujos_base),
   };
@@ -403,7 +403,7 @@ function calculoVan(res: Resultado): Calculo {
   return {
     clave: "van", titulo: "VAN al coste de capital", disponible: true, origen: "m11_rentabilidad.py (_van)",
     formula: "VAN = Σ F_t / (1 + i)^t, con i = (1 + tasa anual)^(1/12) − 1 y los mismos flujos que la TIR",
-    sustitucion: `tasa anual = ${pct(r.tasa_van, 2)}; F_0 … F_${r.flujos_base.length - 1} como en la TIR`,
+    sustitucion: `tasa anual = ${pct(r.tasa_van, 2)}; F_t: los mismos flujos que la TIR, del mes 0 al ${r.flujos_base.length - 1}`,
     resultado: eur(r.van_coste_capital),
   };
 }
