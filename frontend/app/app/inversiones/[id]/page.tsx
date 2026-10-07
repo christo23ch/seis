@@ -46,7 +46,7 @@ export default function DetalleInversion() {
           {act.tipologia ?? "Activo"} · {act.municipio ?? "—"}
         </h1>
         <p className="text-sm text-slate-500">
-          {data.perfil} · {num(act.superficie_m2 ?? 0)} m² · {fecha(data.creado_en)} ·
+          <TextoFormulas texto={data.perfil} /> · {num(act.superficie_m2 ?? 0)} m² · {fecha(data.creado_en)} ·
           análisis original: reglas v{data.version_reglas} · parámetros v{data.version_parametros}
         </p>
       </header>

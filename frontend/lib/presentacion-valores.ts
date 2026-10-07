@@ -47,7 +47,7 @@ const PALABRAS: Record<string, string> = {
   limite: "límite", indice: "índice", poblacion: "población", condicion: "condición",
   prohibicion: "prohibición", demolicion: "demolición", ordenacion: "ordenación", urbanizacion: "urbanización",
   transformacion: "transformación", educacion: "educación", gestion: "gestión",
-  habil: "hábil", habiles: "hábiles",
+  habil: "hábil", habiles: "hábiles", semaforo: "semáforo", expres: "exprés",
 };
 
 /** «deposito_pct» → «Depósito %»; «tendencia_5a_pct» → «Tendencia 5 años %». */

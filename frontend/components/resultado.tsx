@@ -28,7 +28,7 @@ export function SemaforoHero({ d }: { d: Decision }) {
         <MetricaMini etiqueta="RA" valor={`${d.ra} / 100`} />
         <MetricaMini etiqueta="ICI" valor={`${d.ici}`} />
         <MetricaMini etiqueta="ICU" valor={`${d.icu}`} />
-        <MetricaMini etiqueta="RVC" valor={d.rvc.toFixed(2)} />
+        <MetricaMini etiqueta="RVC" valor={d.rvc.toFixed(2).replace(".", ",")} />
       </div>
       {d.razones.length > 0 && <p className="mt-3 text-sm text-slate-700">{d.razones[0]}</p>}
     </div>
@@ -219,7 +219,7 @@ export function IcoDesglose({ d, pesos }: { d: Decision; pesos: Record<string, n
                   <div className="h-2 rounded bg-primario" style={{ width: `${Math.min(100, (v / max) * 100)}%` }} />
                 </div>
               ) : <span className="flex-1" />}
-              <span className="cifra w-16 text-right text-slate-500">
+              <span className="cifra w-20 shrink-0 whitespace-nowrap text-right text-slate-500">
                 {v.toFixed(1).replace(".", ",")}{max != null ? ` / ${max}` : ""}
               </span>
             </div>

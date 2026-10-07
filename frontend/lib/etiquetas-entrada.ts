@@ -23,7 +23,9 @@ export const SECCIONES_ENTRADA: { titulo: string; claves: string[] }[] = [
 export const ETIQUETAS_ENTRADA: Record<string, Etiqueta> = {
   perfil: { etiqueta: "Perfil de inversión" },
   subasta: { etiqueta: "Subasta" },
-  "subasta.fuente": { etiqueta: "Fuente de la subasta" },
+  "subasta.fuente": { etiqueta: "Fuente de la subasta", valores: {
+    judicial_boe: "Judicial (Portal de Subastas del BOE)", aeat: "Agencia Tributaria (AEAT)", tgss: "Seguridad Social (TGSS)",
+    concursal: "Concursal", banco: "Bancaria", notarial: "Notarial", privada: "Privada" } },
   "subasta.valor_subasta": { etiqueta: "Valor de subasta", unidad: "€" },
   "subasta.puja_minima": { etiqueta: "Puja mínima", unidad: "€" },
   "subasta.tramo": { etiqueta: "Tramo de puja", unidad: "€" },

@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { contarValores, type Nodo } from "@/lib/presentacion-valores";
+import { NO_CONSTA, contarValores, type Nodo } from "@/lib/presentacion-valores";
 import { Button, cx } from "./ui";
 
 /** Fase 5K-B — un árbol de valores legible: filas «nombre · valor · unidad», grupos
@@ -48,8 +48,10 @@ function NodoValor({ n, nivel }: { n: Nodo; nivel: number }) {
     <div data-ruta={n.ruta} className="flex flex-wrap items-baseline justify-between gap-x-3 border-b border-slate-50 py-1">
       <dt className="min-w-0 text-[12.5px] text-slate-600">{n.etiqueta}</dt>
       <dd className="min-w-0 text-right">
-        <span className="cifra text-[13px] font-semibold text-tinta">{n.valor}</span>
-        {n.unidad && n.valor !== "No consta" && <span className="ml-1 text-[12px] text-slate-500">{n.unidad}</span>}
+        {/* Monoespaciada solo para cifras; «No consta» y los textos, en la letra normal. */}
+        <span className={cx("text-[13px]", n.valor === NO_CONSTA ? "text-slate-500"
+          : /^[-+]?\d/.test(n.valor) ? "cifra font-semibold text-tinta" : "font-medium text-tinta")}>{n.valor}</span>
+        {n.unidad && n.valor !== NO_CONSTA && <span className="text-[12px] text-slate-500">{` ${n.unidad}`}</span>}
         {n.detalle && <span className="block text-[11.5px] text-slate-500">{n.detalle}</span>}
       </dd>
     </div>
