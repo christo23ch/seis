@@ -237,7 +237,8 @@ Inicia sesión y pulsa **Nueva inversión**. Introduce exactamente esto (lo no m
 
 **Resultado esperado** (tolerancias de redondeo):
 
-- Semáforo **🟡 AMARILLO** con condiciones · **ICO 64** (60–74) · **RA 40** (medio, dominancia *una_alta* por ocupación 4×3)
+- Semáforo **🟠 NARANJA** con condiciones (desde la Fase 5J-3; antes amarillo) · **ICO 64** (60–74) · **RA 40** (medio, dominancia *una_alta* por ocupación 4×3)
+- Bajo el semáforo, **«Atención: remate no aprobable si es la vivienda habitual del ejecutado»**: la puja máxima (67.941 €, 44,7 %) queda por debajo del suelo de 91.200 € (60 %), con la vivienda habitual supuesta por no constar, y los umbrales aplicados con su artículo (5J-3)
 - ICI ≈ 63 · ICU ≈ 66 · δ_v 6 % · VS prudente ≈ **176.700 €**
 - Escalera: ideal **≈ 50.750** · objetivo **≈ 59.450** · máximo **≈ 67.950** · límite **≈ 78.500 €** (la línea discontinua del P. adjudicación esperado, **63.840 €**, cruza entre objetivo y máximo)
 - Plazo **15,5 meses** (P50) / **21,7** (P80): 7 de ocupación + 3 de obra + 3 de comercialización + **2,5 de inmovilización** (Fase 5J-2b: no consta la fecha de inicio del procedimiento judicial ⇒ el régimen más largo)
@@ -328,6 +329,28 @@ escalera y la rentabilidad.
    que cero».
 
 Lo recorre la e2e `frontend/e2e/procedimiento.mjs`, que lanza `e2e/correr_simulaciones.sh`.
+
+### Pruebas del aviso de la franja del letrado (Fase 5J-3, ADR-0027)
+
+Ningún número cambia: solo el semáforo, una condición, un ítem del checklist y el aviso.
+
+1. **Caso §19 tal cual:** semáforo **naranja**, aviso «Remate no aprobable si es la vivienda habitual
+   del ejecutado» en el informe y en el panel del procedimiento; ítem bloqueante «Riesgo de
+   aprobación del remate asumido por escrito».
+2. **Vivienda habitual «No»:** aviso «Aprobación del remate a decisión del letrado» (puja máxima por
+   debajo de 76.000 €, 50 %); sigue en naranja.
+3. **Régimen posterior, vivienda habitual «No» y cantidad reclamada 60.000 €:** aviso «Aprobación del
+   remate sujeta a mejora», «No limita el semáforo: es una condición»; semáforo **amarillo** e ítem
+   no bloqueante.
+4. **AEAT o notarial:** sin aviso.
+5. **Cesión de remate** (Estrategia de puja → riesgos de ejecución): «el ejecutante y los acreedores
+   posteriores (LEC, art. 647, apdo. 3, LO 1/2025)»; con «Antes del 3-4-2025», «solo el ejecutante».
+6. **Reglas sincronizadas:** tras `python -m scripts.init_db` sobre una base sembrada antes, la pantalla
+   de Reglas muestra SEM-EJEC-01 **2026.10.07**. **No lo ejecutes sobre `seis_dev.db` si no quieres
+   actualizar sus reglas**; para probarlo, usa una copia.
+
+Lo recorren `backend/tests/test_aviso_aprobacion_5j3.py`, `backend/tests/test_sincronizar_reglas_5j3.py`
+y la e2e `frontend/e2e/procedimiento.mjs` (franja sujeta a mejora en el panel).
 
 ### Pruebas de presentación (Fase 5K)
 

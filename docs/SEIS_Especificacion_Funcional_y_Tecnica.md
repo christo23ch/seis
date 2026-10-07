@@ -1504,7 +1504,7 @@ Coste de capital (§9.1): 0,015 · I(P_max, C_F^P80) · 18,2/12 = 0,015 · 160.8
 
 **ICO (§8.5):** rentabilidad 15,0 + jurídico 5,6 + urbanístico 4,5 + financiero 8,0 + ubicación 9,9 + revalorización 5,8 + liquidez 10,6 + información 5,0 = **ICO 64**.
 
-**Semáforo:** ICO 64 ⇒ candidato Amarillo (banda 60–74); la regla de ocupación alta sin verificar impone techo Amarillo; pesimista ≥ 0 ✓; RVC ≥ 0,90 ✓; ICI ≥ 45 ✓ ⇒ **🟡 AMARILLO con condiciones** (literales, en el orden en que las da el motor):
+**Semáforo** (cifras de la 5H.1-D; desde la 5J-3 es **🟠 NARANJA**, ver el recuadro final): ICO 64 ⇒ candidato Amarillo (banda 60–74); la regla de ocupación alta sin verificar impone techo Amarillo; pesimista ≥ 0 ✓; RVC ≥ 0,90 ✓; ICI ≥ 45 ✓ ⇒ **🟡 AMARILLO con condiciones** (literales, en el orden en que las da el motor):
 (1) «Judicial: depósito del 5% y pago del remate en plazo legal sin condición suspensiva; cesión de remate solo por el ejecutante (§3.2)»,
 (2) «Solicitar certificado de deuda de la comunidad antes de la puja (deuda estimada al alza mientras tanto, P5)»,
 (3) «Verificar la situación posesoria in situ antes de pujar; dotar provisión de desalojo P80».
@@ -1536,6 +1536,14 @@ Coste de capital (§9.1): 0,015 · I(P_max, C_F^P80) · 18,2/12 = 0,015 · 160.8
 >   5 % si se inició antes del 3-4-2025) y pago del remate…» (SEM-EJEC-01 2026.10).
 > - **Táctica de puja de pujas secretas y cierre improrrogable** (LEC 648.6.ª y 649.1): decidir la cifra
 >   antes de abrir la puja y pujarla directamente, en lugar de «entrar tarde» confiando en la prórroga.
+>
+> **Semáforo vigente desde la Fase 5J-3** (ADR-0027): **🟠 NARANJA**, no amarillo. Ningún número cambia.
+> La puja máxima (67.941 €, 44,7 % del valor de subasta) queda por debajo del suelo de la vivienda
+> habitual del ejecutado (91.200 €, 60 %, LEC 670.3), que se asume por no constar: la ley no aprobaría
+> el remate. El informe lo destaca bajo el semáforo, la decisión añade la condición «Remate no
+> aprobable si es la vivienda habitual del ejecutado…» y el checklist un bloqueante. La condición (1)
+> pasa a decir también que la cesión de remate es del ejecutante y, con la LO 1/2025, de los
+> acreedores posteriores (LEC 647.3; SEM-EJEC-01 2026.10.07).
 
 
 ---

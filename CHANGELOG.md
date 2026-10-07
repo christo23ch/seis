@@ -19,6 +19,36 @@ convertirse en un SaaS. Lo anterior está en el historial de git.
 
 ---
 
+## [Fase 5J-3] — Aviso de la franja del letrado; reglas sincronizadas al sembrar — 2026-10-08
+
+Rama `fase/5j-3-avisos`, apilada sobre la 5J-2b, sin PR ([[ADR-0027]]). **Cambia el semáforo, no
+los números**, con la tabla antes/después aprobada por el responsable. Suite: 1183 passed,
+18 skipped, 0 failed (+34). Vitest: 144 (+1). Revisión de código: 0 críticos, 0 altos; 2 medios y
+4 bajos corregidos. Sin migración.
+
+### Añadido
+- **Aviso de la franja del letrado** (`procedimiento.aviso_aprobacion`, en el motor): en un
+  procedimiento judicial con la puja máxima por debajo de la aprobación segura (70 %), bloque
+  destacado bajo el semáforo con el riesgo y los umbrales T3 (cada uno con su estado), condición en
+  la decisión e ítem en el checklist. Franjas: **por debajo del suelo** de la vivienda habitual y
+  **a decisión del letrado** ⇒ techo naranja e ítem bloqueante; **sujeta a mejora** ⇒ sin techo e
+  ítem no bloqueante. Nunca veto; ningún número cambia. Vivienda habitual «no consta» ⇒ se asume
+  que sí, con aviso. El panel del procedimiento lo destaca.
+- **Las reglas T2 se sincronizan al sembrar** (`scripts/sembrar.py::sincronizar_reglas`): una
+  versión nueva del catálogo sustituye a la sembrada; nunca pisa una creada por la API.
+
+### Cambiado
+- **§19: amarillo → naranja** (por debajo del suelo de la vivienda habitual supuesta, 91.200 €).
+  Guarda invariante regenerada: 13 hojas por caso, ninguna numérica.
+- **SEM-EJEC-01 2026.10.07** y riesgo de ejecución de M13: la cesión de remate es del ejecutante
+  y, con la LO 1/2025, también de los acreedores posteriores (LEC 647.3).
+
+### Despliegue
+- El siguiente `init_db` lleva SEM-EJEC-01 2026.10.07 a las bases ya sembradas (salvo que alguien
+  la haya editado por la API, que manda).
+
+---
+
 ## [Fase 5J-2b] — Depósito, táctica de puja y plazo reales — 2026-10-07
 
 Rama `fase/5j-2b-deposito-y-plazo`, sin PR ([[ADR-0024]], [[ADR-0025]], [[ADR-0026]]). **Cambia

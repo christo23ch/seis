@@ -10,8 +10,8 @@
 
 ## Frentes abiertos
 
-**Actualizado:** 2026-10-07 · **Rama de trabajo:** `fase/5j-2b-deposito-y-plazo` (sale de `main`, `1be0c31`, con la 5J-2a fusionada; sin PR) · **Suite (SQLite):** 1149 passed, 18 skipped, 0 failed · **Frontend:** 143 tests unitarios (vitest, `npm test`) · **E2E:** alta, simulaciones, alta de inversión, validación guiada, datos del procedimiento y presentación (1440 y 390 px) en la CI (job `e2e`), 168 comprobaciones · **Migraciones:** hasta `0016`; la siguiente libre es la `0017`
-**Última fase cerrada:** 5J-2a, textos legibles y operandos de «Ver cálculo» (PR #34) · **En curso:** 5J-2b, depósito, táctica de puja y plazo reales (ADR-0024, ADR-0025, ADR-0026), que **cambia cifras** con la tabla antes/después aprobada · **Siguiente:** lo que queda del diseño B (reglas que usen los umbrales de aprobación) · **Puerta: ABIERTA**
+**Actualizado:** 2026-10-08 · **Rama de trabajo:** `fase/5j-3-avisos` (apilada sobre `fase/5j-2b-deposito-y-plazo`, PR #35; sin PR propio todavía) · **Suite (SQLite):** 1183 passed, 18 skipped, 0 failed · **Frontend:** 144 tests unitarios (vitest, `npm test`) · **E2E:** alta, simulaciones, alta de inversión, validación guiada, datos del procedimiento y presentación (1440 y 390 px) en la CI (job `e2e`) · **Migraciones:** hasta `0016`; la siguiente libre es la `0017`
+**Última fase cerrada:** 5J-2a (PR #34) · **En revisión:** 5J-2b, depósito, táctica y plazo (PR #35) · **En curso:** 5J-3, aviso de la franja del letrado y reglas sincronizadas al sembrar (ADR-0027) · **Siguiente:** 5J-4, puja mínima aprobable como recomendación (diseño C) · **Puerta: ABIERTA**
 
 ### 🟡 Requisito de PRODUCTO registrado, sin implementar: perfil de inversor por cuestionario
 
@@ -571,11 +571,22 @@ Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VER
    candidatos del rentista y los tramos fiscales podrían ir en funciones propias. Anotado en la
    revisión de la 5J-2a; no se refactoriza sin autorización para tocar el motor.
 
+**Franja del letrado y reglas sincronizadas (5J-3, ADR-0027)**
+
+1. **Muchas subastas judiciales llevarán el aviso**: la puja máxima casi siempre queda por debajo del
+   70 % del valor de subasta. El techo naranja solo se aplica por debajo del suelo de la vivienda
+   habitual y en la franja a decisión del letrado; en la sujeta a mejora es una condición.
+2. **Solo el procedimiento judicial** tiene aviso. La Mesa de la AEAT (por debajo del 50 %) y las
+   demás autoridades quedan como posible ampliación.
+3. **Las bases ya sembradas reciben las reglas nuevas en el siguiente `init_db`.** Una regla que
+   desaparece del YAML no se borra de la base. Una versión editada por la API manda siempre.
+4. **La frecuencia real con que los letrados aprueban remates por debajo del 50 %** no está
+   contrastada (investigación §2.5): el aviso dice que «puede denegarla», sin estimar la probabilidad.
+
 **Depósito, táctica y plazo (5J-2b, ADR-0024 a ADR-0026)**
 
-1. **«Cesión de remate solo por el ejecutante»** (SEM-EJEC-01 y riesgo de ejecución de M13) es
-   inexacto con la LO 1/2025: también la tienen los acreedores posteriores (LEC 647.3,
-   investigación §2.8). Fuera del alcance de la fase; exige otra versión de la regla.
+1. *(Resuelta en 5J-3: SEM-EJEC-01 2026.10.07 y M13 dicen la cesión de remate según el régimen,
+   LEC 647.3, ADR-0027.)*
 2. **La TIR no tiene un tramo propio para la inmovilización** (ADR-0026, punto 5): el pago del
    resto sigue en el mes 0 y el tramo posesorio en el 45 % del horizonte. Aproximación aceptada.
    **Y su horizonte se redondea al par** (`n = round(plazo_P50)`: `round(14,5) = 14`,
