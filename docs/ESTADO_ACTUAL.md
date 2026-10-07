@@ -10,8 +10,8 @@
 
 ## Frentes abiertos
 
-**Actualizado:** 2026-10-06 · **Rama de trabajo:** `fase/5i-formulario-alta` (sale de `checkpoint/5f6-simulaciones-informes`, `dc812ef`; publicada, sin PR) · **Suite (SQLite):** 1002 passed, 18 skipped, 0 failed · **Frontend:** 54 tests unitarios (vitest, `npm test`) · **E2E:** alta, simulaciones, alta de inversión y validación guiada en la CI (job `e2e`)
-**Última fase cerrada:** 5I (formulario de alta: el alta con opcionales vacíos, validación guiada, depósito en importe, estado «No consta», coordenadas desde la provincia; ADR-0020) · **Siguiente:** 5H.2, los puntos de la auditoría que SÍ cambian el caso dorado (`docs/AUDITORIA_MOTOR_ESPECIFICACION.md` §E7) · **Puerta: ABIERTA**
+**Actualizado:** 2026-10-07 · **Rama de trabajo:** `fase/5j-1-datos-procedimiento` (sale de `main`, `649804a`, con E0 y 5J-0 ya fusionadas; sin PR) · **Suite (SQLite):** 1061 passed, 18 skipped, 0 failed · **Frontend:** 64 tests unitarios (vitest, `npm test`) · **E2E:** alta, simulaciones, alta de inversión, validación guiada y datos del procedimiento en la CI (job `e2e`) · **Migraciones:** hasta `0016`; la siguiente libre es la `0017`
+**Última fase cerrada:** 5J-0 (investigación de umbrales legales, PR #31) · **En curso:** 5J-1, diseño A: datos del procedimiento informativos, sin mover ninguna cifra (ADR-0022) · **Siguiente:** 5J-2, reglas T2 del diseño B (cambia el semáforo del §19; necesita la validación jurídica de la D8 para el veto) · **Puerta: ABIERTA**
 
 ### 🟡 Requisito de PRODUCTO registrado, sin implementar: perfil de inversor por cuestionario
 
@@ -527,6 +527,28 @@ Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VER
    refinamiento del objeto `subasta` mientras otro de sus campos falla, así que «No puede
    superar el valor de subasta» aparece tras corregir el valor. Aceptado y documentado en
    `lib/schema.ts`.
+
+**Datos del procedimiento (5J-1, ADR-0022)**
+
+1. **El depósito del alta sigue en el 5 % por defecto** y alimenta el plan de puja de M13
+   («Depósito requerido…»): el resultado muestra el legal (20 % en el régimen de la LO 1/2025) y
+   avisa de la diferencia, pero no lo corrige, porque cambiaría cifras. Para la 5J-2/5J-3.
+2. **La táctica de puja de M13 no distingue el régimen** («la extensión automática del cierre…»),
+   incorrecta en el judicial de la LO 1/2025 (pujas secretas, sin prórroga). Ídem.
+3. **Los parámetros `procedimiento.regimenes` no son simulables** (el catálogo de la 5C solo cubre
+   M12 y M13) y **`defaults.yaml` sigue en `2026.07`** aunque gana una sección: subir la versión
+   cambiaría `version_parametros`, que es hoja de la foto del §19.
+4. **Toda la TGSS, los meses de inmovilización, la venta extrajudicial y el concursal están sin
+   confirmar** en la investigación: se muestran con su aviso o como «no consta». Ninguno puede
+   convertirse en bloqueo sin la validación jurídica (D8).
+5. **Una base de desarrollo creada con `create_all` necesita `alembic stamp 0015` y `upgrade head`**
+   para recibir las columnas de la `0016` (`MANUAL_DE_PRUEBAS.md` §1 bis).
+6. **Avisos de la revisión que se dejan** (LOW): con el alta por defecto (depósito 5 %, judicial,
+   «No sé») el aviso «el depósito indicado no coincide» sale siempre, ruido que desaparece cuando
+   el valor por defecto se tome del parámetro (punto 1); `PROCEDIMIENTOS_CON_DEUDA`
+   (`frontend/lib/schema.ts`) repite qué procedimientos usan la cantidad reclamada, regla que vive
+   en el YAML; y un cliente de la API puede enviar `es_vivienda_habitual=true` con
+   `vivienda_habitual_ejecutado="no"` sin validación cruzada (el formulario no lo hace).
 
 **Entorno**
 

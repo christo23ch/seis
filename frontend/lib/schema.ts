@@ -39,6 +39,17 @@ const porcentaje: Ajuste = (n) => n.min(0, MENSAJES.porcentaje).max(100, MENSAJE
 const indicador: Ajuste = (n) => n.min(0).max(100);
 const variacion: Ajuste = (n) => n.min(-100, "Debe estar entre -100 y 100").max(100, "Debe estar entre -100 y 100");
 
+/* ── Fase 5J-1 (ADR-0022): preguntas del procedimiento ──────────────────────
+ * Los valores son los del contrato (`app/engine/contracts.py`). Las etiquetas del
+ * procedimiento las sirve `/opciones`; estas son el respaldo mientras llega. */
+export const PROCEDIMIENTOS = ["judicial", "aeat", "tgss", "notarial", "extrajudicial", "concursal", "no_aplica"] as const;
+export const REGIMENES_JUDICIALES = ["posterior", "anterior", "no_se"] as const;
+export const VIVIENDA_HABITUAL = ["no_consta", "si", "no"] as const;
+/** Procedimientos en los que la cantidad reclamada cambia la puja mínima aprobable
+ * (aprobación por cubrir la deuda; también en la vivienda habitual). */
+export const PROCEDIMIENTOS_CON_DEUDA: ReadonlySet<string> = new Set(["judicial", "extrajudicial", "tgss"]);
+const elijaUna = { errorMap: () => ({ message: "Elija una opción de la lista" }) };
+
 export const esquemaAnalisis = z.object({
   perfil: z.string().min(1, MENSAJES.obligatorio),
   subasta: z.object({
@@ -52,6 +63,10 @@ export const esquemaAnalisis = z.object({
     horas_hasta_cierre: opcional(noNegativo),
     subastas_desiertas_previas: opcional(enteroNoNegativo),
     identificador_externo: z.string().optional(),
+    procedimiento: z.enum(PROCEDIMIENTOS, elijaUna),
+    // «» cuando está oculto (procedimiento no judicial): `limpiarVacios` lo retira.
+    regimen_judicial: z.enum(REGIMENES_JUDICIALES, elijaUna).or(z.literal("")),
+    cantidad_reclamada: opcional(positivo),
   // Zod 3 no ejecuta este refinamiento mientras otro campo de `subasta` falle (p.
   // ej. el valor vacío): el error del importe aparece en un segundo intento. Se
   // acepta: el primero que se ve es el que hay que corregir antes.
@@ -69,7 +84,7 @@ export const esquemaAnalisis = z.object({
     superficie_m2: requerido(positivo),
     estado_conservacion: z.string(),
     anio_construccion: opcional((n) => n.int(MENSAJES.entero).min(1500, "Año no válido").max(2100, "Año no válido")),
-    es_vivienda_habitual: z.boolean(),
+    vivienda_habitual_ejecutado: z.enum(VIVIENDA_HABITUAL, elijaUna),
     vpo: z.boolean(),
     vpo_precio_max_legal: opcional(positivo),
     ref_catastral: z.string().optional(),
@@ -194,9 +209,12 @@ export const valoresIniciales: EntradaFormulario = {
   perfil: "flip_integral",
   subasta: { fuente: "judicial_boe", valor_subasta: "", puja_minima: "",
              deposito_modo: "porcentaje", deposito_pct: 5, deposito_importe: "",
-             horas_hasta_cierre: "", subastas_desiertas_previas: 0, identificador_externo: "" },
+             horas_hasta_cierre: "", subastas_desiertas_previas: 0, identificador_externo: "",
+             // Fase 5J-1: el procedimiento de la fuente inicial; «No sé» y «No consta»
+             // de partida, como el estado de conservación (ADR-0020).
+             procedimiento: "judicial", regimen_judicial: "no_se", cantidad_reclamada: "" },
   activo: { tipologia: "vivienda", superficie_m2: "", estado_conservacion: "desconocido", anio_construccion: "",
-            es_vivienda_habitual: false, vpo: false, vpo_precio_max_legal: "", ref_catastral: "",
+            vivienda_habitual_ejecutado: "no_consta", vpo: false, vpo_precio_max_legal: "", ref_catastral: "",
             finca_registral: "", direccion: "", municipio: "", provincia: "", ccaa: "madrid",
             lat: "", lng: "" },
   cargas: [],
@@ -227,7 +245,7 @@ export const valoresIniciales: EntradaFormulario = {
 
 export const PASOS: { titulo: string; descripcion: string; campos: string[] }[] = [
   { titulo: "Datos generales", descripcion: "Fuente, valor de subasta y perfil de inversión", campos: ["perfil", "subasta"] },
-  { titulo: "Tipo de activo", descripcion: "Tipología, superficie y estado", campos: ["activo.tipologia", "activo.superficie_m2", "activo.estado_conservacion", "activo.anio_construccion", "activo.vpo", "activo.vpo_precio_max_legal", "activo.es_vivienda_habitual"] },
+  { titulo: "Tipo de activo", descripcion: "Tipología, superficie y estado", campos: ["activo.tipologia", "activo.superficie_m2", "activo.estado_conservacion", "activo.anio_construccion", "activo.vpo", "activo.vpo_precio_max_legal", "activo.vivienda_habitual_ejecutado"] },
   { titulo: "Datos registrales", descripcion: "Cargas, finca y situación posesoria", campos: ["activo.ref_catastral", "activo.finca_registral", "cargas", "ocupacion"] },
   { titulo: "Datos urbanísticos", descripcion: "Compatibilidad de uso y restricciones", campos: ["urbanistico"] },
   { titulo: "Ubicación", descripcion: "Dirección, coordenadas e indicadores micro", campos: ["activo.direccion", "activo.municipio", "activo.provincia", "activo.ccaa", "activo.lat", "activo.lng", "zona.micro"] },
@@ -274,7 +292,9 @@ export function aPayload(v: ValoresAnalisis): Record<string, unknown> {
 
   const payload: Record<string, unknown> = {
     perfil: v.perfil,
-    activo: v.activo,
+    // Fase 5J-1: el booleano antiguo se sigue enviando, derivado de la respuesta nueva:
+    // alimenta el hecho de M01 igual que antes (`true` solo con «Sí»).
+    activo: { ...v.activo, es_vivienda_habitual: v.activo.vivienda_habitual_ejecutado === "si" },
     subasta: {
       ...v.subasta,
       deposito_modo: undefined,                         // solo del formulario
@@ -339,6 +359,10 @@ export function rutasOcultas(v: EntradaFormulario): string[] {
     ...(v.financiacion.tipo === "hipoteca" ? [] : ["financiacion.ltv", "financiacion.interes_anual_pct"]),
     ...(v.documentos.nota_simple ? [] : ["documentos.nota_simple_dias"]),
     ...(v.perfil === "rentista" ? [] : ["rentista"]),
+    // Fase 5J-1: el régimen solo se pregunta en la vía judicial, y la cantidad
+    // reclamada solo donde cambia la puja mínima aprobable.
+    ...(v.subasta.procedimiento === "judicial" ? [] : ["subasta.regimen_judicial"]),
+    ...(PROCEDIMIENTOS_CON_DEUDA.has(v.subasta.procedimiento ?? "") ? [] : ["subasta.cantidad_reclamada"]),
   ];
 }
 

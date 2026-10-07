@@ -80,6 +80,10 @@ def crear_analisis(db: Session, inp: AnalisisInput, quien: str | None = None,
             valor_subasta=inp.subasta.valor_subasta, puja_minima=inp.subasta.puja_minima,
             tramo=inp.subasta.tramo, deposito_pct=inp.subasta.deposito_pct,
             subastas_desiertas_previas=inp.subasta.subastas_desiertas_previas,
+            # Fase 5J-1: lo que declaró el alta, sin deducir nada (la deducción y
+            # los supuestos viven en el resultado, `procedimiento`).
+            procedimiento=inp.subasta.procedimiento, regimen_judicial=inp.subasta.regimen_judicial,
+            cantidad_reclamada=inp.subasta.cantidad_reclamada,
         )
         db.add(subasta)
         db.flush()
@@ -92,7 +96,8 @@ def crear_analisis(db: Session, inp: AnalisisInput, quien: str | None = None,
         lat=inp.activo.lat, lng=inp.activo.lng, superficie_m2=inp.activo.superficie_m2,
         anio_construccion=inp.activo.anio_construccion,
         estado_conservacion=inp.activo.estado_conservacion,
-        es_vivienda_habitual=inp.activo.es_vivienda_habitual, vpo=inp.activo.vpo,
+        es_vivienda_habitual=inp.activo.es_vivienda_habitual,
+        vivienda_habitual_ejecutado=inp.activo.vivienda_habitual_ejecutado, vpo=inp.activo.vpo,
         atributos=inp.activo.atributos,
     )
     db.add(activo)

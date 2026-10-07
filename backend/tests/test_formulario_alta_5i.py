@@ -13,10 +13,12 @@ from __future__ import annotations
 CUERPO_MINIMO = {
     "perfil": "flip_integral",
     "subasta": {"fuente": "judicial_boe", "valor_subasta": 152000, "deposito_pct": 0.05,
-                "subastas_desiertas_previas": 0},
+                "subastas_desiertas_previas": 0,
+                # Fase 5J-1: preguntas del procedimiento con sus valores por defecto.
+                "procedimiento": "judicial", "regimen_judicial": "no_se"},
     "activo": {"tipologia": "vivienda", "superficie_m2": 82, "estado_conservacion": "desconocido",
-               "es_vivienda_habitual": False, "vpo": False, "municipio": "Madrid", "provincia": "",
-               "ccaa": "madrid"},
+               "es_vivienda_habitual": False, "vivienda_habitual_ejecutado": "no_consta",
+               "vpo": False, "municipio": "Madrid", "provincia": "", "ccaa": "madrid"},
     "cargas": [],
     "ocupacion": {"estado": "desconocida"},
     "comparables": [{"precio_m2": 2293, "estado": "reformado", "origen": "testigo", "meses_antiguedad": 0}],

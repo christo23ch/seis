@@ -19,6 +19,13 @@ Semaforo = Literal["verde", "amarillo", "naranja", "rojo"]
 NivelRiesgo = Literal["bajo", "medio", "alto", "critico"]
 Dimension = Literal["juridico", "documental", "ocupacion", "urbanistico", "tecnico",
                     "financiero", "comercial", "liquidez", "mercado"]
+# Fase 5J-1 (ADR-0022): datos del procedimiento de subasta, solo para resultados
+# informativos (`app/engine/procedimiento.py`); ningún módulo M01-M14 los lee.
+Procedimiento = Literal["judicial", "aeat", "tgss", "notarial", "extrajudicial", "concursal",
+                        "no_aplica"]
+# Cuándo se inició el procedimiento judicial respecto de la LO 1/2025 (3-4-2025).
+RegimenJudicial = Literal["posterior", "anterior", "no_se"]
+SiNoConsta = Literal["si", "no", "no_consta"]
 
 
 # ────────────────────────── ENTRADA (pasos del asistente) ──────────────────────────
@@ -36,6 +43,11 @@ class ActivoInput(BaseModel):
     ref_catastral: str | None = None
     finca_registral: str | None = None
     es_vivienda_habitual: bool = False
+    # Fase 5J-1: la misma pregunta con «No consta». Solo la lee `procedimiento.py`;
+    # el booleano de arriba sigue alimentando el hecho de M01 sin cambios. `None`
+    # (entradas anteriores a 5J-1) ⇒ «si» si el booleano es verdadero, «no_consta» si
+    # no: un `False` antiguo no distingue «no» de «no marcado» (P4).
+    vivienda_habitual_ejecutado: SiNoConsta | None = None
     vpo: bool = False
     vpo_precio_max_legal: float | None = None
     atributos: dict = Field(default_factory=dict)
@@ -57,6 +69,11 @@ class SubastaInput(BaseModel):
     subastas_desiertas_previas: int = 0
     identificador_externo: str | None = None
     url: str | None = None
+    # Fase 5J-1 (ADR-0022): solo para resultados informativos. `procedimiento=None`
+    # ⇒ se deduce de la fuente (`procedimiento.deducido_de_fuente`) y se avisa.
+    procedimiento: Procedimiento | None = None
+    regimen_judicial: RegimenJudicial = "no_se"
+    cantidad_reclamada: float | None = Field(default=None, gt=0, allow_inf_nan=False)
 
 
 class CargaInput(BaseModel):
@@ -371,6 +388,46 @@ class PujaResultado(BaseModel):
     riesgo_ejecucion: list[str]
 
 
+class DatoLegal(BaseModel):
+    """Fase 5J-1: un dato legal aplicado, con su origen (parámetro T3)."""
+    dato: str
+    valor: float | None
+    articulo: str
+    estado: Literal["confirmado", "sin_confirmar"]
+    nota: str | None = None
+
+
+class ProcedimientoResultado(BaseModel):
+    """Fase 5J-1 (ADR-0022): datos del procedimiento de subasta. INFORMATIVO: no
+    alimenta la escalera, el RVC, el semáforo ni la rentabilidad. Los importes
+    `None` son DATO AUSENTE (P4): la norma no da un valor fiable o falta un dato."""
+    procedimiento: Procedimiento
+    procedimiento_deducido: bool               # no lo dijo el alta: salió de la fuente
+    regimen: str | None                        # clave de `procedimiento.regimenes`
+    regimen_nombre: str | None
+    regimen_asumido: bool                      # judicial con «No sé»: se aplica el desfavorable
+    vivienda_habitual: SiNoConsta
+    vivienda_habitual_asumida: bool            # «No consta» ⇒ se aplica la regla de vivienda habitual
+    valor_subasta: float
+    cantidad_reclamada: float | None
+    deposito_pct: float | None
+    deposito_eur: float | None
+    deposito_declarado_pct: float
+    capital_para_pujar: float | None           # lo que hay que consignar para poder pujar
+    plazo_pago_dias: int | None
+    plazo_pago_unidad: str | None              # naturales | habiles
+    meses_inmovilizacion: float | None
+    umbral_aprobacion_pct: float | None        # umbral aplicable a la puja mínima aprobable
+    puja_minima_aprobable: float | None        # sin depender de la decisión de la autoridad
+    umbral_aprobacion_segura_pct: float | None
+    puja_aprobacion_segura: float | None
+    suelo_absoluto_pct: float | None           # por debajo, prohibido (vivienda habitual) o no admitido
+    suelo_absoluto: float | None
+    datos_legales: list[DatoLegal]
+    avisos: list[str]
+    aviso_orientativo: str
+
+
 class ChecklistItem(BaseModel):
     grupo: str
     orden: int
@@ -420,3 +477,5 @@ class AnalisisResult(BaseModel):
     informe_markdown: str
     delta_v: float
     vs_prudente: float
+    # Fase 5J-1 (ADR-0022): informativo; `None` en resultados anteriores a la fase.
+    procedimiento: ProcedimientoResultado | None = None

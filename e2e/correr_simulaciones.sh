@@ -114,7 +114,9 @@ cd "$RAIZ/backend" && "$PY" "$RAIZ/e2e/comprobar_simulaciones.py"; base=$?
 node "$RAIZ/frontend/e2e/nueva-inversion.mjs"; alta_inversion=$?
 # Fase 5I-B: validación guiada (mensajes por campo, foco, 422 traducido, 390 px).
 node "$RAIZ/frontend/e2e/validacion-alta.mjs"; validacion=$?
-alta_inversion=$((alta_inversion + validacion))
+# Fase 5J-1: preguntas del procedimiento y panel de resultados (ADR-0022).
+node "$RAIZ/frontend/e2e/procedimiento.mjs"; procedimiento=$?
+alta_inversion=$((alta_inversion + validacion + procedimiento))
 
 if [ $navegador -ne 0 ] || [ $base -ne 0 ] || [ $alta_inversion -ne 0 ]; then
   echo "E2E: FALLÓ (navegador=$navegador base=$base alta_inversion=$alta_inversion). Registros en $E2E_DIR (usar E2E_CONSERVAR=1 para verlos)."

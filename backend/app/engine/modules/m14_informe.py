@@ -139,7 +139,11 @@ def construir_checklist(inp: AnalisisInput, dec: DecisionFinal, hechos: dict, *,
 
 # ───────────────────────────── INFORME (§12) ─────────────────────────────
 def construir_informe(inp: AnalisisInput, res_parciales: dict, dec: DecisionFinal,
-                      checklist: list[ChecklistItem], *, estado_asumido: str | None = None) -> str:
+                      checklist: list[ChecklistItem], *, estado_asumido: str | None = None,
+                      seccion_procedimiento: str = "") -> str:
+    """`seccion_procedimiento` (Fase 5J-1, ADR-0022): subapartado informativo que cierra
+    el §8, ya redactado por `app/engine/procedimiento.py`. Vacío ⇒ informe idéntico al
+    anterior a la fase."""
     val, icu, ref = res_parciales["valoracion"], res_parciales["icu"], res_parciales["reforma"]
     costes, ra, rent = res_parciales["costes"], res_parciales["riesgos"], res_parciales["rentabilidad"]
     puja, ici = res_parciales["puja"], res_parciales["ici"]
@@ -288,7 +292,7 @@ Ratio histórico del segmento: {_pct(puja.ratio_base, 0)} sobre valor de subasta
 {chr(10).join("- " + p for p in puja.plan)}
 
 **Riesgo de ejecución del proceso:**
-{chr(10).join("- " + p for p in puja.riesgo_ejecucion)}
+{chr(10).join("- " + p for p in puja.riesgo_ejecucion)}{seccion_procedimiento}
 
 ## 9 · Checklist previo a la puja — bloqueantes pendientes
 {filas_bloq}

@@ -47,6 +47,28 @@ el email y la contraseña que tú definas en `.env` (`ADMIN_EMAIL` / `ADMIN_PASS
 > él el digest de notificaciones y el sondeo de Telegram no se ejecutan jamás.
 > **No lo escales nunca**: dos instancias programan cada tarea dos veces.
 
+### Base de desarrollo SQLite creada sin Alembic (Fase 5J-1, migración `0016`)
+
+> En desarrollo y tests el esquema lo crea `create_all` al arrancar (ADR-0004), y
+> **`create_all` no añade columnas a tablas que ya existen**. Una `seis_dev.db` así no
+> tiene ninguna revisión en `alembic_version` y, con el código de la 5J-1, el alta
+> fallaría al guardar (`no such column: subasta.procedimiento`).
+>
+> Con el backend **parado** y una copia de seguridad hecha, desde `backend/`:
+>
+> ```bash
+> cp seis_dev.db seis_dev.db.antes-0016            # copia de seguridad
+> SEIS_ENV=development DATABASE_URL=sqlite:///seis_dev.db python -m alembic current   # vacío = sin revisión
+> SEIS_ENV=development DATABASE_URL=sqlite:///seis_dev.db python -m alembic stamp 0015
+> SEIS_ENV=development DATABASE_URL=sqlite:///seis_dev.db python -m alembic upgrade head
+> ```
+>
+> `stamp 0015` solo es correcto si el esquema es el de la `0015`: se comprobó tabla a tabla
+> y columna a columna sobre una copia de la base de desarrollo el 2026-10-07. Si
+> `alembic current` ya muestra una revisión, basta con `upgrade head`. En PowerShell,
+> las variables se fijan antes: `$env:SEIS_ENV="development"; $env:DATABASE_URL="sqlite:///seis_dev.db"`.
+> Para deshacer: `alembic downgrade 0015` (quita las cuatro columnas) o restaurar la copia.
+
 ---
 
 ## 2 · Opción A — Prueba local completa (3 comandos)
@@ -266,6 +288,33 @@ En **Nueva inversión**, con un usuario analista o administrador:
 
 Lo recorren las e2e `frontend/e2e/nueva-inversion.mjs` y `validacion-alta.mjs`, que lanza
 `e2e/correr_simulaciones.sh`.
+
+### Pruebas de los datos del procedimiento (Fase 5J-1, ADR-0022)
+
+Todo lo de esta sección es **informativo**: no cambia la escalera, el RVC, el semáforo ni la
+rentabilidad. Con el caso §19 (sección 6), los precios siguen siendo los mismos.
+
+1. **Valores por defecto.** En el paso 1, «Tipo de procedimiento» viene en *Judicial* (el de la
+   fuente) y «¿Cuándo se inició el procedimiento judicial?» en *No sé*. En el paso 2, «¿Es la
+   vivienda habitual del ejecutado?» viene en *No consta (se asume que sí)*.
+2. **Sigue a la fuente.** Cambia la fuente a *aeat*: el procedimiento pasa a AEAT y desaparecen el
+   régimen y la cantidad reclamada. Si cambias el procedimiento a mano, ya no sigue a la fuente.
+3. **Caso §19 tal cual** (judicial, «No sé», «No consta», sin cantidad): el panel
+   «Procedimiento y umbrales legales» del resultado (y de la pestaña *Estrategia de puja*) muestra
+   depósito **30.400 €** (20 %), pago en **20 días naturales**, inmovilización **1,8 meses**, puja
+   mínima aprobable y de aprobación segura **106.400 €** (70 %) y suelo absoluto **91.200 €** (60 %),
+   con avisos de régimen supuesto, vivienda habitual supuesta y depósito del alta (5 %) distinto del
+   legal. El informe (vista previa) lleva el mismo subapartado al final del §8 y el aviso «Cálculo
+   orientativo…».
+4. **Régimen anterior con deuda.** Elige «Antes del 3-4-2025», cantidad reclamada «30.000» y vivienda
+   habitual «No»: depósito **7.600 €** (5 %), pago en **40 días**, puja mínima aprobable **30.000 €**,
+   sin suelo absoluto y sin avisos de supuestos.
+5. **Datos ausentes.** Con *Venta extrajudicial hipotecaria* el depósito y el capital para pujar dicen
+   «No consta» y hay un aviso; con *Concursal*, todos los importes. Nunca aparece un 0.
+6. **Validación.** «mucho» en la cantidad reclamada da «Introduzca un número»; «0», «Debe ser mayor
+   que cero».
+
+Lo recorre la e2e `frontend/e2e/procedimiento.mjs`, que lanza `e2e/correr_simulaciones.sh`.
 
 ### Pruebas de simulaciones (pestaña **Simulaciones** del detalle)
 

@@ -12,6 +12,7 @@ import MapaLeaflet from "@/components/mapa-leaflet";
 import { AvisoConfiguracion } from "@/components/simulaciones/aviso-configuracion";
 import { ListaSimulaciones } from "@/components/simulaciones/lista";
 import { InformesOficiales } from "@/components/informes/informes-oficiales";
+import { ProcedimientoPanel } from "@/components/procedimiento";
 import { Card, CardContent, CardHeader, CardTitle, ErrorBox, Spinner, TabPanel, Tabs, TabsLista } from "@/components/ui";
 
 export default function DetalleInversion() {
@@ -127,6 +128,8 @@ export default function DetalleInversion() {
               </CardContent>
             </Card>
           </div>
+          {/* Fase 5J-1 (ADR-0022): informativo; no altera la escalera, el RVC ni el semáforo. */}
+          <div className="mt-4"><ProcedimientoPanel datos={res.procedimiento} /></div>
         </TabPanel>
 
         <TabPanel valor="checklist">

@@ -21,6 +21,7 @@ from pathlib import Path
 
 import pytest
 
+from app.engine import procedimiento
 from app.engine.params.store import cargar_defaults
 from app.engine.pipeline import ejecutar_analisis
 from tests.test_golden_caso19 import caso_19  # noqa: F401 — fixture reutilizada
@@ -147,7 +148,10 @@ def test_sin_escalera_degenerada_el_informe_es_el_de_antes_salvo_el_formato(dora
     - 5G.4-A: la línea del coste de capital tras la fila «optimista» (§7);
     - 5H.1-A: la línea del VAN y el diferencial, a continuación;
     - 5H.1-C: la línea del colchón de plazo, a continuación;
-    - 5G.4-B: los fragmentos de `FORMATO_5G4B` (solo separadores decimales y «%»)."""
+    - 5G.4-B: los fragmentos de `FORMATO_5G4B` (solo separadores decimales y «%»);
+    - 5J-1: el subapartado informativo del procedimiento, al final del §8 y antes del
+      §9. Su texto lo fijan `tests/test_procedimiento_5j1.py`; aquí se vigila que sea
+      lo ÚNICO añadido y que esté en su sitio."""
     antes = ANTES.read_text(encoding="utf-8")
     corregido = MILES_INGLES.sub(lambda m: m.group(0).replace(",", "."), antes)
     assert corregido != antes, "premisa: el texto anterior tenía cifras en formato inglés"
@@ -160,6 +164,9 @@ def test_sin_escalera_degenerada_el_informe_es_el_de_antes_salvo_el_formato(dora
         assert re.findall(r"\d", viejo) == re.findall(r"\d", nuevo), viejo
         assert re.sub(r"[\d.,% ]", "", viejo) == re.sub(r"[\d.,% ]", "", nuevo), viejo
         corregido = corregido.replace(viejo, nuevo)
+    ancla = "\n\n## 9 · Checklist"
+    assert corregido.count(ancla) == 1
+    corregido = corregido.replace(ancla, procedimiento.seccion_informe(dorado.procedimiento) + ancla)
     assert dorado.informe_markdown == corregido
 
 

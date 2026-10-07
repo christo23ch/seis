@@ -231,6 +231,104 @@ adjudicacion:                      # M13 capa A (§11.1) — ratios s/VT por seg
   rvc_bandas: [{min: 1.05, banda: alcanzable}, {min: 0.90, banda: ajustado},
                {min: 0.80, banda: improbable}, {min: 0.0, banda: inviable}]
 
+# ── Procedimientos de subasta (Fase 5J-1, ADR-0022) ──────────────────────────
+# Datos legales por procedimiento para los resultados INFORMATIVOS de
+# `app/engine/procedimiento.py`. Ningún módulo M01-M14 los lee: no mueven la
+# escalera, el RVC, el semáforo ni la rentabilidad.
+# Fuente: docs/INVESTIGACION_PROCEDIMIENTOS_SUBASTA.md (consulta del BOE de 2026-10-06).
+# Cada dato es {valor, articulo, estado[, nota]}:
+#   · estado: confirmado (literal del texto consolidado del BOE) | sin_confirmar.
+#   · valor null  ⇒ la regla existe pero no hay dato fiable: DATO AUSENTE (P4),
+#     el motor no calcula con él y lo declara.
+#   · clave ausente ⇒ la regla no existe en ese procedimiento.
+#   · estricto: true ⇒ la norma exige SUPERAR el umbral, no igualarlo; se avisa.
+# Porcentajes en tanto por uno sobre el valor de subasta. Los artículos se escriben
+# «art. N, apdo. M» y no «N.M» porque el informe no admite dígito-punto-dígito.
+# AVISO: investigación técnica, no asesoramiento jurídico (§ gobernanza).
+procedimiento:
+  # Si el alta no dice el procedimiento, se deduce de la fuente (y se avisa).
+  # null ⇒ venta no reglada (bancaria o privada): sin umbrales legales.
+  deducido_de_fuente: {judicial_boe: judicial, aeat: aeat, tgss: tgss, notarial: notarial,
+                       concursal: concursal, banco: null, privada: null}
+  # Fecha de efectos de la LO 1/2025 (DF 38.ª); solo se aplica a los procedimientos
+  # incoados después (DT 9.ª.1). Se muestra en el formulario y en los avisos.
+  fecha_lo_1_2025: "2025-04-03"
+  regimenes:
+    judicial_lec_2025:
+      nombre: "Judicial (LEC tras la LO 1/2025, procedimientos iniciados desde el 3-4-2025)"
+      deposito_pct: {valor: 0.20, articulo: "LEC, art. 669, apdo. 1 (LO 1/2025)", estado: confirmado,
+                     nota: "El letrado de la Administración de Justicia puede elevarlo o reducirlo"}
+      deposito_minimo_eur: {valor: 1000, articulo: "LEC, art. 669, apdo. 1 (LO 1/2025)", estado: confirmado}
+      plazo_pago_dias: {valor: 20, unidad: naturales, articulo: "LEC, art. 670, apdos. 1 y 4", estado: confirmado}
+      umbral_aprobacion_segura_pct: {valor: 0.70, articulo: "LEC, art. 670, apdo. 1", estado: confirmado}
+      umbral_aprobacion_pct: {valor: 0.50, articulo: "LEC, art. 670, apdo. 3, párrafo 4", estado: confirmado}
+      umbral_cubre_deuda_pct: {valor: 0.40, articulo: "LEC, art. 670, apdo. 3, párrafo 4", estado: confirmado}
+      vivienda_habitual_umbral_pct: {valor: 0.70, articulo: "LEC, art. 670, apdo. 3, último párrafo", estado: confirmado}
+      vivienda_habitual_suelo_pct: {valor: 0.60, articulo: "LEC, art. 670, apdo. 3, último párrafo", estado: confirmado}
+      meses_inmovilizacion: {valor: 1.8, articulo: "LEC, arts. 649, 670 (apdos. 3 y 4)", estado: sin_confirmar,
+                             nota: "Plazo legal máximo con mejora por tercero; incluye un plazo de notificación que la ley no fija"}
+    judicial_lec_2015:
+      nombre: "Judicial (LEC anterior a la LO 1/2025, procedimientos iniciados antes del 3-4-2025)"
+      deposito_pct: {valor: 0.05, articulo: "LEC, art. 669, apdo. 1 (redacción de la Ley 19/2015)", estado: confirmado}
+      plazo_pago_dias: {valor: 40, unidad: naturales, articulo: "LEC, art. 670, apdo. 1 (redacción de 2015)", estado: confirmado}
+      umbral_aprobacion_segura_pct: {valor: 0.70, articulo: "LEC, art. 670, apdo. 1 (redacción de 2015)", estado: confirmado}
+      umbral_aprobacion_pct: {valor: 0.50, articulo: "LEC, art. 670, apdo. 4 (redacción de 2015)", estado: confirmado,
+                              estricto: true, nota: "La norma dice «supere el 50 %»"}
+      # Sin suelo: bastaba con cubrir la cantidad reclamada (no había umbral del 40 %).
+      umbral_cubre_deuda_pct: {valor: 0.0, articulo: "LEC, art. 670, apdo. 4 (redacción de 2015)", estado: confirmado}
+      vivienda_habitual_umbral_pct: {valor: 0.70, articulo: "LEC, art. 670 (redacción de 2015)", estado: confirmado}
+      vivienda_habitual_suelo_pct: {valor: 0.60, articulo: "LEC, art. 670 (redacción de 2015)", estado: confirmado}
+      meses_inmovilizacion: {valor: 2.5, articulo: "LEC, arts. 649 y 670 (redacción de 2015)", estado: sin_confirmar,
+                             nota: "Plazo legal máximo con el trámite de mejora; incluye notificaciones que la ley no fija"}
+    aeat:
+      nombre: "Agencia Tributaria (Reglamento General de Recaudación)"
+      deposito_pct: {valor: 0.05, articulo: "RGR, art. 103 bis, apdo. 1", estado: confirmado}
+      plazo_pago_dias: {valor: 15, unidad: naturales, articulo: "RGR, art. 104 bis, apdo. 3, letra b", estado: confirmado}
+      umbral_aprobacion_segura_pct: {valor: 0.50, articulo: "RGR, art. 104 bis, apdo. 1", estado: confirmado}
+      umbral_aprobacion_pct: {valor: 0.50, articulo: "RGR, art. 104 bis, apdo. 1", estado: confirmado,
+                              nota: "Por debajo decide la Mesa, sin precio mínimo"}
+      puja_minima_pct: {valor: 0.10, articulo: "RGR, art. 104, apdo. 3", estado: confirmado,
+                        nota: "Salvo que las cargas igualen o superen el 25 % de la valoración"}
+      meses_inmovilizacion: {valor: 1.7, articulo: "RGR, arts. 104 y 104 bis", estado: sin_confirmar,
+                             nota: "Incluye el plazo de notificación de la adjudicación, que la norma no fija"}
+    tgss:
+      nombre: "Seguridad Social (Reglamento General de Recaudación de la Seguridad Social)"
+      deposito_pct: {valor: 0.25, articulo: "RGRSS, arts. 117 y 118", estado: sin_confirmar,
+                     nota: "25 % con sobre cerrado (30 % para pujar en el acto); el formato tras la reforma de 2024 está sin revisar"}
+      plazo_pago_dias: {valor: 5, unidad: habiles, articulo: "RGRSS, art. 120", estado: sin_confirmar}
+      umbral_aprobacion_segura_pct: {valor: 0.75, articulo: "RGRSS, art. 120", estado: sin_confirmar,
+                                     nota: "Hasta el 75 % puede mejorarla un tercero presentado por el deudor"}
+      umbral_aprobacion_pct: {valor: 0.60, articulo: "RGRSS, art. 120", estado: sin_confirmar,
+                              estricto: true, nota: "Primera subasta: la postura debe superar el 60 %"}
+      umbral_cubre_deuda_pct: {valor: 0.25, articulo: "RGRSS, art. 120", estado: sin_confirmar}
+      meses_inmovilizacion: {valor: 0.3, articulo: "RGRSS, art. 120", estado: sin_confirmar}
+    notarial:
+      nombre: "Subasta notarial (Ley del Notariado)"
+      deposito_pct: {valor: 0.05, articulo: "Ley del Notariado, art. 75", estado: confirmado}
+      plazo_pago_dias: {valor: 10, unidad: habiles, articulo: "Ley del Notariado, art. 75", estado: confirmado}
+      umbral_aprobacion_segura_pct: {valor: null, articulo: "Ley del Notariado, art. 72, apdo. 2 (remite a la LEC)", estado: sin_confirmar}
+      umbral_aprobacion_pct: {valor: null, articulo: "Ley del Notariado, art. 72, apdo. 2 (remite a la LEC)", estado: sin_confirmar}
+      meses_inmovilizacion: {valor: 1.2, articulo: "Ley del Notariado, art. 75", estado: sin_confirmar,
+                             nota: "20 días de subasta y 10 hábiles de pago, convertidos a meses de forma aproximada"}
+    extrajudicial:
+      nombre: "Venta extrajudicial hipotecaria ante notario (Ley Hipotecaria)"
+      deposito_pct: {valor: null, articulo: "LH, art. 129, apdo. 2, letra e (Reglamento Hipotecario)", estado: sin_confirmar}
+      plazo_pago_dias: {valor: null, articulo: "LH, art. 129, apdo. 2, letra e (Reglamento Hipotecario)", estado: sin_confirmar}
+      umbral_aprobacion_segura_pct: {valor: 0.70, articulo: "LH, art. 129, apdo. 2, letra d (remite a la LEC, art. 670)", estado: confirmado}
+      umbral_aprobacion_pct: {valor: 0.50, articulo: "LH, art. 129, apdo. 2, letra d (remite a la LEC, art. 670)", estado: confirmado}
+      umbral_cubre_deuda_pct: {valor: 0.40, articulo: "LH, art. 129, apdo. 2, letra d (remite a la LEC, art. 670)", estado: sin_confirmar,
+                               nota: "El suelo del 40 % es de la LO 1/2025; no consta qué redacción aplica a cada venta"}
+      vivienda_habitual_umbral_pct: {valor: 0.70, articulo: "LH, art. 129, apdo. 2, letras b y d", estado: confirmado}
+      vivienda_habitual_suelo_pct: {valor: 0.60, articulo: "LH, art. 129, apdo. 2, letras b y d", estado: confirmado}
+      meses_inmovilizacion: {valor: null, articulo: "Reglamento Hipotecario, art. 236 y siguientes", estado: sin_confirmar}
+    concursal:
+      nombre: "Concursal (Texto Refundido de la Ley Concursal)"
+      deposito_pct: {valor: null, articulo: "TRLC, art. 423 (reglas de liquidación de cada concurso)", estado: sin_confirmar}
+      plazo_pago_dias: {valor: null, articulo: "TRLC, art. 423 (reglas de liquidación de cada concurso)", estado: sin_confirmar}
+      umbral_aprobacion_segura_pct: {valor: null, articulo: "TRLC, art. 423", estado: sin_confirmar}
+      umbral_aprobacion_pct: {valor: null, articulo: "TRLC, art. 423", estado: sin_confirmar}
+      meses_inmovilizacion: {valor: null, articulo: "TRLC, art. 423", estado: sin_confirmar}
+
 scoring_expres:                    # Fase 12 — pesos del scoring exprés de captación (orientativo)
   pesos:                           # suma libre; se normaliza al calcular
     descuento: 40                  # descuento aparente VS sobre valor de referencia

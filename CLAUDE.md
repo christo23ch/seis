@@ -50,7 +50,7 @@
   comparables y valoración, catálogo de parámetros, simulaciones, configuración validada e
   informes oficiales inmutables, con su API y su interfaz (pestañas **Simulaciones** e
   **Informes oficiales** del detalle). Detalle en `CHANGELOG.md`.
-- **Migraciones:** hasta `0015_informe`; **la siguiente libre es la `0016`**.
+- **Migraciones:** hasta `0016_datos_procedimiento` (Fase 5J-1); **la siguiente libre es la `0017`**.
 - **Pendientes:** 11-B (despliegue), 13 (Stripe), 17-B (selectores del BOE), 17-C (fuente de
   comparables, decisión abierta), 19, 20. La 18 está aparcada (condicional).
 
