@@ -574,7 +574,7 @@ function PasoResultado({ res, cargando, error, onRecalcular, onGuardar, guardand
     <div className="space-y-4">
       <SemaforoHero d={res.decision} />
       <div className="grid gap-4 xl:grid-cols-2">
-        <EscaleraPrecios d={res.decision} />
+        <EscaleraPrecios d={res.decision} res={res} />
         <MetricasClave res={res} />
       </div>
       <CondicionesVetos d={res.decision} />

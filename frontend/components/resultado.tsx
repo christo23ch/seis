@@ -1,9 +1,11 @@
 "use client";
 import { eur, num, pct, puntos, tasa } from "@/lib/format";
-import type { Decision, Resultado, RiesgoDim, Semaforo } from "@/lib/types";
+import type { Decision, Resultado, Semaforo } from "@/lib/types";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Badge, Card, CardContent, CardHeader, CardTitle } from "./ui";
 import { TextoFormulas } from "./texto-formulas";
+import { VerCalculo } from "./ver-calculo";
+import { calculoIci, calculoRiesgos, calculosEscalera, calculosMetricas } from "@/lib/calculos";
 import { humanizar } from "@/lib/presentacion-valores";
 
 export const SEM_COLOR: Record<Semaforo, string> = { verde: "#15803D", amarillo: "#B45309", naranja: "#C2410C", rojo: "#B91C1C" };
@@ -45,7 +47,8 @@ const MetricaMini = ({ etiqueta, valor }: { etiqueta: string; valor: string }) =
  * el límite no es utilizable: su escalón no se dibuja como el más alto ni con su
  * cifra, y la línea de adjudicación se oculta, porque no hay ningún escalón
  * válido contra el que situarla (el precio adjudicado sigue en la cabecera). */
-export function EscaleraPrecios({ d }: { d: Decision }) {
+/** `res` (opcional, Fase 5K-D): con el resultado completo se ofrece «Ver cálculo». */
+export function EscaleraPrecios({ d, res }: { d: Decision; res?: Resultado }) {
   const p = d.precios;
   const degenerada = p.degenerada;
   const escalones = [
@@ -105,6 +108,7 @@ export function EscaleraPrecios({ d }: { d: Decision }) {
           {p.degenerada && <span className="ml-1 font-semibold text-sem-rojo">Escalera degenerada: la estructura de costes consume el valor.</span>}
         </p>
         <NotaCosteCapital detalle={p.detalle} />
+        {res && <VerCalculo titulo="Ver cálculo de la escalera" calculos={calculosEscalera(res)} />}
       </CardContent>
     </Card>
   );
@@ -126,7 +130,7 @@ function NotaCosteCapital({ detalle }: { detalle: Record<string, number> | undef
 }
 
 const NIVEL_COLOR: Record<string, string> = { bajo: "#94A3B8", medio: "#B45309", alto: "#C2410C", critico: "#B91C1C" };
-export function RiesgosPanel({ riesgos }: { riesgos: { ra: number; banda: string; dominancia_aplicada: string | null; dimensiones: RiesgoDim[] } }) {
+export function RiesgosPanel({ riesgos }: { riesgos: Resultado["riesgos"] }) {
   // Fase 5K-C: nombres de dimensión con tildes («juridico» → «Jurídico»).
   const data = riesgos.dimensiones.map((r) => ({ dim: humanizar(r.dimension), score: r.score, nivel: r.nivel }));
   return (
@@ -159,6 +163,7 @@ export function RiesgosPanel({ riesgos }: { riesgos: { ra: number; banda: string
             </div>
           ))}
         </div>
+        <VerCalculo calculos={[calculoRiesgos(riesgos)]} />
       </CardContent>
     </Card>
   );
@@ -267,6 +272,7 @@ export function MetricasClave({ res }: { res: Resultado }) {
             </div>
           ))}
         </dl>
+        <VerCalculo titulo="Ver cálculo de las métricas" calculos={[calculoIci(res.ici), ...calculosMetricas(res)]} />
       </CardContent>
     </Card>
   );

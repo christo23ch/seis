@@ -16,6 +16,8 @@ import { ProcedimientoPanel } from "@/components/procedimiento";
 import { Markdown } from "@/components/markdown";
 import { DatosEntrada } from "@/components/datos-entrada";
 import { TextoFormulas } from "@/components/texto-formulas";
+import { VerCalculo } from "@/components/ver-calculo";
+import { calculoCf, calculoCv, calculoReforma, calculoValoracion } from "@/lib/calculos";
 import { Card, CardContent, CardHeader, CardTitle, ErrorBox, Spinner, TabPanel, Tabs, TabsLista } from "@/components/ui";
 
 export default function DetalleInversion() {
@@ -65,7 +67,7 @@ export default function DetalleInversion() {
         <TabPanel valor="resumen">
           <div className="space-y-4">
             <div className="grid gap-4 xl:grid-cols-2">
-              <EscaleraPrecios d={d} />
+              <EscaleraPrecios d={d} res={res} />
               <MetricasClave res={res} />
             </div>
             <CondicionesVetos d={d} />
@@ -82,6 +84,7 @@ export default function DetalleInversion() {
                   <Fila k="VM (estado actual)" v={eur(res.valoracion.vm)} />
                   <Fila k="€/m² salida" v={eur(res.valoracion.vs_m2)} />
                   <Fila k="Comparables · CV" v={`${res.valoracion.n_comparables} · ${pct(res.valoracion.dispersion_cv)}`} />
+                  <VerCalculo calculos={[calculoValoracion(res.valoracion, act.superficie_m2)]} />
                 </CardContent>
               </Card>
               <Card>
@@ -92,6 +95,7 @@ export default function DetalleInversion() {
                   <Fila k="Reforma" v={`${res.reforma.nivel} · ${eur(res.reforma.total_p50)}`} />
                   <Fila k="Plazo (P50 / P80)" v={`${num(res.costes.plazo_meses_p50)} / ${num(res.costes.plazo_meses_p80)} meses`} />
                   <Fila k="Contingencia" v={pct(res.costes.contingencia_pct, 0)} />
+                  <VerCalculo calculos={[calculoCf(res.costes, "p50"), calculoCf(res.costes, "p80"), calculoCv(res.costes), calculoReforma(res.reforma)]} />
                 </CardContent>
               </Card>
               {lat != null && lng != null ? (
