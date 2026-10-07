@@ -10,8 +10,8 @@
 
 ## Frentes abiertos
 
-**Actualizado:** 2026-10-07 · **Rama de trabajo:** `fase/5j-1-datos-procedimiento` (sale de `main`, `649804a`, con E0 y 5J-0 ya fusionadas; sin PR) · **Suite (SQLite):** 1061 passed, 18 skipped, 0 failed · **Frontend:** 64 tests unitarios (vitest, `npm test`) · **E2E:** alta, simulaciones, alta de inversión, validación guiada y datos del procedimiento en la CI (job `e2e`) · **Migraciones:** hasta `0016`; la siguiente libre es la `0017`
-**Última fase cerrada:** 5J-0 (investigación de umbrales legales, PR #31) · **En curso:** 5J-1, diseño A: datos del procedimiento informativos, sin mover ninguna cifra (ADR-0022) · **Siguiente:** 5J-2, reglas T2 del diseño B (cambia el semáforo del §19; necesita la validación jurídica de la D8 para el veto) · **Puerta: ABIERTA**
+**Actualizado:** 2026-10-07 · **Rama de trabajo:** `fase/5k-presentacion` (sale de `main`, `211fed1`, con la 5J-1 fusionada; sin PR) · **Suite (SQLite):** 1061 passed, 18 skipped, 0 failed (la 5K no toca el backend) · **Frontend:** 133 tests unitarios (vitest, `npm test`) · **E2E:** alta, simulaciones, alta de inversión, validación guiada, datos del procedimiento y presentación (1440 y 390 px) en la CI (job `e2e`) · **Migraciones:** hasta `0016`; la siguiente libre es la `0017`
+**Última fase cerrada:** 5J-1 (datos del procedimiento informativos, PR #32, ADR-0022) · **En curso:** 5K, presentación (informe maquetado, datos legibles, fórmulas, «Ver cálculo», pesos del ICO del catálogo; solo frontend) · **Siguiente:** 5J-2, con la deuda de `docs/DEUDA_PRESENTACION_MOTOR.md` · **Puerta: ABIERTA**
 
 ### 🟡 Requisito de PRODUCTO registrado, sin implementar: perfil de inversor por cuestionario
 
@@ -549,6 +549,18 @@ Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VER
    (`frontend/lib/schema.ts`) repite qué procedimientos usan la cantidad reclamada, regla que vive
    en el YAML; y un cliente de la API puede enviar `es_vivienda_habitual=true` con
    `vivienda_habitual_ejecutado="no"` sin validación cruzada (el formulario no lo hace).
+
+**Presentación (5K)**
+
+1. **La deuda de presentación que exige tocar el motor o el backend** está consolidada en
+   `docs/DEUDA_PRESENTACION_MOTOR.md` (20 puntos con archivo y dato que falta), para la 5J-2.
+   La más visible: **el PDF oficial sigue mostrando `C_F`, `c_v`, `judicial_boe`…**, porque la 5K
+   los hace legibles al mostrarlos en la interfaz y el PDF no pasa por ella.
+2. **La pantalla Parámetros pide el catálogo del análisis más reciente** para los nombres y
+   unidades (no hay endpoint global). Sin ningún análisis en la organización, las claves se
+   humanizan.
+3. **`tests/datos/` del frontend** (informe y resultado reales del §19) hay que regenerarlos si el
+   motor cambia el informe; el comando está en `frontend/tests/datos/LEEME.md`.
 
 **Entorno**
 
