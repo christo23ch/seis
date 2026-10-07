@@ -245,6 +245,34 @@ CAMBIOS_5J2B = [
 ]
 
 
+# Fase 5J-3 (ADR-0027): aviso de la franja del letrado y cesión de remate. Ningún número cambia:
+# el semáforo pasa a naranja, se añade el bloque destacado (su texto lo fija
+# `tests/test_aviso_aprobacion_5j3.py`), una condición, un bloqueante y la cesión de remate.
+CESION_5J2B = "cesión de remate solo por el ejecutante (§3.2)"
+CESION_5J3 = ("cesión de remate solo por el ejecutante y, con la LO 1/2025, también por los acreedores "
+              "posteriores (LEC, art. 647, apdo. 3) (§3.2)")
+
+
+def _cambios_5j3(dorado) -> list[tuple[str, str, int]]:
+    aviso = dorado.procedimiento.aviso_aprobacion
+    condiciones = "; ".join(dorado.decision.condiciones)
+    return [
+        ("# 🟡 AMARILLO\n", f"# 🟠 NARANJA\n\n{procedimiento.bloque_aviso_aprobacion(aviso)}\n", 1),
+        ("o límites de Verde no alcanzados\n",
+         f"o límites de Verde no alcanzados · {aviso.titulo} ⇒ techo Naranja con condición (5J-3) · "
+         "Techo aplicado: naranja\n", 1),
+        (f"{CESION_5J2B}\n", f"{CESION_5J3}\n- {aviso.condicion}\n", 1),
+        ("- Cesión de remate solo disponible para el ejecutante: la estructura compradora final debe pujar "
+         "directamente\n", f"- {dorado.puja.riesgo_ejecucion[-1]}\n", 1),
+        ("Depósito disponible y transferido en plazo — _30.400 €_\n",
+         "Depósito disponible y transferido en plazo — _30.400 €_\n"
+         "- [ ] **[B]** Semáforo Verde/Amarillo, o Naranja con todas sus condiciones verificadas y firmadas "
+         f"— _{condiciones}_\n"
+         f"- [ ] **[B]** Riesgo de aprobación del remate asumido por escrito — _{aviso.condicion}_\n", 1),
+        ("`SEM-EJEC-01` v2026.10 ", "`SEM-EJEC-01` v2026.10.07 ", 1),
+    ]
+
+
 def test_sin_escalera_degenerada_el_informe_es_el_de_antes_salvo_el_formato(dorado):
     """Diferencias permitidas con el texto anterior, y ninguna más:
     - 5G.2: las cuatro cifras del plan de puja que salían con separador inglés;
@@ -256,7 +284,8 @@ def test_sin_escalera_degenerada_el_informe_es_el_de_antes_salvo_el_formato(dora
       §9. Su texto lo fijan `tests/test_procedimiento_5j1.py`; aquí se vigila que sea
       lo ÚNICO añadido y que esté en su sitio;
     - 5J-2a: los fragmentos de `TEXTOS_5J2A` (nombres de códigos y símbolos, mismos dígitos);
-    - 5J-2b: los fragmentos de `CAMBIOS_5J2B`, que sí cambian cifras (tabla aprobada)."""
+    - 5J-2b: los fragmentos de `CAMBIOS_5J2B`, que sí cambian cifras (tabla aprobada);
+    - 5J-3: `_cambios_5j3` (semáforo, aviso de la franja del letrado y cesión de remate)."""
     antes = ANTES.read_text(encoding="utf-8")
     corregido = MILES_INGLES.sub(lambda m: m.group(0).replace(",", "."), antes)
     assert corregido != antes, "premisa: el texto anterior tenía cifras en formato inglés"
@@ -274,6 +303,9 @@ def test_sin_escalera_degenerada_el_informe_es_el_de_antes_salvo_el_formato(dora
         assert re.findall(r"\d", viejo) == re.findall(r"\d", nuevo), viejo
         corregido = corregido.replace(viejo, nuevo)
     for viejo, nuevo, veces in CAMBIOS_5J2B:
+        assert corregido.count(viejo) == veces, viejo
+        corregido = corregido.replace(viejo, nuevo)
+    for viejo, nuevo, veces in _cambios_5j3(dorado):
         assert corregido.count(viejo) == veces, viejo
         corregido = corregido.replace(viejo, nuevo)
     ancla = "\n\n## 9 · Checklist"

@@ -106,7 +106,7 @@ def test_analisis_manual_sin_subasta_id_sigue_funcionando(api, headers):
     payload = json.loads(entrada_base().model_dump_json())
     r = api.post("/api/v1/analisis", json=payload, headers=headers)
     assert r.status_code == 200, r.text
-    assert r.json()["resultado"]["decision"]["semaforo"] == "amarillo"
+    assert r.json()["resultado"]["decision"]["semaforo"] == "naranja"  # 5J-3 (ADR-0027): P_max bajo el suelo de la vivienda habitual supuesta ⇒ techo naranja
 
     db = SessionLocal()
     try:

@@ -148,11 +148,14 @@ def test_puja_y_rvc(resultado):
 
 
 def test_ico_y_semaforo(resultado):
-    # Doc: ICO en banda amarilla (60–74); techo Amarillo por ocupación alta (SEM-OCU-02)
+    # Doc: ICO en banda amarilla (60–74); techo Amarillo por ocupación alta (SEM-OCU-02). Desde la
+    # 5J-3 (ADR-0027), P_max queda por debajo del suelo de la vivienda habitual supuesta (60 %):
+    # techo naranja, con su condición. Ningún número cambia.
     d = resultado.decision
     assert 60 <= d.ico <= 74
-    assert d.semaforo == "amarillo"
-    assert "amarillo" in d.techos_aplicados
+    assert d.semaforo == "naranja"
+    assert {"amarillo", "naranja"} <= set(d.techos_aplicados)
+    assert any(c.startswith("Remate no aprobable si es la vivienda habitual") for c in d.condiciones)
     assert any("posesoria" in c or "posesión" in c.lower() for c in d.condiciones)
     assert not d.vetos
 
@@ -168,7 +171,7 @@ def test_checklist_bloqueantes(resultado):
 def test_informe_sin_cifras_nuevas(resultado):
     # El informe debe contener las cifras clave del snapshot (regla M14)
     inf = resultado.informe_markdown
-    assert "AMARILLO" in inf
+    assert "NARANJA" in inf
     for etiqueta in ("Precio ideal", "Precio objetivo", "Precio máximo", "Precio límite",
                      "Margen de seguridad", "TIR", "Checklist"):
         assert etiqueta in inf

@@ -251,7 +251,7 @@ ESCENARIOS_ANTES = [
     ("base", 176744.44, 141395.67, 35348.77, 0.25, 0.1886, 15.5),
     ("optimista", 186995.62, 133995.6, 53000.01, 0.3955, 0.3547, 13.2),
 ]
-DECISION_ANTES = ("amarillo", 64, 40, 0.248)
+DECISION_ANTES = ("naranja", 64, 40, 0.248)  # 5J-3 (ADR-0027): P_max bajo el suelo de la vivienda habitual supuesta ⇒ techo naranja (antes amarillo)
 
 
 def test_m11_m12_no_cambian_ningun_valor_numerico(dorado):

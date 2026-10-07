@@ -189,7 +189,7 @@ def test_el_informe_escribe_el_plazo_con_su_decimal():
 
 def test_la_regla_sem_ejec_01_dice_el_deposito_segun_el_regimen():
     regla = next(r for r in cargar_catalogo()[0] if r["codigo"] == "SEM-EJEC-01")
-    assert regla["version"] == "2026.10"
+    assert regla["version"] == "2026.10.07"           # 2026.10 en la 5J-2b; la 5J-3 añade la cesión
     texto = regla["efecto"]["condicion"]
     assert "depósito según el régimen del procedimiento (20 % con la LO 1/2025; 5 % si se inició " \
            "antes del 3-4-2025)" in texto

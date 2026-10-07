@@ -85,6 +85,10 @@ def casos(caso_19):  # noqa: F811
     vacio["ocupacion"] = {"estado": "vacio"}
     vacio["documentos"].update(posesion_verificada=True, fotos_interior_o_visita=True,
                                cert_comunidad=True, ite_cee=True)
+    # 5J-3 (ADR-0027): sin vivienda habitual y con la deuda informada, P_max queda en la franja
+    # «sujeta a mejora», que no pone techo; si no, el techo naranja impediría el verde.
+    vacio["activo"]["vivienda_habitual_ejecutado"] = "no"
+    vacio["subasta"].update(procedimiento="judicial", regimen_judicial="posterior", cantidad_reclamada=60000.0)
     sin_naranja = cargar_defaults().con_overrides({f"semaforo.{c}.ico_min": 99
                                                    for c in ("verde", "amarillo", "naranja")})
     return {

@@ -20,7 +20,7 @@ def test_analisis_async_eager(api, headers):
     assert r.status_code == 202
     body = r.json()
     assert body["estado"] == "SUCCESS"
-    assert body["resultado"]["semaforo"] == "amarillo"
+    assert body["resultado"]["semaforo"] == "naranja"  # 5J-3 (ADR-0027): P_max bajo el suelo de la vivienda habitual supuesta ⇒ techo naranja
     # la tarea persistió de verdad: el análisis aparece en el listado
     listado = api.get("/api/v1/analisis", headers=headers).json()
     assert any(a["id"] == body["resultado"]["id"] for a in listado)

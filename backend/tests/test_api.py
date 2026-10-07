@@ -29,7 +29,7 @@ def test_flujo_completo_analisis(api, headers):
     assert r.status_code == 200, r.text
     body = r.json()
     analisis_id = body["id"]
-    assert body["resultado"]["decision"]["semaforo"] == "amarillo"
+    assert body["resultado"]["decision"]["semaforo"] == "naranja"  # 5J-3 (ADR-0027): P_max bajo el suelo de la vivienda habitual supuesta ⇒ techo naranja
 
     r = api.get("/api/v1/analisis", headers=headers)
     assert any(a["id"] == analisis_id for a in r.json())
@@ -39,7 +39,7 @@ def test_flujo_completo_analisis(api, headers):
     assert r.json()["resultado"]["decision"]["ico"] >= 60
 
     r = api.get(f"/api/v1/analisis/{analisis_id}/informe", headers=headers)
-    assert r.status_code == 200 and "AMARILLO" in r.text
+    assert r.status_code == 200 and "NARANJA" in r.text
 
     r = api.get(f"/api/v1/analisis/{analisis_id}/checklist", headers=headers)
     assert r.status_code == 200 and len(r.json()) >= 25
