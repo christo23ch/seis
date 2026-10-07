@@ -19,6 +19,66 @@ convertirse en un SaaS. Lo anterior está en el historial de git.
 
 ---
 
+## [Fase 5J-1] — Datos del procedimiento de subasta, informativos (diseño A) — 2026-10-07
+
+Primera capa del diseño elegido en la 5J-0 (C, construido A → B → C). Rama
+`fase/5j-1-datos-procedimiento`, sin PR. Autorización expresa para tocar `app/engine/` solo para
+añadir campos y cálculos informativos ([[ADR-0022]]). **Ninguna cifra existente cambia:** la guarda
+`tests/datos/invariante_5h1.json` (510 hojas del §19) pasa sin tocarla. Suite al cerrar:
+1059 passed, 18 skipped, 0 failed (+43 tests de backend); 64 tests de vitest (+10); e2e nueva
+`frontend/e2e/procedimiento.mjs` en `e2e/correr_simulaciones.sh` (la batería completa: 105
+comprobaciones de navegador, 0 fallos).
+
+### Corregido
+- **El procedimiento dejaba de seguir a la fuente** tras su primer cambio automático
+  (react-hook-form lo daba por modificado). Lo destapó la e2e nueva antes del commit.
+
+### Añadido
+- **Preguntas del procedimiento en el alta:** tipo (judicial, AEAT, TGSS, notarial, extrajudicial,
+  concursal, no aplica), preseleccionado con el de la fuente; si el judicial se inició antes o
+  después del 3-4-2025, con «No sé»; vivienda habitual del ejecutado sí / no / no consta (sustituye
+  a la casilla); cantidad reclamada opcional. Cada una solo donde cuenta, con errores en español.
+- **Parámetros T3 `procedimiento.regimenes`**: depósito, depósito mínimo, plazo de pago, umbrales de
+  aprobación (segura, general, por cubrir la deuda, vivienda habitual), puja mínima y meses de
+  inmovilización por procedimiento y régimen, cada uno con su artículo y marcado confirmado o sin
+  confirmar según `docs/INVESTIGACION_PROCEDIMIENTOS_SUBASTA.md`.
+- **`app/engine/procedimiento.py`**, puro y fuera del DAG: régimen aplicable, depósito exigido y
+  capital necesario para pujar, plazo de pago, meses de inmovilización, puja mínima aprobable sin
+  depender de la autoridad, puja de aprobación segura y suelo absoluto, con base legal y avisos.
+  Supuestos declarados: régimen «No sé» ⇒ LO 1/2025; vivienda habitual «No consta» en una vivienda
+  ⇒ sí. Un dato sin valor fiable queda en «no consta» (P4).
+- **`AnalisisResult.procedimiento`**, subapartado al final del §8 del informe con aviso estándar de
+  cálculo orientativo, y panel «Procedimiento y umbrales legales» en el resultado del asistente y en
+  la pestaña Estrategia de puja.
+- **`/opciones`**: etiquetas de los procedimientos, procedimiento por fuente y fecha de la LO 1/2025.
+
+### Migraciones
+- **`0016_datos_procedimiento`**: `subasta.procedimiento`, `subasta.regimen_judicial`,
+  `subasta.cantidad_reclamada` y `activo.vivienda_habitual_ejecutado`, anulables y sin relleno.
+  Verificada con T1-T6 y sobre una copia de la base de desarrollo.
+
+### Cambios incompatibles
+- **Una base de desarrollo creada con `create_all` debe migrarse a mano** (`alembic stamp 0015` y
+  `alembic upgrade head`; `MANUAL_DE_PRUEBAS.md` §1 bis): `create_all` no añade columnas a tablas
+  existentes y el alta fallaría al guardar.
+
+### Deuda que queda (a propósito)
+- El depósito del alta sigue en el 5 % por defecto y alimenta el plan de puja de M13; el resultado
+  muestra el legal y avisa de la diferencia. Corregirlo mueve cifras (5J-2/5J-3).
+- La táctica de puja de M13 («la extensión automática del cierre…») sigue sin distinguir el régimen.
+- Los parámetros del procedimiento no son simulables; `defaults.yaml` sigue en la versión `2026.07`.
+
+---
+
+## [Fase 5J-0] — Investigación de las reglas legales de puja e inventario de presentación — 2026-10-07
+
+Solo documentos, sin cambios de código (PR #31). `docs/INVESTIGACION_PROCEDIMIENTOS_SUBASTA.md`
+(umbrales, depósitos y plazos por procedimiento, leídos en el BOE), `docs/IMPACTO_MOTOR_UMBRALES_LEGALES.md`
+(diseños A, B y C) y `docs/INVENTARIO_PRESENTACION.md` (formato pobre, fórmulas con barra baja y
+métricas sin cálculo consultable).
+
+---
+
 ## [Fase 5I] — Formulario de alta: errores, validación guiada y datos que faltan — 2026-10-06
 
 Fase de producto motivada por una prueba manual del asistente de alta («Nueva inversión»).
