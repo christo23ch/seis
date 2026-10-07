@@ -113,12 +113,21 @@ export function calculoPlazo(costes: Resultado["costes"]): Calculo {
   const d = costes.plazo_desglose;
   const titulo = "Plazo de la operación";
   if (!d) return noDisponible("plazo", titulo, `su composición (ocupación, obra y comercialización) ${SIN_DATO_5J2A}`, "m06_costes.py");
+  // 5J-2b (ADR-0026): el cierre → pago del resto → posesión entra en el plazo. Un resultado
+  // anterior no trae el término y se explica con la fórmula de entonces.
+  const inmov = d.inmovilizacion;
+  const p80 = "Plazo P80 = Plazo P50 × multiplicador del escenario pesimista";
   return {
     clave: "plazo", titulo, disponible: true, origen: "m06_costes.py",
-    formula: "Plazo P50 = meses de ocupación + meses de obra + meses de comercialización; Plazo P80 = Plazo P50 × multiplicador del escenario pesimista",
-    sustitucion: `P50 = ${num(d.ocupacion, 1)} + ${num(d.obra, 1)} + ${num(d.comercializacion, 1)}; `
-      + `P80 = ${num(costes.plazo_meses_p50, 1)} × ${num(d.multiplicador_p80, 2)}`,
+    formula: inmov == null
+      ? `Plazo P50 = meses de ocupación + meses de obra + meses de comercialización; ${p80}`
+      : `Plazo P50 = meses de ocupación + meses de obra + meses de comercialización + meses de inmovilización (cierre → pago del resto); ${p80}`,
+    sustitucion: `P50 = ${num(d.ocupacion, 1)} + ${num(d.obra, 1)} + ${num(d.comercializacion, 1)}`
+      + (inmov == null ? "" : ` + ${num(inmov, 1)}`)
+      + `; P80 = ${num(costes.plazo_meses_p50, 1)} × ${num(d.multiplicador_p80, 2)}`,
     resultado: `${num(costes.plazo_meses_p50, 1)} meses (P50) / ${num(costes.plazo_meses_p80, 1)} meses (P80)`,
+    nota: inmov == null ? undefined
+      : "Los meses de inmovilización salen del procedimiento; su origen (plazo legal máximo, régimen más largo o estimación sin base legal) y sus avisos están en «Procedimiento y umbrales legales». El P80 se redondea a un decimal.",
   };
 }
 

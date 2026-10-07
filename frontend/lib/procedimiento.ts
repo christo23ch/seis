@@ -19,19 +19,32 @@ function importe(valor: number | null, porcentaje: number | null): { valor: stri
   return { valor: eur(valor), detalle: porcentaje == null ? undefined : `${pct(porcentaje, 0)} del valor de subasta` };
 }
 
+/** 5J-2b (ADR-0026): los meses que el motor suma al plazo y su origen, como en el informe.
+ * Un resultado anterior a la fase solo trae el plazo legal. */
+function inmovilizacion(r: ProcedimientoResultado): { valor: string; detalle?: string } {
+  const m = r.meses_inmovilizacion_aplicados;
+  if (m == null) {
+    return r.meses_inmovilizacion == null ? { valor: NO_CONSTA }
+      : { valor: `${num(r.meses_inmovilizacion, 1)} meses`, detalle: "Plazo legal máximo" };
+  }
+  const detalle = r.meses_inmovilizacion_asumidos ? "Estimación prudente, sin base legal"
+    : r.regimen_asumido && m !== r.meses_inmovilizacion ? "Régimen judicial más largo: no consta la fecha de inicio"
+    : "Plazo legal máximo";
+  return { valor: `${num(m, 1)} meses`, detalle };
+}
+
 /** Filas del panel, en el mismo orden que la tabla del informe (§8). */
 export function filasProcedimiento(r: ProcedimientoResultado): FilaProcedimiento[] {
   const plazo = r.plazo_pago_dias == null ? NO_CONSTA
     : `${r.plazo_pago_dias} ${UNIDAD_PLAZO[r.plazo_pago_unidad ?? ""] ?? "días"}`;
-  const meses = r.meses_inmovilizacion == null ? NO_CONSTA : `${num(r.meses_inmovilizacion, 1)} meses`;
+  const inmov = inmovilizacion(r);
   return [
     { clave: "regimen", etiqueta: "Procedimiento y régimen", valor: r.regimen_nombre ?? NO_CONSTA,
       detalle: r.regimen_asumido ? "Supuesto: no consta la fecha de inicio" : undefined },
     { clave: "deposito", etiqueta: "Depósito exigido", ...importe(r.deposito_eur, r.deposito_pct) },
     { clave: "capital", etiqueta: "Capital necesario para pujar", ...importe(r.capital_para_pujar, null) },
     { clave: "plazo", etiqueta: "Pago del resto del precio", valor: plazo },
-    { clave: "inmovilizacion", etiqueta: "Inmovilización estimada del depósito", valor: meses,
-      detalle: r.meses_inmovilizacion == null ? undefined : "Plazo legal máximo" },
+    { clave: "inmovilizacion", etiqueta: "Inmovilización estimada del depósito", ...inmov },
     { clave: "minima", etiqueta: "Puja mínima aprobable sin depender de la autoridad",
       ...importe(r.puja_minima_aprobable, r.umbral_aprobacion_pct) },
     { clave: "segura", etiqueta: "Puja de aprobación segura",
