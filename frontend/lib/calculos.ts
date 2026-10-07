@@ -269,13 +269,13 @@ function escaleraRentista(res: Resultado, origen: string): Calculo[] {
   const d = res.decision.precios.detalle ?? {};
   const p = res.decision.precios;
   const rna = eur(d.rna);
-  const porY = (clave: string, titulo: string, y: number, resultado: string): Calculo =>
-    precio(res, { clave, titulo, tramoClave: clave, aSimbolo: "RNA / y", aValor: `${rna} / ${pct(y / 100, 2)}`,
+  const porY = (clave: string, tramoClave: string, titulo: string, y: number, resultado: string): Calculo =>
+    precio(res, { clave, titulo, tramoClave, aSimbolo: "RNA / y", aValor: `${rna} / ${pct(y / 100, 2)}`,
                   fijos: "C_F P50", resultado, origen,
                   nota: `y = rentabilidad exigida ${pct(d.y_req_pct / 100, 2)}${y === d.y_req_pct ? "" : ` + ${num(y - d.y_req_pct, 1)} puntos`}.` });
   const out = [
-    porY("p_ideal", "P_ideal", d.y_req_pct + 1, eur(p.p_ideal)),
-    porY("p_objetivo", "P_objetivo", d.y_req_pct + 0.5, eur(p.p_objetivo)),
+    porY("p_ideal", "p_ideal", "P_ideal", d.y_req_pct + 1, eur(p.p_ideal)),
+    porY("p_objetivo", "p_objetivo", "P_objetivo", d.y_req_pct + 0.5, eur(p.p_objetivo)),
   ];
   const candidatos: [string, number | undefined][] = [
     ["por rentabilidad exigida", d.p_por_rentabilidad], ["por DSCR estresado", d.p_por_dscr],
@@ -288,7 +288,7 @@ function escaleraRentista(res: Resultado, origen: string): Calculo[] {
     resultado: eur(p.p_max),
     filas: presentes.map(([etiqueta, v]) => ({ etiqueta: `P ${etiqueta}`, valor: eur(v) })),
   } : noDisponible("p_max", "P_max", `los candidatos del perfil rentista ${SIN_DATO_5J2A}`, origen));
-  out.push(porY("p_rentabilidad", "P por rentabilidad exigida", d.y_req_pct, eur(d.p_por_rentabilidad)));
+  out.push(porY("p_rentabilidad", "p_por_rentabilidad", "P por rentabilidad exigida", d.y_req_pct, eur(d.p_por_rentabilidad)));
   return out;
 }
 
@@ -303,6 +303,9 @@ function calculoLimite(res: Resultado, origen: string): Calculo {
   const coste = `coste de capital = ${pct(d.coste_capital_anual, 2)} × ${eur(d.capital_propio)} × ${num(c.plazo_meses_p80, 1)} / 12 = ${eur(d.coste_capital)}`;
   const rentista = d.p_limite_rentista != null && d.p_limite_rentista > 0
     ? ` En el perfil rentista, P_limite = mín(el anterior, P por rentabilidad suelo = ${eur(d.p_limite_rentista)}).` : "";
+  if (d.p_limite_bruto == null && hayBaseMinima(c)) {
+    return noDisponible("p_limite", "P_limite", `el tramo fiscal resuelto ${SIN_DATO_5J2A}`, origen);
+  }
   if (d.p_limite_bruto == null) {
     return { clave: "p_limite", titulo: "P_limite", disponible: true, origen, resultado,
       formula: "P_limite = (VS_p − C_F P80) / (1 + c_v) − coste de capital; coste de capital = tasa anual × capital propio × plazo P80 / 12",
@@ -407,6 +410,12 @@ function calculoVan(res: Resultado): Calculo {
 
 function calculoColchon(res: Resultado): Calculo {
   const c = res.decision.colchon_detalle;
+  if (res.decision.precios.degenerada) {
+    return noDisponible("colchon", "Colchón de plazo", "un precio utilizable: con la escalera degenerada (§9.3) el motor no lo calcula", "m11_rentabilidad.py");
+  }
+  if (c && res.decision.colchon_plazo_meses == null) {
+    return noDisponible("colchon", "Colchón de plazo", "un coste mensual que agote el beneficio: sin él el colchón no tiene límite", "m11_rentabilidad.py");
+  }
   if (!c || res.decision.colchon_plazo_meses == null) {
     return noDisponible("colchon", "Colchón de plazo", `el beneficio de partida y el coste mensual ${SIN_DATO_5J2A}`, "m11_rentabilidad.py");
   }

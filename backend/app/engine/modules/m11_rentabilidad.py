@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from app.engine import fiscal
-from app.engine.contracts import (ColchonDetalle, AnalisisInput, CostesResultado, EscenarioOut,
+from app.engine.contracts import (AnalisisInput, ColchonDetalle, CostesResultado, EscenarioOut,
                                   RentabilidadResultado, ValoracionResultado)
 
 

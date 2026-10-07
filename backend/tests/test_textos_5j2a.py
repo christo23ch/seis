@@ -13,7 +13,8 @@ import re
 import pytest
 from pypdf import PdfReader
 
-from app.engine.contracts import AnalisisInput, FinanciacionInput, OcupacionInput, RentistaInput
+from app.engine.contracts import (AnalisisInput, DocumentosInput, FinanciacionInput, OcupacionInput,
+                                  RentistaInput)
 from app.engine.params.store import cargar_defaults
 from app.engine.pipeline import ejecutar_analisis
 from app.engine.textos import ETIQUETAS, SIMBOLOS, etiqueta, legible
@@ -23,9 +24,9 @@ from tests.test_puja_inviable import _caso_inviable
 
 IDENTIFICADOR = re.compile(r"(?<![\w])[^\W\d_][^\W_]*(?:_[^\W_]+)+(?![\w])")
 # Palabras que el motor escribía sin tilde (códigos y textos), en minúscula.
-SIN_TILDE = re.compile(r"\b(juridico|tecnico|urbanistico|ocupacion|comercializacion|plusvalia|critico|"
+SIN_TILDE = re.compile(r"(?<![a-zñáéíóúü])(juridico|tecnico|urbanistico|ocupacion|comercializacion|plusvalia|critico|"
                        r"vacio|semaforo|adquisicion|posesion|informacion|valoracion|analisis|deposito|"
-                       r"regimen|metodo|limite|minimo|maximo|numero|tramite|desalojo_|subsanacion)\b")
+                       r"regimen|metodo|limite|minimo|maximo|numero|tramite|subsanacion|avaluo)(?![a-zñáéíóúü])")
 RATIO = "adjudicacion.ratios.judicial_boe.vivienda.ocupado"
 
 
@@ -50,6 +51,9 @@ def informes() -> dict[str, str]:
         "degenerado": ejecutar_analisis(e, params=base.con_overrides({"capital.coste_capital_anual": 0.31})),
         "inviable_aeat": ejecutar_analisis(_caso_inviable()),
         "vacio_arrendado": ejecutar_analisis(_con(e, ocupacion=OcupacionInput(estado="arrendado_anterior"))),
+        # Revisión 5J-2a: «Subsanar: avaluo» (código sin barra baja) y «Estado declarado: vacio».
+        "sin_documentos_vacio": ejecutar_analisis(_con(e, documentos=DocumentosInput(),
+                                                         ocupacion=OcupacionInput(estado="vacio"))),
     }
     return {k: r.informe_markdown for k, r in casos.items()}
 
@@ -60,7 +64,8 @@ def test_los_casos_ejercitan_las_ramas_previstas(informes):
 
 
 @pytest.mark.parametrize("caso", ["dorado", "veto_competitivo", "rvc_improbable", "hipoteca", "rentista",
-                                  "degenerado", "inviable_aeat", "vacio_arrendado"])
+                                  "degenerado", "inviable_aeat", "vacio_arrendado",
+                                  "sin_documentos_vacio"])
 def test_el_informe_no_muestra_identificadores_ni_palabras_sin_tilde(informes, caso):
     # Los códigos de regla van entre comillas invertidas (`VETO-COMP-01`) y no llevan «_».
     texto = informes[caso]
@@ -75,6 +80,16 @@ def test_el_pdf_no_muestra_identificadores_ni_palabras_sin_tilde(informes, caso)
     assert "VS prudente" in texto                      # premisa: se ha extraído texto de verdad
     assert IDENTIFICADOR.findall(texto) == []
     assert SIN_TILDE.findall(texto.lower()) == []
+
+
+def test_la_revision_cubre_los_casos_que_se_escapaban(informes):
+    t = informes["sin_documentos_vacio"]
+    assert "Subsanar: avalúo" in t and "Estado declarado: vacío" in t
+
+
+def test_las_palabras_sueltas_sin_tilde_se_corrigen_y_las_validas_no():
+    assert legible("Subsanar: avaluo; estado vacio") == "Subsanar: avalúo; estado vacío"
+    assert legible("yo critico la reforma") == "yo critico la reforma"
 
 
 def test_el_motivo_del_veto_competitivo_se_redacta_legible(informes):

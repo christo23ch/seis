@@ -68,6 +68,16 @@ ETIQUETAS: dict[str, str] = {
     "valor_declarado": "valor declarado",
 }
 
+# Códigos de UNA palabra que, escritos sin tilde, no son palabras del español: se pueden
+# sustituir sin riesgo dentro de cualquier texto. Quedan fuera los que sí existen sin tilde
+# («critico», de criticar; «medio», «reforma»…): esos solo con `etiqueta`, donde se redactan.
+SUELTAS: dict[str, str] = {
+    "avaluo": "avalúo", "vacio": "vacío", "juridico": "jurídico", "tecnico": "técnico",
+    "urbanistico": "urbanístico", "semaforo": "semáforo", "comercializacion": "comercialización",
+    "plusvalia": "plusvalía",
+}
+_SUELTA = re.compile(r"(?<![\w])(" + "|".join(SUELTAS) + r")(?![\w])")
+
 # Token candidato: palabra (latina o griega) con al menos una barra baja, sin letra, cifra
 # ni barra baja pegada a los lados.
 _TOKEN = re.compile(r"(?<![\w])([^\W\d_][^\W_]*(?:_[^\W_]+)+)(?![\w])")
@@ -82,9 +92,10 @@ def etiqueta(codigo: str | None) -> str:
 
 def legible(texto: str) -> str:
     """Sustituye en un texto los símbolos y códigos con barra baja por su nombre.
-    Las palabras sueltas sin barra baja NO se tocan: «reforma» o «medio» también son
-    palabras normales de una frase; para esas, `etiqueta` en el punto que las redacta."""
+    Las palabras sueltas sin barra baja NO se tocan («reforma» o «medio» también son
+    palabras normales de una frase; para esas, `etiqueta` donde se redactan), salvo las de
+    `SUELTAS`, que sin tilde no existen en español («avaluo», «vacio»…)."""
     def cambio(m: re.Match[str]) -> str:
         t = m.group(1)
         return SIMBOLOS.get(t) or ETIQUETAS.get(t) or t
-    return _TOKEN.sub(cambio, texto)
+    return _SUELTA.sub(lambda m: SUELTAS[m.group(1)], _TOKEN.sub(cambio, texto))

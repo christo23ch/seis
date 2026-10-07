@@ -108,16 +108,22 @@ def calcular_escalera(inp: AnalisisInput, params, banda_ra: str, vs_p: float,
         rna = rna or 0.0
         y_suelo = float(perfil["y_bono_10a"]) + float(perfil["y_suelo_pp_sobre_bono"])
 
-        def p_de_y(y_pct: float) -> float:
+        def p_de_y_con_tramo(y_pct: float) -> tuple[float, str | None]:
             if y_pct <= 0:
-                return 0.0
-            return fiscal.resolver_por_tramos(
+                return 0.0, None
+            return fiscal.resolver_con_tramo(
                 costes, lambda c_v, extra: (rna / (y_pct / 100.0) - cf50 - extra) / (1 + c_v))
 
-        p_ideal, p_obj = p_de_y(y_req + 1.0), p_de_y(y_req + 0.5)
-        candidatos = [p_de_y(y_req)]
+        def p_de_y(y_pct: float) -> float:
+            return p_de_y_con_tramo(y_pct)[0]
+
+        (p_ideal, t_ideal), (p_obj, t_obj) = p_de_y_con_tramo(y_req + 1.0), p_de_y_con_tramo(y_req + 0.5)
+        p_rent, t_rent = p_de_y_con_tramo(y_req)
+        candidatos = [p_rent]
         candidatos_detalle = {"p_por_rentabilidad": candidatos[0]}   # Fase 5J-2a
-        tramos = None
+        # Fase 5J-2a: tramo fiscal de cada precio (sin rentabilidad exigida > 0 no hay tramo).
+        tramos = {k: t for k, t in (("p_ideal", t_ideal), ("p_objetivo", t_obj),
+                                    ("p_por_rentabilidad", t_rent)) if t is not None}
         if f.tipo == "hipoteca" and f.ltv > 0:
             ts = (f.interes_anual_pct + float(params.get("financiacion.stress_tipos_pp"))) / 100
             dscr_min = float(params.get("financiacion.dscr_minimo"))
@@ -162,7 +168,7 @@ def calcular_escalera(inp: AnalisisInput, params, banda_ra: str, vs_p: float,
     escalera = EscaleraPrecios(
         p_ideal=round(p_ideal), p_objetivo=round(p_obj), p_max=round(p_max),
         p_limite=round(p_lim), detalle=detalle,
-        tramos_fiscales={**tramos, "p_limite": t_lim} if tramos is not None else None,
+        tramos_fiscales={**tramos, "p_limite": t_lim},
     )
     escalera.degenerada = not (0 < escalera.p_ideal < escalera.p_objetivo
                                < escalera.p_max < escalera.p_limite)

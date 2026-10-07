@@ -80,7 +80,23 @@ def test_candidatos_del_perfil_rentista():
     d = res.decision.precios.detalle
     cand = [d[k] for k in ("p_por_rentabilidad", "p_por_dscr", "p_por_cash_on_cash")]
     assert round(min(cand)) == res.decision.precios.p_max
-    assert "p_limite_rentista" in d and res.decision.precios.tramos_fiscales is None
+    assert "p_limite_rentista" in d
+    assert res.decision.precios.tramos_fiscales == {"p_ideal": "unico", "p_objetivo": "unico",
+                                                    "p_por_rentabilidad": "unico", "p_limite": "unico"}
+
+
+def test_rentista_con_base_minima_emite_el_tramo_de_cada_precio():
+    """Revisión 5J-2a: la rama rentista también dice con qué tramo resolvió cada precio."""
+    e = entrada_caso_19()
+    res = ejecutar_analisis(_con(e, perfil="rentista",
+                                 rentista=RentistaInput(renta_mensual_estimada=950, ibi_anual=350, comunidad_mensual=60),
+                                 costes=CostesInput(**{**e.costes.model_dump(), "valor_referencia_catastral": 150000})))
+    t, c, d = res.decision.precios.tramos_fiscales, res.costes, res.decision.precios.detalle
+    assert set(t) == {"p_ideal", "p_objetivo", "p_por_rentabilidad", "p_limite"}
+    assert t["p_objetivo"] == "bajo"
+    tb, b = c.tipo_base_minima, c.base_fiscal_minima
+    p = (d["rna"] / ((d["y_req_pct"] + 0.5) / 100) - c.c_f_p50 - tb * b) / (1 + c.c_v - tb)
+    assert abs(p - res.decision.precios.p_objetivo) < 1.5
 
 
 # ─────────────────────────── RA, P_adj, ICI y evidencias ───────────────────────────

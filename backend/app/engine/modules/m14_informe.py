@@ -59,7 +59,7 @@ def construir_checklist(inp: AnalisisInput, dec: DecisionFinal, hechos: dict, *,
         "pendiente" if hechos.get("carga_anterior_indeterminada") else "ok", _eur(subsist))
     add("B. Jurídico", "Situación posesoria verificada según árbol §8.7.2", True,
         "ok" if d.posesion_verificada else "pendiente",
-        f"Estado declarado: {inp.ocupacion.estado}")
+        f"Estado declarado: {_et(inp.ocupacion.estado)}")
     add("B. Jurídico", "Arrendamientos: fecha cierta, oponibilidad y retracto analizados",
         False, "ok" if "arrendado" not in inp.ocupacion.estado or d.posesion_verificada else "pendiente"
         if "arrendado" in inp.ocupacion.estado else "no_aplica")

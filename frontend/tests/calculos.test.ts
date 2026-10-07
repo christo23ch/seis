@@ -196,9 +196,17 @@ describe("resultados anteriores a la 5J-2a: nunca se inventa", () => {
     expect(calculoRiesgos(viejo(RES).riesgos).nota).toContain("Cálculo no disponible aún para el RA");
   });
 
-  it("dos tramos sin el tramo resuelto ⇒ no se sustituye ningún precio", () => {
+  it("dos tramos sin el tramo resuelto ⇒ no se sustituye ningún precio, P_limite tampoco", () => {
     const e = calculosEscalera(viejo(DOS));
-    for (const k of ["p_objetivo", "p_margen_min"]) expect(por(e, k).disponible, k).toBe(false);
+    for (const k of ["p_objetivo", "p_margen_min", "p_limite"]) expect(por(e, k).disponible, k).toBe(false);
+  });
+
+  it("colchón con escalera degenerada: dice por qué no hay cálculo, no «resultado anterior»", () => {
+    const deg = { ...RES, decision: { ...RES.decision, colchon_detalle: null, colchon_plazo_meses: null,
+                                      precios: { ...RES.decision.precios, degenerada: true } } } as Resultado;
+    const c = por(calculosMetricas(deg), "colchon");
+    expect(c.disponible).toBe(false);
+    expect(c.falta).toContain("escalera degenerada");
   });
 
   it("lee el importe de una penalización del texto del motor", () => {

@@ -35,7 +35,12 @@
     "capital_propio": 113543.09,
     "p_limite_bruto": 80759.41
    },
-   "tramos_fiscales": null
+   "tramos_fiscales": {
+    "p_ideal": "unico",
+    "p_objetivo": "unico",
+    "p_por_rentabilidad": "unico",
+    "p_limite": "unico"
+   }
   },
   "margen_seguridad_valor": 0.2726,
   "rvc": 1.002,
