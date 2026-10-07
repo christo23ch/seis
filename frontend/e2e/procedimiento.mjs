@@ -128,6 +128,12 @@ try {
   comprobar((await fila(pagina, "suelo")).includes("No consta"), "sin vivienda habitual no hay suelo absoluto");
   comprobar(await pagina.locator("[data-aviso-orientativo]").innerText().then((t) => t.startsWith("Cálculo orientativo")),
     "se muestra el aviso de cálculo orientativo");
+  // 5J-3 (ADR-0027): con la deuda informada (30.000 €, 40 %) la puja máxima supera la mínima
+  // aprobable y no la segura (70 %): franja «sujeta a mejora», sin techo.
+  const aviso = pagina.locator('[data-aviso-aprobacion="sujeta_a_mejora"]');
+  comprobar(await aviso.count() === 1 && (await aviso.innerText()).includes("Aprobación del remate sujeta a mejora")
+            && (await aviso.innerText()).includes("No limita el semáforo"),
+    "el panel destaca el aviso de la franja «sujeta a mejora» (5J-3)");
 
   await pagina.getByRole("button", { name: "Guardar análisis" }).click();
   await pagina.waitForURL((u) => /\/app\/inversiones\/[0-9a-f-]{36}/.test(u.pathname), { timeout: 20000 });
