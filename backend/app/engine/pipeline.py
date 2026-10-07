@@ -61,7 +61,14 @@ def ejecutar_analisis(inp: AnalisisInput, params: Parametros | None = None,
     hechos["ra"] = ra_res.ra
 
     # ── Costes (contingencia = f(banda RA, ICI)) ─────────────────────────
-    costes = m06_costes.ejecutar(inp, params, hechos, reforma, valoracion, ici, ra_res.banda)
+    # Fase 5J-2b: el procedimiento se resuelve antes de los costes: sus meses de inmovilización
+    # entran en el plazo (ADR-0026) y su depósito y su forma de puja, en M13 (ADR-0024, ADR-0025).
+    datos_procedimiento = procedimiento.calcular(inp, params)
+    meses = datos_procedimiento.meses_inmovilizacion_aplicados
+    if meses is None:                                   # P4: nunca 0 por defecto
+        meses = float(params.get("procedimiento.meses_inmovilizacion_si_no_consta.valor"))
+    costes = m06_costes.ejecutar(inp, params, hechos, reforma, valoracion, ici, ra_res.banda,
+                                 meses_inmovilizacion=meses)
 
     # ── VS prudente y escalera de precios (§9) ───────────────────────────
     delta_v = m12_decision.calcular_delta_v(params, ra_res.banda, valoracion.dispersion_cv, ici)
@@ -91,7 +98,7 @@ def ejecutar_analisis(inp: AnalisisInput, params: Parametros | None = None,
     rentabilidad = m11_rentabilidad.evaluar(p_eval, escenarios, costes, inp, params)
 
     # ── Estrategia de puja y viabilidad competitiva ──────────────────────
-    puja = m13_puja.ejecutar(inp, params, hechos, escalera, valoracion.vm)
+    puja = m13_puja.ejecutar(inp, params, hechos, escalera, valoracion.vm, procedimiento=datos_procedimiento)
 
     # ── Reglas T2: vetos, techos y condiciones (una sola pasada, determinista) ──
     motor = RuleEngine(reglas)
@@ -135,14 +142,13 @@ def ejecutar_analisis(inp: AnalisisInput, params: Parametros | None = None,
                  # explicativa del coste de capital en M14 (solo redacción).
                  "coste_capital_anual": params.get("capital.coste_capital_anual")}
     checklist = m14_informe.construir_checklist(inp, decision, hechos,
-                                                metodo_valoracion=valoracion.metodo)
-    # Fase 5J-1 (ADR-0022): datos del procedimiento, INFORMATIVOS. Se calculan
-    # después de decidir y sin pizarra de hechos: nada de lo anterior los lee.
-    datos_procedimiento = procedimiento.calcular(inp, params)
+                                                metodo_valoracion=valoracion.metodo,
+                                                procedimiento=datos_procedimiento)
     informe = m14_informe.construir_informe(
         inp, parciales, decision, checklist,
         estado_asumido=hechos.get("activo.estado_conservacion_asumido"),
-        seccion_procedimiento=procedimiento.seccion_informe(datos_procedimiento))
+        seccion_procedimiento=procedimiento.seccion_informe(datos_procedimiento),
+        procedimiento=datos_procedimiento)
 
     return AnalisisResult(
         decision=decision, ici=ici, valoracion=valoracion, icu=icu, reforma=reforma,

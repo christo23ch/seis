@@ -32,7 +32,8 @@ def _arbol_fiscal(inp: AnalisisInput, params) -> tuple[str, float, dict]:
 
 
 def ejecutar(inp: AnalisisInput, params, hechos: dict, reforma: ReformaResultado,
-             valoracion: ValoracionResultado, ici: ICIResultado, banda_ra: str) -> CostesResultado:
+             valoracion: ValoracionResultado, ici: ICIResultado, banda_ra: str, *,
+             meses_inmovilizacion: float = 0.0) -> CostesResultado:
     vt = inp.subasta.valor_subasta
     vs = valoracion.vs
 
@@ -69,7 +70,9 @@ def ejecutar(inp: AnalisisInput, params, hechos: dict, reforma: ReformaResultado
     # ── plazos totales ──────────────────────────────────────────────────
     meses_com = max(int(params.get("precios.meses_comercializacion_min")),
                     math.ceil(inp.zona.macro.dom_venta_dias / 30.0))
-    plazo_p50 = meses_ocu_p50 + plazo_obra + meses_com
+    # Fase 5J-2b (ADR-0026): + cierre → pago del resto (meses de inmovilización del procedimiento,
+    # al plazo legal máximo). Genera tenencia y, vía plazo P80, coste de capital.
+    plazo_p50 = meses_ocu_p50 + plazo_obra + meses_com + meses_inmovilizacion
     plazo_p80 = plazo_p50 * float(params.get("escenarios.plazo_mult.pesimista"))
 
     # financiación: interés proporcional a P (interés simple sobre LTV·P durante el plazo)
@@ -116,6 +119,7 @@ def ejecutar(inp: AnalisisInput, params, hechos: dict, reforma: ReformaResultado
         desglose_p50=d50, desglose_p80=d80, contingencia_pct=round(conting_pct, 4),
         tenencia_mensual=tenencia_mensual, plazo_desglose={"ocupacion": meses_ocu_p50, "obra": plazo_obra,       # Fase 5J-2a
                         "comercializacion": float(meses_com),
+                        "inmovilizacion": float(meses_inmovilizacion),         # Fase 5J-2b
                         "multiplicador_p80": float(params.get("escenarios.plazo_mult.pesimista"))},
         plazo_meses_p50=plazo_p50, plazo_meses_p80=round(plazo_p80, 1),
         regimen_fiscal=regimen, tipo_impositivo=tipo_imp,

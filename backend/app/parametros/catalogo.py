@@ -395,9 +395,10 @@ PARAMETROS_FIJOS.append(ParametroCatalogo(
     dependencia="A",
     nivel_riesgo_modificacion=PENDIENTE_DE_DEFINIR,
     origen="m12_decision.py:121-126 (calcular_escalera)",
-    umbral_aviso=0.06,
-    texto_aviso=("Por encima del 6 % la escalera de precios suele degenerar "
-                 "(umbral medido en el caso de referencia §19: 6,13 %)"),
+    # Fase 5J-2b: el plazo P80 suma la inmovilización y el umbral medido baja de 6,13 % a 5,14 %.
+    umbral_aviso=0.05,
+    texto_aviso=("Por encima del 5 % la escalera de precios suele degenerar "
+                 "(umbral medido en el caso de referencia §19: 5,14 %)"),
 ))
 
 
