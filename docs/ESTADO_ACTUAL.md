@@ -10,8 +10,8 @@
 
 ## Frentes abiertos
 
-**Actualizado:** 2026-10-07 · **Rama de trabajo:** `fase/5j-2a-textos-y-datos` (sale de `main`, `13941d9`, con la 5K fusionada; sin PR) · **Suite (SQLite):** 1100 passed, 18 skipped, 0 failed · **Frontend:** 141 tests unitarios (vitest, `npm test`) · **E2E:** alta, simulaciones, alta de inversión, validación guiada, datos del procedimiento y presentación (1440 y 390 px) en la CI (job `e2e`) · **Migraciones:** hasta `0016`; la siguiente libre es la `0017`
-**Última fase cerrada:** 5K, presentación (PR #33) · **En curso:** 5J-2a, textos legibles en el informe y el PDF y operandos de «Ver cálculo» como campos opcionales del resultado (ADR-0023), sin mover ninguna cifra · **Siguiente:** 5J-2b, lo que sí mueve cifras (depósito legal, táctica de puja por régimen, reglas del diseño B) · **Puerta: ABIERTA**
+**Actualizado:** 2026-10-07 · **Rama de trabajo:** `fase/5j-2b-deposito-y-plazo` (sale de `main`, `1be0c31`, con la 5J-2a fusionada; sin PR) · **Suite (SQLite):** 1149 passed, 18 skipped, 0 failed · **Frontend:** 143 tests unitarios (vitest, `npm test`) · **E2E:** alta, simulaciones, alta de inversión, validación guiada, datos del procedimiento y presentación (1440 y 390 px) en la CI (job `e2e`), 168 comprobaciones · **Migraciones:** hasta `0016`; la siguiente libre es la `0017`
+**Última fase cerrada:** 5J-2a, textos legibles y operandos de «Ver cálculo» (PR #34) · **En curso:** 5J-2b, depósito, táctica de puja y plazo reales (ADR-0024, ADR-0025, ADR-0026), que **cambia cifras** con la tabla antes/después aprobada · **Siguiente:** lo que queda del diseño B (reglas que usen los umbrales de aprobación) · **Puerta: ABIERTA**
 
 ### 🟡 Requisito de PRODUCTO registrado, sin implementar: perfil de inversor por cuestionario
 
@@ -410,10 +410,8 @@ Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VER
 
 15. *(Resuelta en 5G.4-B: ver «Cerrada» arriba.)*
 16. *(Resuelta en 5H.1-B: ver «Cerrada» arriba.)*
-17. **El «depósito del 5%» de la condición de la regla T2 `SEM-EJEC-01`** sale sin espacio
-    antes de «%». Es texto de una regla versionada (`rules/catalogo.yaml`), no de un módulo:
-    corregirlo exige una versión nueva de la regla. `test_formato_espanol_5g4.py` lo tiene
-    localizado como única excepción.
+17. *(Resuelta en 5J-2b: `SEM-EJEC-01` 2026.10 dice el depósito según el régimen, con espacio
+    antes de «%», ADR-0024.)*
 18. **Puntos de la auditoría que quedan para la 5H.2** (todos cambian el caso dorado o
     necesitan decisión): calendario de la TIR con los plazos reales de M06 (E3), nueva
     definición del precio límite (E2 b), coste del depósito (E5), perfil rentista según §9.2
@@ -530,17 +528,18 @@ Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VER
 
 **Datos del procedimiento (5J-1, ADR-0022)**
 
-1. **El depósito del alta sigue en el 5 % por defecto** y alimenta el plan de puja de M13
-   («Depósito requerido…»): el resultado muestra el legal (20 % en el régimen de la LO 1/2025) y
-   avisa de la diferencia, pero no lo corrige, porque cambiaría cifras. Para la 5J-2/5J-3.
-2. **La táctica de puja de M13 no distingue el régimen** («la extensión automática del cierre…»),
-   incorrecta en el judicial de la LO 1/2025 (pujas secretas, sin prórroga). Ídem.
+1. *(Resuelta en 5J-2b, ADR-0024: el plan de puja, el §2 y el checklist usan el depósito del
+   régimen. El alta conserva su 5 % por defecto y el aviso de que no coincide; ver el punto 6.)*
+2. *(Resuelta en 5J-2b, ADR-0025: la táctica depende de la forma de puja del régimen.)*
 3. **Los parámetros `procedimiento.regimenes` no son simulables** (el catálogo de la 5C solo cubre
    M12 y M13) y **`defaults.yaml` sigue en `2026.07`** aunque gana una sección: subir la versión
    cambiaría `version_parametros`, que es hoja de la foto del §19.
 4. **Toda la TGSS, los meses de inmovilización, la venta extrajudicial y el concursal están sin
    confirmar** en la investigación: se muestran con su aviso o como «no consta». Ninguno puede
-   convertirse en bloqueo sin la validación jurídica (D8).
+   convertirse en bloqueo sin la validación jurídica (D8). **Desde la 5J-2b los meses de
+   inmovilización mueven cifras** (plazo, tenencia, coste de capital, escalera): siguen marcados
+   «sin confirmar» y el informe lo dice. La forma de puja sí está contrastada con el BOE salvo en
+   la venta extrajudicial y el concursal (ADR-0025).
 5. **Una base de desarrollo creada con `create_all` necesita `alembic stamp 0015` y `upgrade head`**
    para recibir las columnas de la `0016` (`MANUAL_DE_PRUEBAS.md` §1 bis).
 6. **Avisos de la revisión que se dejan** (LOW): con el alta por defecto (depósito 5 %, judicial,
@@ -556,8 +555,8 @@ Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VER
    `docs/DEUDA_PRESENTACION_MOTOR.md`. La **5J-2a** resolvió los puntos 1-13 (operandos de «Ver
    cálculo») y 15-17 (el informe y el PDF de los análisis nuevos salen sin claves internas ni
    palabras sin tilde, ADR-0023). Quedan: los **informes oficiales ya emitidos** conservan su texto
-   congelado con los códigos de antes; el depósito del alta (18, mueve cifras); el catálogo global
-   (19-20); y las pantallas de reglas y simulaciones.
+   congelado con los códigos de antes; el catálogo global (19-20); y las pantallas de reglas y
+   simulaciones. El depósito del alta (18) lo resolvió la 5J-2b (ADR-0024).
    **Decidido por el responsable (2026-10-07): se dejan como están.** Los 7 textos de la foto del
    §19 (3 ítems del checklist con `C_F`/`c_v` y 4 condiciones «Subsanar: …») se redactan legibles
    en el informe, pero el dato no cambia y la foto no se regenera (ADR-0023).
@@ -570,6 +569,21 @@ Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VER
 4. **`m12_decision.calcular_escalera` sigue creciendo** (pasa con mucho de 50 líneas): los
    candidatos del rentista y los tramos fiscales podrían ir en funciones propias. Anotado en la
    revisión de la 5J-2a; no se refactoriza sin autorización para tocar el motor.
+
+**Depósito, táctica y plazo (5J-2b, ADR-0024 a ADR-0026)**
+
+1. **«Cesión de remate solo por el ejecutante»** (SEM-EJEC-01 y riesgo de ejecución de M13) es
+   inexacto con la LO 1/2025: también la tienen los acreedores posteriores (LEC 647.3,
+   investigación §2.8). Fuera del alcance de la fase; exige otra versión de la regla.
+2. **La TIR no tiene un tramo propio para la inmovilización** (ADR-0026, punto 5): el pago del
+   resto sigue en el mes 0 y el tramo posesorio en el 45 % del horizonte. Aproximación aceptada.
+3. **El §19 de la especificación** (`docs/SEIS_Especificacion_Funcional_y_Tecnica.md`) conserva el
+   ejemplo con las cifras de la 5H.1-D y una nota que remite a las de la 5J-2b; la salida completa
+   vigente es `docs/SEIS_informe_ejemplo_caso19.md`, regenerada en esta fase.
+4. **La TGSS presencial está confirmada en la norma, no en la práctica**: no se ha comprobado si
+   sus subastas se celebran ya en el Portal del BOE.
+5. **Los análisis guardados conservan su resultado**: hasta reanalizarlos, muestran el depósito del
+   alta, la táctica anterior y el plazo sin inmovilización. Los informes oficiales, por diseño.
 
 **Entorno**
 
