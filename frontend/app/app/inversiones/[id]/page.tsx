@@ -14,6 +14,7 @@ import { ListaSimulaciones } from "@/components/simulaciones/lista";
 import { InformesOficiales } from "@/components/informes/informes-oficiales";
 import { ProcedimientoPanel } from "@/components/procedimiento";
 import { Markdown } from "@/components/markdown";
+import { DatosEntrada } from "@/components/datos-entrada";
 import { Card, CardContent, CardHeader, CardTitle, ErrorBox, Spinner, TabPanel, Tabs, TabsLista } from "@/components/ui";
 
 export default function DetalleInversion() {
@@ -152,11 +153,7 @@ export default function DetalleInversion() {
         <TabPanel valor="oficiales"><InformesOficiales detalle={data} /></TabPanel>
 
         <TabPanel valor="datos">
-          <Card><CardContent>
-            <pre className="max-h-[70vh] overflow-auto font-cifra text-[12px] text-slate-600">
-              {JSON.stringify(data.entrada, null, 2)}
-            </pre>
-          </CardContent></Card>
+          <Card><CardContent><DatosEntrada entrada={data.entrada ?? {}} /></CardContent></Card>
         </TabPanel>
       </Tabs>
     </div>
