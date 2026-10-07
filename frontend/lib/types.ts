@@ -29,7 +29,7 @@ export interface Resultado {
     desglose_p80?: Record<string, number>; c_v_desglose?: Record<string, number>;
     base_fiscal_minima?: number; tipo_base_minima?: number };
   riesgos: { ra: number; ra_base: number; banda: string; dominancia_aplicada: string | null; dimensiones: RiesgoDim[] };
-  rentabilidad: { inversion_total: number; beneficio: number; roi: number; roi_anualizado: number; tir_anual: number; valor_esperado: number; escenarios: EscenarioOut[]; y_neta?: number | null; dscr?: number | null;
+  rentabilidad: { precio_evaluado?: number; inversion_total: number; beneficio: number; roi: number; roi_anualizado: number; tir_anual: number; valor_esperado: number; escenarios: EscenarioOut[]; y_neta?: number | null; dscr?: number | null;
     /** Fase 5H.1-A (ADR-0017): informativos; ausentes en resultados anteriores. */
     van_coste_capital?: number | null; diferencial_tir_coste_capital?: number | null };
   puja: { p_adj_esperado: number; ratio_base: number; rvc: number; banda_rvc: string; plan: string[]; riesgo_ejecucion: string[] };

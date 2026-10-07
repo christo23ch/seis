@@ -6,6 +6,7 @@ import { Badge, Card, CardContent, CardHeader, CardTitle } from "./ui";
 import { TextoFormulas } from "./texto-formulas";
 import { VerCalculo } from "./ver-calculo";
 import { calculoIci, calculoRiesgos, calculosEscalera, calculosMetricas } from "@/lib/calculos";
+import type { PesosIcoEstado } from "@/lib/ico";
 import { humanizar } from "@/lib/presentacion-valores";
 
 export const SEM_COLOR: Record<Semaforo, string> = { verde: "#15803D", amarillo: "#B45309", naranja: "#C2410C", rojo: "#B91C1C" };
@@ -202,7 +203,14 @@ export function EscenariosPanel({ r }: { r: Resultado["rentabilidad"] }) {
 /** Fase 5K-E: los pesos (máximo de cada componente) vienen del catálogo, de los
  * parámetros que produjeron este resultado (`lib/ico.ts`). Sin ellos, no se supone
  * ninguno: se muestran los puntos sin barra ni máximo. */
-export function IcoDesglose({ d, pesos }: { d: Decision; pesos: Record<string, number> | null }) {
+const AVISO_SIN_PESOS: Record<"sin_catalogo" | "sin_snapshot" | "sin_analisis", string> = {
+  sin_analisis: "Aún no hay ningún análisis guardado del que leer el catálogo de pesos: se muestran los puntos de cada componente sin su máximo.",
+  sin_snapshot: "Pesos no disponibles para este resultado (análisis anterior al registro de parámetros): se muestran los puntos de cada componente sin su máximo.",
+  sin_catalogo: "No se ha podido leer el catálogo de parámetros: se muestran los puntos de cada componente sin su máximo.",
+};
+
+export function IcoDesglose({ d, pesos: estado }: { d: Decision; pesos: PesosIcoEstado }) {
+  const pesos = estado.pesos;
   const entradas = Object.entries(d.ico_desglose);
   return (
     <Card>
@@ -225,11 +233,8 @@ export function IcoDesglose({ d, pesos }: { d: Decision; pesos: Record<string, n
             </div>
           );
         })}
-        {!pesos && (
-          <p className="text-[12px] text-slate-500">
-            Pesos no disponibles para este resultado (análisis anterior al registro de parámetros): se muestran
-            los puntos de cada componente sin su máximo.
-          </p>
+        {!pesos && estado.motivo && estado.motivo !== "cargando" && (
+          <p className="text-[12px] text-slate-500">{AVISO_SIN_PESOS[estado.motivo]}</p>
         )}
       </CardContent>
     </Card>

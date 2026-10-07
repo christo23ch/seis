@@ -42,13 +42,19 @@ export function pesosIcoDeArbol(arbol: unknown): PesosIco | null {
   return Object.fromEntries(entradas) as PesosIco;
 }
 
+export interface PesosIcoEstado {
+  pesos: PesosIco | null;
+  /** Por qué no hay pesos, si no los hay: el aviso dice la verdad en cada caso. */
+  motivo: "cargando" | "sin_catalogo" | "sin_snapshot" | "sin_analisis" | null;
+}
+
 /**
  * Pesos del ICO para el resultado mostrado.
  *   · `analisisId` + `simulacionId` → los de esa simulación;
  *   · `analisisId` sin simulación → los originales del análisis;
  *   · nada (asistente) → los vigentes, vía el catálogo del análisis más reciente.
  */
-export function usePesosIco(analisisId?: string, simulacionId?: string | null): PesosIco | null {
+export function usePesosIco(analisisId?: string, simulacionId?: string | null): PesosIcoEstado {
   const sim = useQuery({
     queryKey: ["simulacion", analisisId, simulacionId],
     queryFn: () => api.simulaciones.obtener(analisisId!, simulacionId!),
@@ -60,6 +66,16 @@ export function usePesosIco(analisisId?: string, simulacionId?: string | null): 
     queryKey: ["parametros-simulables", idCatalogo], queryFn: () => api.parametrosSimulables(idCatalogo!),
     enabled: !!idCatalogo && !simulacionId, staleTime: 5 * 60_000, retry: false,
   });
-  if (simulacionId) return pesosIcoDeArbol(sim.data?.parametros_aplicados);
-  return pesosIcoDeCatalogo(cat.data, analisisId ? "original" : "vigente");
+  if (simulacionId) {
+    if (sim.isPending) return { pesos: null, motivo: "cargando" };
+    const pesos = pesosIcoDeArbol(sim.data?.parametros_aplicados);
+    return { pesos, motivo: pesos ? null : sim.isError ? "sin_catalogo" : "sin_snapshot" };
+  }
+  if (!idCatalogo) {
+    if (lista.isPending) return { pesos: null, motivo: "cargando" };
+    return { pesos: null, motivo: lista.isError ? "sin_catalogo" : "sin_analisis" };
+  }
+  if (cat.isPending) return { pesos: null, motivo: "cargando" };
+  const pesos = pesosIcoDeCatalogo(cat.data, analisisId ? "original" : "vigente");
+  return { pesos, motivo: pesos ? null : cat.isError ? "sin_catalogo" : analisisId ? "sin_snapshot" : "sin_catalogo" };
 }

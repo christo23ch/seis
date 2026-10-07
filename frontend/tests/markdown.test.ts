@@ -104,3 +104,10 @@ describe("informe real del caso §19", () => {
     expect(visible).toContain("δ_v aplicado");
   });
 });
+
+describe("correcciones de la revisión de código (5K)", () => {
+  it("una fila de «-» en el cuerpo de una tabla es un dato, no un separador", () => {
+    const [t] = analizarMarkdown("| A | B |\n|---|---|\n| - | - |\n| 1 | 2 |") as Extract<Bloque, { tipo: "tabla" }>[];
+    expect(t.filas.map((f) => f.map(textoPlano))).toEqual([["-", "-"], ["1", "2"]]);
+  });
+});

@@ -27,6 +27,8 @@ export default function Parametros() {
     onSuccess: (_r, b) => {
       setMensaje(`Parámetro «${b.clave}» actualizado con vigencia desde hoy.`);
       qc.invalidateQueries({ queryKey: ["parametros"] });
+      // Fase 5K: el catálogo (valores vigentes, pesos del ICO del asistente) también cambia.
+      qc.invalidateQueries({ queryKey: ["parametros-simulables"] });
     },
     onError: (e: Error) => setMensaje(e.message),
   });

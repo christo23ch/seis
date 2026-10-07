@@ -130,3 +130,34 @@ describe("datos ausentes: nunca se inventa", () => {
     expect(puntosPenalizacion("sin formato")).toBeNull();
   });
 });
+
+describe("correcciones de la revisión de código (5K)", () => {
+  it("reforma con extras: la obra ya los incluye y no se suman dos veces (M05)", () => {
+    // obra 50.920 € (incluye 5.000 € de extras) + técnicos 4.582,80 € = 55.502,80 €.
+    const reforma = { ...RES.reforma, total_p50: 55502.8,
+      partidas: { obra: 50920, tecnicos_licencia: 4582.8, extras_conocidos: 5000 } };
+    const c = calculoReforma(reforma);
+    expect(c.sustitucion).toMatch(/^Reforma = 50\.920\s€ \+ 4\.583\s€$/);
+    expect(50920 + 4582.8).toBeCloseTo(reforma.total_p50, 2);
+    expect(c.filas!.map((f) => f.etiqueta)).toEqual(["Obra", "de ello, extras conocidos", "Técnicos y licencia"]);
+  });
+
+  it("valoración con capitalización vinculante: VS no se presenta como VS_m2 × m²", () => {
+    const val = { ...RES.valoracion, vs: 150000, vs_capitalizacion: 150000 };
+    const c = calculoValoracion(val, SUPERFICIE_19);
+    expect(c.formula).toContain("mín(VS_m2 × m², capitalización)");
+    expect(c.sustitucion).toMatch(/^VS = capitalización 150\.000\s€ \(menor que/);
+  });
+
+  it("inversión total con P_eval (el que usó el motor), no P_objetivo", () => {
+    const c = calculosMetricas(RES).find((x) => x.clave === "inversion")!;
+    expect(c.formula).toContain("P_eval = máx(P_objetivo, 1 €)");
+    expect(c.sustitucion).toMatch(/^I = 60\.011\s€ ×/);
+    const sinPeval = { ...RES, rentabilidad: { ...RES.rentabilidad, precio_evaluado: undefined } } as Resultado;
+    expect(calculosMetricas(sinPeval).find((x) => x.clave === "inversion")!.sustitucion).toBeUndefined();
+  });
+
+  it("margen de seguridad acotado a 0, como el motor", () => {
+    expect(calculosMetricas(RES).find((x) => x.clave === "margen")!.formula).toBe("MS_valor = máx(0, 1 − inversión total / VS)");
+  });
+});

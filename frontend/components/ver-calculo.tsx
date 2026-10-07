@@ -22,7 +22,7 @@ export function VerCalculo({ calculos, titulo = "Ver cálculo", className }:
 
 function UnCalculo({ c }: { c: Calculo }) {
   return (
-    <section data-calculo={c.clave} aria-label={c.titulo} className="min-w-0 space-y-1 text-slate-700">
+    <div data-calculo={c.clave} className="min-w-0 space-y-1 text-slate-700">
       <h4 className="font-semibold text-tinta"><TextoFormulas texto={c.titulo} /></h4>
       {!c.disponible ? (
         <p data-no-disponible className="text-slate-500">
@@ -46,6 +46,6 @@ function UnCalculo({ c }: { c: Calculo }) {
           {c.nota && <p className="text-[12px] text-slate-500"><TextoFormulas texto={c.nota} /></p>}
         </>
       )}
-    </section>
+    </div>
   );
 }

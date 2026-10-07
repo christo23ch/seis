@@ -41,6 +41,8 @@ const etiquetaClave = (k: string) => {
 };
 const noDisponible = (clave: string, titulo: string, falta: string, origen: string): Calculo =>
   ({ clave, titulo, disponible: false, falta, origen });
+/** Los operandos viajan redondeados: rehacer la cuenta a mano puede diferir un poco. */
+const REDONDEO = "Valores del resultado, redondeados: rehacer la cuenta a mano puede diferir en unos euros o décimas.";
 const sumaTexto = (valores: number[], fmt: (n: number) => string) => valores.map(fmt).join(" + ");
 
 /* ── ICI ──────────────────────────────────────────────────────────────────── */
@@ -94,19 +96,28 @@ export function calculoCv(costes: Resultado["costes"]): Calculo {
     sustitucion: `c_v = ${sumaTexto(Object.values(d), (n) => pct(n, 2))}`,
     resultado: pct(costes.c_v, 2),
     filas: Object.entries(d).map(([k, v]) => ({ etiqueta: etiquetaClave(k), valor: pct(v, 2) })),
-    nota: `Régimen fiscal: ${costes.regimen_fiscal.toUpperCase()}.`,
+    nota: `Régimen fiscal: ${costes.regimen_fiscal.toUpperCase()}. ${REDONDEO}`,
   };
 }
 
 export function calculoReforma(reforma: Resultado["reforma"]): Calculo {
   const partidas = reforma.partidas;
-  if (!partidas) return noDisponible("reforma", "Reforma", "las partidas de la reforma", "m05_reforma.py");
+  if (!partidas || partidas.obra == null || partidas.tecnicos_licencia == null) {
+    return noDisponible("reforma", "Reforma", "las partidas de la reforma", "m05_reforma.py");
+  }
+  // En M05 la obra YA incluye los extras conocidos (`obra_p50 = coste·m²·k + partidas_extra`):
+  // se muestran como «de ello», nunca como un sumando más.
+  const extras = partidas.extras_conocidos ?? 0;
   return {
     clave: "reforma", titulo: `Reforma (nivel ${reforma.nivel})`, disponible: true, origen: "m05_reforma.py",
-    formula: "Reforma P50 = obra + técnicos y licencia + extras conocidos",
-    sustitucion: `Reforma = ${sumaTexto(Object.values(partidas), eur)}`,
+    formula: "Reforma P50 = obra (incluidos los extras conocidos) + técnicos y licencia",
+    sustitucion: `Reforma = ${eur(partidas.obra)} + ${eur(partidas.tecnicos_licencia)}`,
     resultado: `${eur(reforma.total_p50)} (P80: ${eur(reforma.total_p80)})`,
-    filas: Object.entries(partidas).map(([k, v]) => ({ etiqueta: etiquetaClave(k), valor: eur(v) })),
+    filas: [
+      { etiqueta: "Obra", valor: eur(partidas.obra) },
+      ...(extras ? [{ etiqueta: "de ello, extras conocidos", valor: eur(extras) }] : []),
+      { etiqueta: "Técnicos y licencia", valor: eur(partidas.tecnicos_licencia) },
+    ],
   };
 }
 
@@ -118,13 +129,19 @@ export function calculoValoracion(val: Resultado["valoracion"], superficie?: num
   if (val.metodo === "sin_comparables") return noDisponible("valoracion", titulo, "comparables: sin ellos no hay valoración de mercado", "m03_valoracion.py");
   if (!testigos?.length) return noDisponible("valoracion", titulo, "el detalle de los comparables usados", "m03_valoracion.py");
   const k = val.k_estado_activo;
+  // `vs_capitalizacion` solo viaja cuando la capitalización fue vinculante (M03): entonces
+  // VS NO es VS_m2 × m² y esa sustitución sería falsa.
   const capitalizacion = val.vs_capitalizacion;
+  const vm = superficie && k != null ? `VM = ${eur(val.vs_m2)}/m² × ${num(k, 2)} × ${num(superficie, 2)} m²` : "";
+  const vs = !superficie ? "" : capitalizacion != null
+    ? `VS = capitalización ${eur(capitalizacion)} (menor que ${eur(val.vs_m2)}/m² × ${num(superficie, 2)} m²)`
+    : `VS = ${eur(val.vs_m2)}/m² × ${num(superficie, 2)} m²`;
   return {
     clave: "valoracion", titulo, disponible: true, origen: "m03_valoracion.py",
-    formula: "VS_m2 = mediana ponderada de los €/m² normalizados · VS = VS_m2 × m² · VM = VS_m2 × k_estado × m²",
-    sustitucion: superficie
-      ? `VS = ${eur(val.vs_m2)}/m² × ${num(superficie, 2)} m²` + (k != null ? ` · VM = ${eur(val.vs_m2)}/m² × ${num(k, 2)} × ${num(superficie, 2)} m²` : "")
-      : undefined,
+    formula: capitalizacion != null
+      ? "VS_m2 = mediana ponderada de los €/m² normalizados · VS = mín(VS_m2 × m², capitalización) · VM = VS_m2 × k_estado × m²"
+      : "VS_m2 = mediana ponderada de los €/m² normalizados · VS = VS_m2 × m² · VM = VS_m2 × k_estado × m²",
+    sustitucion: [vs, vm].filter(Boolean).join(" · ") || undefined,
     resultado: `VS_m2 ${eur(val.vs_m2)}/m² · VS ${eur(val.vs)} · VM ${eur(val.vm)}`,
     filas: testigos.map((t, i) => ({
       etiqueta: `Comparable ${i + 1}`,
@@ -164,6 +181,7 @@ export function calculosEscalera(res: Resultado): Calculo[] {
     formula: "P_objetivo = (VS_p / (1 + m_objetivo) − C_F P50) / (1 + c_v)",
     sustitucion: `P_objetivo = (${vsp} / (1 + ${num(d.m_objetivo_ajustado, 4)}) − ${cf50}) / (1 + ${cv})`,
     resultado: eur(p.p_objetivo),
+    nota: REDONDEO,
   } : noDisponible("p_objetivo", "P_objetivo", "el margen objetivo ajustado", origen));
   out.push(d.p_por_margen_min != null && d.p_por_pesimista != null && d.m_minimo_ajustado != null ? {
     clave: "p_max", titulo: "P_max", disponible: true, origen,
@@ -205,13 +223,15 @@ export function calculosMetricas(res: Resultado): Calculo[] {
     },
     dosTramos ? noDisponible("inversion", "Inversión total", "el tramo fiscal resuelto (dos tramos)", "fiscal.py") : {
       clave: "inversion", titulo: "Inversión total a P_objetivo", disponible: true, origen: "fiscal.py (inversion)",
-      formula: "I = P_objetivo × (1 + c_v) + C_F P50",
-      sustitucion: `I = ${eur(res.decision.precios.p_objetivo)} × (1 + ${num(res.costes.c_v, 4)}) + ${eur(res.costes.c_f_p50)}`,
+      // El motor evalúa en P_eval = máx(P_objetivo, 1) (pipeline.py), que viaja como `precio_evaluado`.
+      formula: "I = P_eval × (1 + c_v) + C_F P50, con P_eval = máx(P_objetivo, 1 €)",
+      sustitucion: r.precio_evaluado != null
+        ? `I = ${eur(r.precio_evaluado)} × (1 + ${num(res.costes.c_v, 4)}) + ${eur(res.costes.c_f_p50)}` : undefined,
       resultado: eur(r.inversion_total),
     },
     {
       clave: "margen", titulo: "Margen de seguridad", disponible: true, origen: "m12_decision.py (margen_seguridad)",
-      formula: "MS_valor = 1 − inversión total / VS",
+      formula: "MS_valor = máx(0, 1 − inversión total / VS)",
       sustitucion: `MS_valor = 1 − ${eur(r.inversion_total)} / ${eur(res.valoracion.vs)}`,
       resultado: pct(res.decision.margen_seguridad_valor),
     },

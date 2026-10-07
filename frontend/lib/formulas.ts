@@ -66,15 +66,24 @@ function clasificar(token: string): Segmento | null {
     return { tipo: "formula", base: partes[0], sub: SUB_LEGIBLE[partes[1]] ?? partes[1], original: token };
   }
   if (IDENTIFICADORES[token]) return { tipo: "identificador", texto: IDENTIFICADORES[token], original: token };
-  // Último recurso, solo para claves en minúscula: la barra baja se lee como espacio.
-  if (token === token.toLowerCase()) return { tipo: "identificador", texto: partes.join(" "), original: token };
+  // Último recurso, solo para claves internas en minúscula y SIN cifras: la barra baja se
+  // lee como espacio. Con cifras («nota_simple_2024») puede ser un nombre de fichero.
+  if (token === token.toLowerCase() && !/\d/.test(token)) return { tipo: "identificador", texto: partes.join(" "), original: token };
   return null;
 }
+
+/** Pegado a «@ / \» el token es parte de un correo o una ruta; seguido de «.» o «:» y más
+ * texto, de un fichero o una URL: no se toca. Un punto final de frase sí se admite. */
+const PEGADO_ANTES = /[@/\\.:]/;
+const PEGADO_DESPUES = /[@/\\]/;
 
 export function segmentarTexto(texto: string): Segmento[] {
   const salida: Segmento[] = [];
   let ultimo = 0;
   for (const m of texto.matchAll(TOKEN)) {
+    const fin = m.index! + m[0].length;
+    const antes = texto[m.index! - 1] ?? "", despues = texto[fin] ?? "", tras = texto[fin + 1] ?? "";
+    if (PEGADO_ANTES.test(antes) || PEGADO_DESPUES.test(despues) || (/[.:]/.test(despues) && /[^\s]/.test(tras))) continue;
     const seg = clasificar(m[1]);
     if (!seg) continue;
     if (m.index! > ultimo) salida.push({ tipo: "texto", texto: texto.slice(ultimo, m.index) });

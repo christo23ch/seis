@@ -95,7 +95,8 @@ export function analizarMarkdown(md: string): Bloque[] {
       while (i < lineas.length && esFilaTabla(lineas[i])) filas.push(celdas(lineas[i++]));
       i--;
       const conCabecera = filas.length > 1 && esSeparadorTabla(filas[1]);
-      const cuerpo = (conCabecera ? filas.slice(2) : filas).filter((f) => !esSeparadorTabla(f));
+      // Solo la SEGUNDA fila es separador: una fila de «-» en el cuerpo es un dato.
+      const cuerpo = conCabecera ? filas.slice(2) : filas;
       bloques.push({
         tipo: "tabla",
         cabecera: conCabecera ? filas[0].map(analizarEnLinea) : null,

@@ -122,7 +122,7 @@ export default function DetalleInversion() {
                 <div className="mb-3 grid grid-cols-3 gap-3 text-center">
                   <MiniStat k="P. adjudicación" v={eur(res.puja.p_adj_esperado)} />
                   <MiniStat k="Ratio segmento" v={pct(res.puja.ratio_base, 0)} />
-                  <MiniStat k="RVC" v={`${res.puja.rvc.toFixed(2)} (${res.puja.banda_rvc})`} />
+                  <MiniStat k="RVC" v={`${num(res.puja.rvc, 2)} (${res.puja.banda_rvc})`} />
                 </div>
                 <ul className="space-y-1.5 text-sm text-slate-700">
                   {res.puja.plan.map((p, i) => <li key={i} className="flex gap-2"><span className="text-primario">▸</span><span><TextoFormulas texto={p} /></span></li>)}

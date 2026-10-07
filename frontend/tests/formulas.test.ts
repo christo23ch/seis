@@ -63,3 +63,18 @@ describe("informe real del caso §19", () => {
     expect(visibles.filter((t) => /[\p{L}\p{N}]_[\p{L}\p{N}]/u.test(t))).toEqual([]);
   });
 });
+
+describe("correcciones de la revisión de código (5K): sin falsos positivos", () => {
+  it.each([
+    "adjunto nota_simple_2024.pdf",
+    "escribir a juan_perez@ejemplo.es",
+    "ver https://ejemplo.es/foo_bar/baz",
+    String.raw`ruta C:\datos\foo_bar`,
+  ])("«%s» no se toca", (t) => {
+    expect(textoLegible(t)).toBe(t);
+  });
+
+  it("al final de una frase sí se traduce", () => {
+    expect(textoLegible("dominancia: una_alta.")).toBe("dominancia: una dimensión alta.");
+  });
+});
