@@ -199,25 +199,38 @@ export function EscenariosPanel({ r }: { r: Resultado["rentabilidad"] }) {
   );
 }
 
-export function IcoDesglose({ d }: { d: Decision }) {
+/** Fase 5K-E: los pesos (máximo de cada componente) vienen del catálogo, de los
+ * parámetros que produjeron este resultado (`lib/ico.ts`). Sin ellos, no se supone
+ * ninguno: se muestran los puntos sin barra ni máximo. */
+export function IcoDesglose({ d, pesos }: { d: Decision; pesos: Record<string, number> | null }) {
   const entradas = Object.entries(d.ico_desglose);
-  const pesos: Record<string, number> = { rentabilidad: 25, juridico: 15, ubicacion: 15, liquidez: 12, revalorizacion: 10, financiero: 8, informacion: 8, urbanistico: 7 };
   return (
     <Card>
       <CardHeader><CardTitle>ICO {d.ico} / 100 — desglose</CardTitle></CardHeader>
       <CardContent className="space-y-2">
         {entradas.map(([k, v]) => {
-          const max = pesos[k] ?? 15;
+          const max = pesos?.[k];
           return (
-            <div key={k} className="flex items-center gap-3 text-[12.5px]">
+            <div key={k} data-componente-ico={k} className="flex items-center gap-3 text-[12.5px]">
               <span className="w-28 shrink-0 text-slate-600">{humanizar(k)}</span>
-              <div className="h-2 flex-1 rounded bg-slate-100">
-                <div className="h-2 rounded bg-primario" style={{ width: `${Math.min(100, (v / max) * 100)}%` }} />
-              </div>
-              <span className="cifra w-16 text-right text-slate-500">{v.toFixed(1)} / {max}</span>
+              {max != null && max > 0 ? (
+                <div className="h-2 flex-1 rounded bg-slate-100" role="meter" aria-label={humanizar(k)}
+                  aria-valuemin={0} aria-valuemax={max} aria-valuenow={v}>
+                  <div className="h-2 rounded bg-primario" style={{ width: `${Math.min(100, (v / max) * 100)}%` }} />
+                </div>
+              ) : <span className="flex-1" />}
+              <span className="cifra w-16 text-right text-slate-500">
+                {v.toFixed(1).replace(".", ",")}{max != null ? ` / ${max}` : ""}
+              </span>
             </div>
           );
         })}
+        {!pesos && (
+          <p className="text-[12px] text-slate-500">
+            Pesos no disponibles para este resultado (análisis anterior al registro de parámetros): se muestran
+            los puntos de cada componente sin su máximo.
+          </p>
+        )}
       </CardContent>
     </Card>
   );

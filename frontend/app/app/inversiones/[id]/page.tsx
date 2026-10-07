@@ -18,11 +18,14 @@ import { DatosEntrada } from "@/components/datos-entrada";
 import { TextoFormulas } from "@/components/texto-formulas";
 import { VerCalculo } from "@/components/ver-calculo";
 import { calculoCf, calculoCv, calculoReforma, calculoValoracion } from "@/lib/calculos";
+import { usePesosIco } from "@/lib/ico";
 import { Card, CardContent, CardHeader, CardTitle, ErrorBox, Spinner, TabPanel, Tabs, TabsLista } from "@/components/ui";
 
 export default function DetalleInversion() {
   const { id } = useParams<{ id: string }>();
   const { data, isLoading, error } = useQuery({ queryKey: ["detalle", id], queryFn: () => api.detalle(id) });
+  // Fase 5K-E: pesos del ICO de los parámetros que produjeron el resultado mostrado.
+  const pesosIco = usePesosIco(id, data?.simulacion_validada_id);
 
   if (isLoading) return <Spinner />;
   if (error || !data) return <ErrorBox mensaje={(error as Error)?.message ?? "No encontrado"} />;
@@ -73,7 +76,7 @@ export default function DetalleInversion() {
             <CondicionesVetos d={d} />
             <div className="grid gap-4 xl:grid-cols-2">
               <EscenariosPanel r={res.rentabilidad} />
-              <IcoDesglose d={d} />
+              <IcoDesglose d={d} pesos={pesosIco} />
             </div>
             <div className="grid gap-4 xl:grid-cols-3">
               <Card>
