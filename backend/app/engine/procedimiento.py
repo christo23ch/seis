@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from app.engine.contracts import DatoLegal, ProcedimientoResultado
+from app.engine.contracts import AvisoAprobacion, DatoLegal, EscaleraPrecios, ProcedimientoResultado
 from app.engine.formato import decimal, eur, pct
 
 if TYPE_CHECKING:
@@ -350,3 +350,98 @@ def texto_deposito(r: ProcedimientoResultado) -> str:
         texto += ("; supuesto desfavorable: no consta cuándo se inició el procedimiento judicial "
                   "(si fue antes del 3-4-2025, es menor)")
     return texto
+
+
+# ─────────────── Fase 5J-3 (ADR-0027): la franja del letrado ───────────────
+
+# Procedimientos en los que, por debajo de la aprobación segura, la aprobación del remate deja
+# de ser automática y acaba en manos del letrado de la Administración de Justicia (LEC 670.3).
+AUTORIDAD = {"judicial": "el letrado de la Administración de Justicia"}
+_DATOS_FRANJA = ("Aprobación segura", "Aprobación sin depender de la autoridad",
+                 "Aprobación si la puja cubre la deuda",
+                 "Vivienda habitual del ejecutado: umbral", "Vivienda habitual del ejecutado: suelo absoluto")
+
+
+def aviso_aprobacion(r: ProcedimientoResultado, escalera: EscaleraPrecios) -> AvisoAprobacion | None:
+    """Aviso si la puja máxima recomendada (P_max) cae por debajo de la aprobación segura del
+    remate en un procedimiento judicial. Puro y determinista (P1). No cambia ningún número.
+
+    Franjas (LEC 670, investigación §2.5):
+    - `sujeta_a_mejora`: entre la puja mínima aprobable y la segura. El ejecutado puede presentar
+      un tercero que mejore la postura; si nadie la mejora, se aprueba.
+    - `discrecional`: por debajo de la mínima aprobable. Si nadie la mejora, decide el letrado.
+    - `bajo_suelo`: por debajo del suelo de la vivienda habitual del ejecutado (60 %), que la ley
+      no aprueba en ningún caso. Si no consta si es vivienda habitual, se asume que sí (P4).
+    """
+    autoridad = AUTORIDAD.get(r.procedimiento)
+    if autoridad is None or escalera.degenerada or r.puja_aprobacion_segura is None:
+        return None
+    p_max, vt = escalera.p_max, r.valor_subasta
+    if p_max >= r.puja_aprobacion_segura or vt <= 0:
+        return None
+    if r.suelo_absoluto is not None and p_max < r.suelo_absoluto:
+        franja = "bajo_suelo"
+    elif r.puja_minima_aprobable is not None and p_max < r.puja_minima_aprobable:
+        franja = "discrecional"
+    else:
+        franja = "sujeta_a_mejora"
+    maximo = f"La puja máxima recomendada ({eur(p_max)}, {pct(p_max / vt, 1)} del valor de subasta)"
+    segura = f"{eur(r.puja_aprobacion_segura)}, {pct(r.umbral_aprobacion_segura_pct or 0.0, 0)}"
+    if franja == "sujeta_a_mejora":
+        titulo = "Aprobación del remate sujeta a mejora"
+        ejecutante = (", y el ejecutante pedir la adjudicación (régimen anterior a la LO 1/2025)"
+                      if r.regimen == "judicial_lec_2015" else "")
+        riesgo = (f"{maximo} no alcanza la aprobación segura ({segura}). Tras el cierre, el ejecutado "
+                  f"puede presentar un tercero que mejore la postura{ejecutante}; si nadie la mejora, el "
+                  f"remate se aprueba. Riesgo: perder la adjudicación después de haber ganado la subasta.")
+        condicion = (f"Aprobación del remate sujeta a mejora: la puja máxima ({eur(p_max)}) no alcanza la "
+                     f"aprobación segura ({segura}); asumir por escrito el riesgo de que un tercero la mejore")
+    elif franja == "discrecional":
+        minima = f"{eur(r.puja_minima_aprobable or 0.0)}, {pct(r.umbral_aprobacion_pct or 0.0, 0)}"
+        titulo = "Aprobación del remate a decisión del letrado"
+        riesgo = (f"{maximo} queda por debajo de la puja mínima aprobable ({minima}). Si nadie mejora la "
+                  f"postura, la aprobación del remate la decide {autoridad}, oídas las partes, y puede "
+                  f"denegarla. Riesgo: no obtener el remate aunque se gane la subasta.")
+        condicion = (f"Aprobación del remate a decisión del letrado: la puja máxima ({eur(p_max)}) queda por "
+                     f"debajo de la mínima aprobable ({minima}); asumir por escrito el riesgo de denegación")
+    else:
+        suelo = f"{eur(r.suelo_absoluto or 0.0)}, {pct(r.suelo_absoluto_pct or 0.0, 0)}"
+        titulo = "Remate no aprobable si es la vivienda habitual del ejecutado"
+        riesgo = (f"{maximo} queda por debajo del suelo de la vivienda habitual del ejecutado ({suelo}): "
+                  f"la ley no aprueba el remate por debajo de esa cifra, ni siquiera si cubre la deuda. "
+                  f"Riesgo: ganar la subasta sin poder obtener el remate.")
+        if r.vivienda_habitual_asumida:
+            riesgo += (" No consta si es la vivienda habitual: se asume que sí, por prudencia; si no lo "
+                       "es, el suelo no se aplica y la aprobación quedaría a decisión del letrado.")
+        condicion = (f"Remate no aprobable si es la vivienda habitual del ejecutado: la puja máxima "
+                     f"({eur(p_max)}) queda por debajo del suelo legal ({suelo}); confirmar en el edicto "
+                     f"si lo es y asumir por escrito el riesgo")
+    if r.regimen_asumido:
+        riesgo += (" No consta cuándo se inició el procedimiento: se aplican los umbrales del régimen "
+                   "de la LO 1/2025.")
+    vivienda = r.vivienda_habitual == "si" or r.vivienda_habitual_asumida
+    datos = [d for d in r.datos_legales if d.dato in _DATOS_FRANJA
+             and (vivienda or not d.dato.startswith("Vivienda"))
+             and (r.cantidad_reclamada is not None or d.dato != "Aprobación si la puja cubre la deuda")]
+    return AvisoAprobacion(
+        franja=franja, techo_naranja=franja != "sujeta_a_mejora", p_max=p_max, p_max_pct=round(p_max / vt, 4),
+        puja_aprobacion_segura=r.puja_aprobacion_segura,
+        umbral_aprobacion_segura_pct=r.umbral_aprobacion_segura_pct or 0.0,
+        puja_minima_aprobable=r.puja_minima_aprobable, umbral_aprobacion_pct=r.umbral_aprobacion_pct,
+        suelo_absoluto=r.suelo_absoluto, suelo_absoluto_pct=r.suelo_absoluto_pct,
+        vivienda_habitual_asumida=r.vivienda_habitual_asumida, regimen_asumido=r.regimen_asumido,
+        titulo=titulo, riesgo=riesgo, condicion=condicion, datos_legales=datos)
+
+
+def bloque_aviso_aprobacion(a: AvisoAprobacion) -> str:
+    """Bloque destacado del §1 del informe. Solo párrafos con negrita y cursiva: el
+    renderizador de la interfaz y el PDF no admiten citas (`>`)."""
+    semaforo = ("El semáforo queda como máximo en naranja. " if a.techo_naranja
+                else "No limita el semáforo: es una condición. ")
+    umbrales = "; ".join(
+        f"{d.dato.lower()}{f' ({pct(d.valor, 0)})' if d.valor is not None else ''}: {d.articulo} "
+        f"({'confirmado' if d.estado == 'confirmado' else 'sin confirmar'})" for d in a.datos_legales)
+    return (f"**Atención: {a.titulo.lower()}.** {a.riesgo}\n\n"
+            f"**Umbrales aplicados:** {umbrales or 'no constan'}.\n\n"
+            f"_{semaforo}Los precios, el RVC y la rentabilidad no cambian. "
+            f"Cálculo orientativo, no asesoramiento jurídico._")

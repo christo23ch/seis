@@ -450,6 +450,29 @@ class DatoLegal(BaseModel):
     texto: str | None = None
 
 
+class AvisoAprobacion(BaseModel):
+    """Fase 5J-3 (ADR-0027): la puja máxima recomendada cae por debajo de la aprobación segura
+    del remate y su aprobación ya no es automática. Informativo: no cambia ningún número; añade
+    una condición y, solo en las franjas «discrecional» y «bajo_suelo», un techo naranja al
+    semáforo (nunca un veto)."""
+    franja: Literal["sujeta_a_mejora", "discrecional", "bajo_suelo"]
+    techo_naranja: bool = False                       # decisión del responsable: no en «sujeta_a_mejora»
+    p_max: float
+    p_max_pct: float                                  # sobre el valor de subasta
+    puja_aprobacion_segura: float
+    umbral_aprobacion_segura_pct: float
+    puja_minima_aprobable: float | None = None
+    umbral_aprobacion_pct: float | None = None
+    suelo_absoluto: float | None = None
+    suelo_absoluto_pct: float | None = None
+    vivienda_habitual_asumida: bool = False
+    regimen_asumido: bool = False
+    titulo: str
+    riesgo: str
+    condicion: str
+    datos_legales: list[DatoLegal] = []               # los umbrales aplicados, con su estado
+
+
 class ProcedimientoResultado(BaseModel):
     """Fase 5J-1 (ADR-0022): datos del procedimiento de subasta. INFORMATIVO: no
     alimenta la escalera, el RVC, el semáforo ni la rentabilidad. Los importes
@@ -486,6 +509,8 @@ class ProcedimientoResultado(BaseModel):
     datos_legales: list[DatoLegal]
     avisos: list[str]
     aviso_orientativo: str
+    # Fase 5J-3 (ADR-0027): solo si la puja máxima no alcanza la aprobación segura.
+    aviso_aprobacion: AvisoAprobacion | None = None
 
 
 class ChecklistItem(BaseModel):

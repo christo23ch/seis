@@ -67,6 +67,19 @@ def _tacticas(escalera: EscaleraPrecios, forma: str | None, regimen_asumido: boo
     ]
 
 
+def _cesion_remate(procedimiento: ProcedimientoResultado | None) -> str:
+    """Fase 5J-3: con la LO 1/2025 ceden el remate el ejecutante y los acreedores posteriores
+    (LEC 647.3); antes, solo el ejecutante."""
+    final = "un postor que no sea uno de ellos no puede cederlo: la estructura compradora final debe pujar directamente"
+    if procedimiento is not None and procedimiento.regimen == "judicial_lec_2015":
+        return f"Cesión de remate solo disponible para el ejecutante (LEC, art. 647, apdo. 3, redacción de 2015): {final}"
+    texto = ("Cesión de remate solo disponible para el ejecutante y los acreedores posteriores "
+             f"(LEC, art. 647, apdo. 3, LO 1/2025): {final}")
+    if procedimiento is not None and procedimiento.regimen_asumido:
+        texto += "; si el procedimiento se inició antes del 3-4-2025, solo el ejecutante"
+    return texto
+
+
 def ejecutar(inp: AnalisisInput, params, hechos: dict, escalera: EscaleraPrecios,
              vm: float, procedimiento: ProcedimientoResultado | None = None) -> PujaResultado:
     vt = inp.subasta.valor_subasta
@@ -134,7 +147,7 @@ def ejecutar(inp: AnalisisInput, params, hechos: dict, escalera: EscaleraPrecios
         "Cargas descubiertas entre puja y pago: mitigación con nota simple ≤ 5 días antes del cierre",
     ]
     if inp.subasta.fuente == "judicial_boe":
-        riesgo_ejecucion.append("Cesión de remate solo disponible para el ejecutante: la estructura compradora final debe pujar directamente")
+        riesgo_ejecucion.append(_cesion_remate(procedimiento))
 
     hechos.update({"rvc": round(rvc, 3), "p_adj_esperado": round(p_adj, 2), "p_max": escalera.p_max})
     return PujaResultado(p_adj_esperado=round(p_adj, 2), ratio_base=round(ratio, 3),

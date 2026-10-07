@@ -18,7 +18,7 @@ from app.engine.formato import pct as _pct
 # Fase 5J-2a: el informe nombra los códigos y símbolos del motor con su texto legible.
 from app.engine.textos import etiqueta as _et
 from app.engine.textos import legible as _leg
-from app.engine.procedimiento import texto_deposito
+from app.engine.procedimiento import bloque_aviso_aprobacion, texto_deposito
 
 
 def _meses(x: float) -> str:
@@ -140,6 +140,12 @@ def construir_checklist(inp: AnalisisInput, dec: DecisionFinal, hechos: dict, *,
     add("F. Ejecución", "Calendario de cierre con extensiones entendido; responsable de puja designado", False, "pendiente")
     add("F. Ejecución", "Regla de retirada acordada (qué información nueva aborta la puja)", False, "pendiente")
     add("F. Ejecución", "Post-adjudicación: lista de primeras 72 h preparada", False, "pendiente")
+    # Fase 5J-3 (ADR-0027): la aprobación del remate no es automática. Tras los de §13 y antes
+    # del de la 5I-D, que sigue siendo el último: no desplaza ninguna numeración anterior.
+    aviso = procedimiento.aviso_aprobacion if procedimiento is not None else None
+    if aviso is not None:
+        add("F. Ejecución", "Riesgo de aprobación del remate asumido por escrito", aviso.techo_naranja,
+            "pendiente", aviso.condicion)
     # Fase 5I-D (ADR-0020): estado de conservación «No consta». AL FINAL para no
     # desplazar la numeración de §13. No bloqueante: en subasta judicial la visita
     # interior casi nunca es posible, y el presupuesto ya usa el estado prudente.
@@ -252,12 +258,16 @@ def construir_informe(inp: AnalisisInput, res_parciales: dict, dec: DecisionFina
         + ", hasta beneficio cero por tenencia y coste de capital."
         if colchon is not None else "")
 
+    # Fase 5J-3 (ADR-0027): la franja del letrado, destacada bajo el semáforo.
+    aviso = procedimiento.aviso_aprobacion if procedimiento is not None else None
+    bloque_aviso = f"\n{bloque_aviso_aprobacion(aviso)}\n" if aviso is not None else ""
+
     return f"""# Informe de análisis SEIS
 
 ## 1 · Página de decisión
 
 # {_SEM_ICONO[dec.semaforo]}
-
+{bloque_aviso}
 | Métrica | Valor |
 |---|---|
 | **ICO** (calidad de la oportunidad) | **{dec.ico} / 100** |

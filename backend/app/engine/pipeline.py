@@ -110,10 +110,17 @@ def ejecutar_analisis(inp: AnalisisInput, params: Parametros | None = None,
     ms_valor = m12_decision.margen_seguridad(p_eval, costes, costes.c_f_p50, valoracion.vs)
     ico, ico_desglose = m12_decision.calcular_ico(inp, params, ra_res, rentabilidad, icu,
                                                   ici.ici, escalera, costes.plazo_meses_p50)
+    # Fase 5J-3 (ADR-0027): franja del letrado. Solo condición y techo naranja; ningún número cambia.
+    aviso = procedimiento.aviso_aprobacion(datos_procedimiento, escalera)
+    if aviso is not None:
+        datos_procedimiento = datos_procedimiento.model_copy(update={"aviso_aprobacion": aviso})
+        condiciones.append(aviso.condicion)
     semaforo, razones = m12_decision.decidir_semaforo(
         params, ico, ra_res, rentabilidad, ms_valor, puja.rvc, ici.ici,
         ici.techo_semaforo, escalera, vetos, techos, inp,
-        metodo_valoracion=valoracion.metodo)
+        metodo_valoracion=valoracion.metodo, aviso_aprobacion=aviso)
+    if aviso is not None and aviso.techo_naranja:
+        techos = techos + ["naranja"]
 
     decision = DecisionFinal(
         semaforo=semaforo, ico=ico, ico_desglose=ico_desglose, ra=ra_res.ra, ici=ici.ici,
