@@ -27,8 +27,9 @@ _SECCION = re.compile(r"§\d+(?:\.\d+)*")
 _VERSION = re.compile(r"(?<!\d)v?\d{4}\.\d{2}(?:\+\d+ov)?(?!\d)")   # «v2026.07», «2026.07+1ov»
 _DECIMAL_CON_PUNTO = re.compile(r"\d\.\d")
 # Única cifra con «%» pegado que queda: el texto de la regla SEM-EJEC-01 del
-# catálogo T2 («depósito del 5%»). Es una regla versionada, no texto de un
-# módulo; se anota como deuda en vez de tocar la regla (ESTADO_ACTUAL §4).
+# catálogo T2 («depósito del 5%»). Era una regla versionada, no texto de un
+# módulo, y se anotó como deuda. La 5J-2b la corrigió (SEM-EJEC-01 2026.10, ADR-0024):
+# el depósito depende del régimen y el texto ya escribe «20 %» y «5 %» con espacio.
 _PORCENTAJE_DE_REGLA = "depósito del 5%"
 
 
@@ -38,7 +39,7 @@ def _decimales_con_punto(texto: str) -> list[str]:
 
 
 def _porcentajes_sin_espacio(texto: str) -> list[str]:
-    return re.findall(r".{0,15}\d%", texto.replace(_PORCENTAJE_DE_REGLA, ""))
+    return re.findall(r".{0,15}\d%", texto)
 
 
 # ─────────────────────────── formato.py ───────────────────────────
@@ -126,10 +127,10 @@ def test_las_razones_de_m12_con_cifras_salen_en_formato_espanol(casos):
     verde = casos["verde"].decision.razones[0]
     assert re.search(r"MS \d+ %; RVC \d+,\d{2}$", verde), verde
     assert casos["no_alcanza_naranja"].decision.razones == [
-        "No alcanza Naranja: ICO insuficiente (ICO 64, RVC 1,08)"]
+        "No alcanza Naranja: ICO insuficiente (ICO 64, RVC 1,06)"]     # 1,08 antes de la 5J-2b
 
 
-def test_la_deuda_de_la_regla_sigue_localizada(casos):
-    """El único «%» pegado que queda viene de la regla SEM-EJEC-01 (T2): si
-    alguien la corrige, este test avisa de que la excepción ya sobra."""
-    assert _PORCENTAJE_DE_REGLA in casos["dorado"].informe_markdown
+def test_la_deuda_de_la_regla_esta_saldada(casos):
+    """La regla SEM-EJEC-01 (T2) era el único «%» pegado; desde la 5J-2b no queda ninguno."""
+    assert _PORCENTAJE_DE_REGLA not in casos["dorado"].informe_markdown
+    assert _porcentajes_sin_espacio(casos["dorado"].informe_markdown) == []

@@ -446,6 +446,8 @@ class DatoLegal(BaseModel):
     articulo: str
     estado: Literal["confirmado", "sin_confirmar"]
     nota: str | None = None
+    # Fase 5J-2b: valor descriptivo de un dato que no es una cifra (la forma de puja).
+    texto: str | None = None
 
 
 class ProcedimientoResultado(BaseModel):
@@ -468,6 +470,13 @@ class ProcedimientoResultado(BaseModel):
     plazo_pago_dias: int | None
     plazo_pago_unidad: str | None              # naturales | habiles
     meses_inmovilizacion: float | None
+    # Fase 5J-2b (ADR-0026): meses que se suman al plazo de la operación. Si la norma no los da,
+    # los de `procedimiento.meses_inmovilizacion_si_no_consta` (asumidos = True, sin base legal);
+    # si no consta el régimen judicial, los del régimen judicial más largo.
+    meses_inmovilizacion_aplicados: float | None = None
+    meses_inmovilizacion_asumidos: bool | None = None
+    # Fase 5J-2b (ADR-0025): cómo se puja en este régimen; decide la táctica de M13.
+    forma_puja: str | None = None
     umbral_aprobacion_pct: float | None        # umbral aplicable a la puja mínima aprobable
     puja_minima_aprobable: float | None        # sin depender de la decisión de la autoridad
     umbral_aprobacion_segura_pct: float | None

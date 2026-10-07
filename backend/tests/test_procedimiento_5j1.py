@@ -4,8 +4,10 @@ Vigila tres cosas:
 1. Los importes que calcula `app/engine/procedimiento.py` con los parámetros T3, para
    cada procedimiento y supuesto (régimen «No sé», vivienda habitual «No consta»,
    cantidad reclamada, depósito mínimo, datos ausentes).
-2. Que es INFORMATIVO: cambiar cualquier dato del procedimiento no mueve ni una hoja
-   del resto del resultado (la guarda del §19 está en `test_invariante_5h1.py`).
+2. Que los UMBRALES son informativos: cambiar la cantidad reclamada o la vivienda habitual
+   no mueve ni una hoja del resto del resultado (la guarda del §19 está en
+   `test_invariante_5h1.py`). Desde la Fase 5J-2b el depósito, la forma de puja y los meses
+   de inmovilización SÍ entran en el cálculo; eso lo vigila `test_deposito_plazo_5j2b.py`.
 3. El texto del subapartado del informe: aviso orientativo, sin claves internas y en
    formato español.
 """
@@ -46,6 +48,8 @@ def test_caso19_aplica_el_regimen_desfavorable_y_lo_declara():
     assert r.deposito_pct == 0.20 and r.deposito_eur == 30400.0 == r.capital_para_pujar
     assert (r.plazo_pago_dias, r.plazo_pago_unidad) == (20, "naturales")
     assert r.meses_inmovilizacion == 1.8
+    # Fase 5J-2b: sin fecha de inicio, el plazo suma el del régimen más largo (2015: 2,5 meses).
+    assert r.meses_inmovilizacion_aplicados == 2.5 and not r.meses_inmovilizacion_asumidos
     assert any(a.startswith("No consta cuándo se inició el procedimiento judicial") for a in r.avisos)
     assert any("el depósito es del 5 % y el plazo de 40 días" in a for a in r.avisos)
 
@@ -191,7 +195,7 @@ def test_entrada_anterior_a_la_fase_usa_el_booleano():
     assert _calc(activo={"es_vivienda_habitual": False}).vivienda_habitual == "no_consta"
 
 
-# ─────────────────────────── informativo ───────────────────────────
+# ─────────────────── informativo: los umbrales de aprobación ───────────────────
 
 def _sin_procedimiento(r) -> dict:
     d = r.model_dump(mode="json")
@@ -200,11 +204,10 @@ def _sin_procedimiento(r) -> dict:
 
 
 @pytest.mark.parametrize("cambio", [
-    {"procedimiento": "aeat"}, {"procedimiento": "concursal"},
-    {"procedimiento": "judicial", "regimen_judicial": "anterior", "cantidad_reclamada": 30000.0},
-    {"procedimiento": "no_aplica"},
+    {"cantidad_reclamada": 30000.0}, {"cantidad_reclamada": 200000.0},
+    {"procedimiento": "judicial"},                 # el mismo que se deduce de la fuente
 ])
-def test_los_datos_del_procedimiento_no_mueven_nada_mas(cambio):
+def test_los_umbrales_del_procedimiento_no_mueven_nada_mas(cambio):
     base = _sin_procedimiento(ejecutar_analisis(entrada_caso_19()))
     otro = _sin_procedimiento(ejecutar_analisis(_entrada(**cambio)))
     assert otro == base
@@ -261,7 +264,8 @@ def test_el_informe_lleva_el_subapartado_al_final_del_8(informe):
     for fragmento in ("| Depósito exigido | 30.400 € (20 % del valor de subasta) |",
                       "| Capital necesario para pujar | 30.400 € |",
                       "| Pago del resto del precio | 20 días naturales |",
-                      "| Inmovilización estimada del depósito | 1,8 meses (plazo legal máximo) |",
+                      "| Inmovilización estimada del depósito | 2,5 meses (régimen judicial más "
+                      "largo: no consta la fecha de inicio) |",
                       "| Puja de aprobación segura | 106.400 € (70 % del valor de subasta) |",
                       "| Suelo absoluto | 91.200 € (60 % del valor de subasta) |",
                       "- Depósito para pujar: LEC, art. 669, apdo. 1 (LO 1/2025) (confirmado)"):
@@ -271,7 +275,11 @@ def test_el_informe_lleva_el_subapartado_al_final_del_8(informe):
 def test_el_informe_lleva_el_aviso_orientativo(informe):
     assert "_Cálculo orientativo con los parámetros legales de SEIS (versión 2026.07): no es " \
            "asesoramiento jurídico." in informe
-    assert "no modifican la escalera de precios, el RVC, el semáforo ni la rentabilidad._" in informe
+    # Fase 5J-2b: el aviso ya no dice que nada del procedimiento mueve las cifras.
+    assert ("Los umbrales de aprobación no modifican la escalera de precios, el RVC ni el semáforo; "
+            "el depósito exigido sí se usa en el plan de puja, y los meses de inmovilización, en el "
+            "plazo de la operación._") in informe
+    assert "ni la rentabilidad" not in informe
 
 
 def _seccion(informe: str) -> str:

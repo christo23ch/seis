@@ -239,8 +239,10 @@ Inicia sesión y pulsa **Nueva inversión**. Introduce exactamente esto (lo no m
 
 - Semáforo **🟡 AMARILLO** con condiciones · **ICO 64** (60–74) · **RA 40** (medio, dominancia *una_alta* por ocupación 4×3)
 - ICI ≈ 63 · ICU ≈ 66 · δ_v 6 % · VS prudente ≈ **176.700 €**
-- Escalera: ideal **≈ 51.300** · objetivo **≈ 60.000** · máximo **≈ 68.700** · límite **≈ 80.000 €** (la línea discontinua del P. adjudicación esperado, **63.840 €**, cruza entre objetivo y máximo)
-- ROI base **25 %** (≈ 23 % anualizado) · TIR ~26 % · Margen de seguridad **≈ 25 %** · RVC **1,08 (alcanzable)**
+- Escalera: ideal **≈ 50.750** · objetivo **≈ 59.450** · máximo **≈ 67.950** · límite **≈ 78.500 €** (la línea discontinua del P. adjudicación esperado, **63.840 €**, cruza entre objetivo y máximo)
+- Plazo **15,5 meses** (P50) / **21,7** (P80): 7 de ocupación + 3 de obra + 3 de comercialización + **2,5 de inmovilización** (Fase 5J-2b: no consta la fecha de inicio del procedimiento judicial ⇒ el régimen más largo)
+- ROI base **25 %** (≈ 19 % anualizado) · TIR **≈ 26 %** · Margen de seguridad **≈ 25 %** · RVC **1,06 (alcanzable)**
+- Plan de puja: **pujas secretas y cierre improrrogable** (decidir la cifra antes, sin tramos) y depósito **30.400 €** (20 %, supuesto desfavorable)
 - Condiciones: verificación posesoria in situ; certificado de comunidad
 - Checklist: bloqueantes pendientes de **nota simple ≤ 5 días** y **verificación posesoria**
 
@@ -291,8 +293,10 @@ Lo recorren las e2e `frontend/e2e/nueva-inversion.mjs` y `validacion-alta.mjs`, 
 
 ### Pruebas de los datos del procedimiento (Fase 5J-1, ADR-0022)
 
-Todo lo de esta sección es **informativo**: no cambia la escalera, el RVC, el semáforo ni la
-rentabilidad. Con el caso §19 (sección 6), los precios siguen siendo los mismos.
+Los umbrales de aprobación son **informativos**. Desde la Fase 5J-2b, el depósito exigido va al
+plan de puja, la forma de puja decide la táctica y los meses de inmovilización entran en el plazo
+de la operación (ADR-0024 a ADR-0026): cambiar el procedimiento o el régimen **sí** mueve la
+escalera y la rentabilidad.
 
 1. **Valores por defecto.** En el paso 1, «Tipo de procedimiento» viene en *Judicial* (el de la
    fuente) y «¿Cuándo se inició el procedimiento judicial?» en *No sé*. En el paso 2, «¿Es la
@@ -301,17 +305,26 @@ rentabilidad. Con el caso §19 (sección 6), los precios siguen siendo los mismo
    régimen y la cantidad reclamada. Si cambias el procedimiento a mano, ya no sigue a la fuente.
 3. **Caso §19 tal cual** (judicial, «No sé», «No consta», sin cantidad): el panel
    «Procedimiento y umbrales legales» del resultado (y de la pestaña *Estrategia de puja*) muestra
-   depósito **30.400 €** (20 %), pago en **20 días naturales**, inmovilización **1,8 meses**, puja
+   depósito **30.400 €** (20 %), pago en **20 días naturales**, inmovilización **2,5 meses** («régimen
+   judicial más largo: no consta la fecha de inicio»; con la LO 1/2025 serían 1,8), puja
    mínima aprobable y de aprobación segura **106.400 €** (70 %) y suelo absoluto **91.200 €** (60 %),
    con avisos de régimen supuesto, vivienda habitual supuesta y depósito del alta (5 %) distinto del
    legal. El informe (vista previa) lleva el mismo subapartado al final del §8 y el aviso «Cálculo
    orientativo…».
 4. **Régimen anterior con deuda.** Elige «Antes del 3-4-2025», cantidad reclamada «30.000» y vivienda
-   habitual «No»: depósito **7.600 €** (5 %), pago en **40 días**, puja mínima aprobable **30.000 €**,
-   sin suelo absoluto y sin avisos de supuestos.
+   habitual «No»: depósito **7.600 €** (5 %), pago en **40 días**, inmovilización **2,5 meses** («plazo
+   legal máximo»), puja mínima aprobable **30.000 €**, sin suelo absoluto y sin avisos de supuestos.
+   En *Estrategia de puja*, la táctica es la de pujas visibles con prórroga («Entrar tarde con
+   límites precargados…») y «Base legal aplicada» incluye «Forma de puja (pujas visibles; el cierre
+   se prorroga tras la última puja)».
 5. **Datos ausentes.** Con *Venta extrajudicial hipotecaria* el depósito y el capital para pujar dicen
-   «No consta» y hay un aviso; con *Concursal*, todos los importes. Nunca aparece un 0.
-6. **Validación.** «mucho» en la cantidad reclamada da «Introduzca un número»; «0», «Debe ser mayor
+   «No consta» y hay un aviso; con *Concursal*, todos los importes. Nunca aparece un 0. El plazo suma
+   2,5 meses con el aviso «estimación prudente, sin base legal», y el plan remite al edicto para el
+   depósito y la forma de puja.
+6. **Régimen y cifras (5J-2b).** Con el §19, cambia «¿Cuándo se inició…?» a *Después del 3-4-2025*:
+   la inmovilización baja a 1,8 meses, el plazo a 14,8 y los precios suben (P_max ≈ 68.160 €); la
+   táctica sigue siendo la de pujas secretas, sin la nota sobre el régimen anterior.
+7. **Validación.** «mucho» en la cantidad reclamada da «Introduzca un número»; «0», «Debe ser mayor
    que cero».
 
 Lo recorre la e2e `frontend/e2e/procedimiento.mjs`, que lanza `e2e/correr_simulaciones.sh`.
@@ -333,8 +346,8 @@ Solo cambia cómo se ve: ninguna cifra cambia. Con el caso §19 guardado, en su 
 4. **Resumen → «Ver cálculo»** en Costes, en la escalera, en Métricas de decisión, en Valoración y
    en Riesgos: fórmula, valores sustituidos y «Resultado del motor». Desde la 5J-2a, en un análisis
    nuevo también tienen cálculo P_ideal (margen 0,3375 en el §19), el escenario pesimista, P_límite
-   bruto, P_adj con sus ajustes, la TIR (flujos del mes 0 al 13), el VAN, el colchón (84,8 meses),
-   el plazo (7 + 3 + 3 meses) y el RA (máx(25,36, 40)). En un análisis guardado ANTES de la 5J-2a
+   bruto, P_adj con sus ajustes, la TIR (flujos del mes 0 al 16), el VAN, el colchón (84,8 meses),
+   el plazo (7 + 3 + 3 + 2,5 meses desde la 5J-2b) y el RA (máx(25,36, 40)). En un análisis guardado ANTES de la 5J-2a
    esos cálculos siguen diciendo «Cálculo no disponible aún» y qué dato falta: no se inventa.
 5. **Desglose del ICO**: «Rentabilidad 15,0 / 25»; el máximo sale del catálogo del análisis.
 6. **Parámetros**: «Árbol completo vigente» en secciones plegables (Procedimiento muestra

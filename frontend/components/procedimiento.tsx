@@ -3,8 +3,9 @@ import { etiquetaEstado, filasProcedimiento } from "@/lib/procedimiento";
 import type { ProcedimientoResultado } from "@/lib/types";
 import { Badge, Card, CardContent, CardHeader, CardTitle } from "./ui";
 
-/** Fase 5J-1 (ADR-0022): datos del procedimiento de subasta. Informativo: no altera
- * la escalera, el RVC, el semáforo ni la rentabilidad, y lo dice. Un resultado
+/** Fase 5J-1 (ADR-0022): datos del procedimiento de subasta. Los umbrales son
+ * informativos; desde la 5J-2b el depósito, la forma de puja y los meses de
+ * inmovilización entran en el cálculo, y el aviso del motor lo dice. Un resultado
  * anterior a la fase no trae el bloque: se explica en vez de inventarlo. */
 export function ProcedimientoPanel({ datos }: { datos: ProcedimientoResultado | null | undefined }) {
   return (
@@ -55,7 +56,7 @@ function Contenido({ datos }: { datos: ProcedimientoResultado }) {
           <ul className="mt-2 space-y-1.5">
             {datos.datos_legales.map((d) => (
               <li key={d.dato} className="flex flex-wrap items-baseline gap-x-2">
-                <span className="font-medium text-tinta">{d.dato}:</span>
+                <span className="font-medium text-tinta">{d.dato}{d.texto ? ` (${d.texto})` : ""}:</span>
                 <span className="text-slate-600">{d.articulo}</span>
                 <Badge tono={d.estado === "confirmado" ? "verde" : "amarillo"}>{etiquetaEstado(d.estado)}</Badge>
                 {d.nota && <span className="basis-full text-[12px] text-slate-500">{d.nota}</span>}

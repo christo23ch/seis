@@ -32,4 +32,4 @@ guardar('dos_tramos', ejecutar_analisis(e.model_copy(update={'costes': CostesInp
 "
 ```
 
-Generados el 2026-10-07 con el motor de la Fase 5J-2a.
+Generados el 2026-10-07 con el motor de la Fase 5J-2b.

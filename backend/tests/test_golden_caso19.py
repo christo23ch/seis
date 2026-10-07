@@ -100,28 +100,35 @@ def test_costes(resultado):
     # Doc: C_F(P50) ≈ 77.460 · C_F(P80) ≈ 86.800 · c_v = 6,4%
     assert resultado.costes.c_v == pytest.approx(0.064, abs=0.0005)
     assert resultado.costes.c_f_p50 == pytest.approx(77460, rel=0.02)
-    assert resultado.costes.c_f_p80 == pytest.approx(86800, rel=0.02)
-    assert resultado.costes.plazo_meses_p50 == pytest.approx(13, abs=0.5)
+    # P80: + 240 €/mes · 2,5 meses · 1,4 = 840 € de tenencia por la inmovilización (5J-2b).
+    assert resultado.costes.c_f_p80 == pytest.approx(86800 + 840, rel=0.02)
+    # Doc: 13 meses. La 5J-2b suma el cierre → pago del resto (ADR-0026): sin fecha de inicio
+    # del procedimiento judicial, 2,5 meses (el régimen más largo) ⇒ 15,5.
+    assert resultado.costes.plazo_desglose["inmovilizacion"] == 2.5
+    assert resultado.costes.plazo_meses_p50 == pytest.approx(13 + 2.5, abs=0.5)
     assert resultado.costes.contingencia_pct == pytest.approx(0.10, abs=0.001)
     assert resultado.costes.regimen_fiscal == "itp"
 
 
 def test_escalera_precios(resultado):
-    # Doc §19: ideal 51.100 · objetivo 60.100 · máx 69.100 · límite ~80–84 k
+    # Doc §19: ideal 51.100 · objetivo 60.100 · máx 69.100 · límite ~80–84 k. La 5J-2b alarga
+    # el plazo 2,5 meses (más tenencia y coste de capital): ideal 50.753 · objetivo 59.447 ·
+    # máx 67.941 · límite 78.529 (ADR-0026).
     p = resultado.decision.precios
-    assert p.p_ideal == pytest.approx(51100, abs=800)
-    assert p.p_objetivo == pytest.approx(60100, abs=800)
-    assert p.p_max == pytest.approx(69100, abs=900)
+    assert p.p_ideal == pytest.approx(50750, abs=800)
+    assert p.p_objetivo == pytest.approx(59450, abs=800)
+    assert p.p_max == pytest.approx(67950, abs=900)
     assert 78000 <= p.p_limite <= 84500
     assert p.p_ideal < p.p_objetivo < p.p_max < p.p_limite
     assert not p.degenerada
 
 
 def test_rentabilidad(resultado):
-    # Doc: ROI 25% base a P_objetivo · ROI anualizado ≈ 23% · pesimista positivo
+    # Doc: ROI 25% base a P_objetivo · ROI anualizado ≈ 23% · pesimista positivo. Con la 5J-2b
+    # el mismo ROI se reparte en 15,5 meses: anualizado ≈ 18,9 % (ADR-0026).
     r = resultado.rentabilidad
     assert r.roi == pytest.approx(0.25, abs=0.005)
-    assert r.roi_anualizado == pytest.approx(0.229, abs=0.015)
+    assert r.roi_anualizado == pytest.approx(0.189, abs=0.015)
     assert 0.15 <= r.tir_anual <= 0.35
     pes = next(e for e in r.escenarios if e.nombre == "pesimista")
     assert pes.beneficio > 0
