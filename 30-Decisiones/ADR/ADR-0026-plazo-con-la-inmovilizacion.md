@@ -47,7 +47,14 @@ calculaba esos meses por régimen, al plazo legal máximo, pero solo como dato i
    un motivo distinto del de esta fase. **El horizonte se redondea a par** (`round` de Python): con
    15,5 meses, `n = 16`; con 14,5, `n = 14`. En el §19 la TIR se calcula sobre 16 meses, no 15,5,
    y parte de su caída viene de ese medio mes. Cambiarlo a «medio hacia arriba» movería la TIR de
-   todas las operaciones con plazo fraccionario: **pendiente de decisión del responsable**.
+   todas las operaciones con plazo fraccionario. **Decisión del responsable (2026-10-08): no se
+   toca.** Queda como deuda vinculada al calendario real de la TIR (5H.2, auditoría E3), que
+   sustituirá el horizonte entero por los plazos de M06.
+7. **Deuda de diseño para la 5M:** la TIR con hipoteca sale idéntica a la TIR sin hipoteca (26,41 %
+   en el §19, igual que antes 33,87 % en los dos). M11 calcula la TIR sobre los flujos de la
+   operación sin apalancar: el mes 0 paga el precio entero con los intereses dentro de `c_v`, sin
+   entrada del préstamo ni amortización, y la escalera fija el mismo ROI objetivo en los dos casos.
+   La TIR no mide el efecto del apalancamiento. Comportamiento anterior a la fase.
 6. **Lo que queda fuera:** el coste de los depósitos de subastas perdidas (es de cartera).
 
 ## Cifras del caso §19 (tabla aprobada)

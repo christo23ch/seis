@@ -415,7 +415,8 @@ Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VER
 18. **Puntos de la auditoría que quedan para la 5H.2** (todos cambian el caso dorado o
     necesitan decisión): calendario de la TIR con los plazos reales de M06 (E3), nueva
     definición del precio límite (E2 b), coste del depósito (E5), perfil rentista según §9.2
-    (E4) y rentabilidad del ICO (E8). Estado punto a punto en
+    (E4) y rentabilidad del ICO (E8). El calendario real (E3) resolverá además el redondeo al
+    par del horizonte de la TIR que expuso la 5J-2b (ADR-0026). Estado punto a punto en
     `docs/AUDITORIA_MOTOR_ESPECIFICACION.md`.
 19. **Los intereses del préstamo se calculan a plazo P50 dentro de un precio límite estresado a
     P80** (`m06_costes.py:78`): −774 € de P_límite bruto en el caso con hipoteca si se usara P80.
@@ -577,6 +578,14 @@ Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VER
    investigación §2.8). Fuera del alcance de la fase; exige otra versión de la regla.
 2. **La TIR no tiene un tramo propio para la inmovilización** (ADR-0026, punto 5): el pago del
    resto sigue en el mes 0 y el tramo posesorio en el 45 % del horizonte. Aproximación aceptada.
+   **Y su horizonte se redondea al par** (`n = round(plazo_P50)`: `round(14,5) = 14`,
+   `round(15,5) = 16`), así que medio mes de plazo puede sumar o restar un mes entero a la TIR.
+   **Decisión del responsable (2026-10-08): no se toca.** Deuda vinculada al calendario real de la
+   TIR de la 5H.2 (auditoría E3, punto 18 de la lista de arriba).
+6. **Deuda de diseño para la 5M: la TIR con hipoteca sale idéntica a la TIR sin hipoteca** (26,41 %
+   en el §19). M11 la calcula sobre flujos sin apalancar (precio entero en el mes 0, intereses
+   dentro de `c_v`, sin entrada del préstamo ni amortización) y la escalera fija el mismo ROI
+   objetivo, así que no mide el apalancamiento (ADR-0026, punto 7). Anterior a la 5J-2b.
 3. **El §19 de la especificación** (`docs/SEIS_Especificacion_Funcional_y_Tecnica.md`) conserva el
    ejemplo con las cifras de la 5H.1-D y una nota que remite a las de la 5J-2b; la salida completa
    vigente es `docs/SEIS_informe_ejemplo_caso19.md`, regenerada en esta fase.
