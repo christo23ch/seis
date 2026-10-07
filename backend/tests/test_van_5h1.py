@@ -21,8 +21,9 @@ from tests.test_golden_caso19 import entrada_caso_19
 from tests.test_invariante_5h1 import con_hipoteca
 
 CC = "capital.coste_capital_anual"
-LINEA_CASO19 = ("VAN al coste de capital (1,5 %): 33.230 € · "
-                "TIR frente a coste de capital: +32,37 puntos")
+# Fase 5J-2b (ADR-0026): antes 33.230 € y +32,37 puntos; el plazo suma la inmovilización.
+LINEA_CASO19 = ("VAN al coste de capital (1,5 %): 32.721 € · "
+                "TIR frente a coste de capital: +24,91 puntos")
 
 
 def _con_cc(cc: float):
@@ -38,8 +39,8 @@ def dorado():
 
 def test_van_y_diferencial_del_caso_dorado(dorado):
     r = dorado.rentabilidad
-    assert r.van_coste_capital == 33230.42
-    assert r.diferencial_tir_coste_capital == 32.37      # puntos porcentuales
+    assert r.van_coste_capital == 32721.46
+    assert r.diferencial_tir_coste_capital == 24.91      # puntos porcentuales
 
 
 def test_con_coste_de_capital_cero_el_van_es_el_beneficio_base():
