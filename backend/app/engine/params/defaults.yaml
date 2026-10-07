@@ -232,9 +232,10 @@ adjudicacion:                      # M13 capa A (§11.1) — ratios s/VT por seg
                {min: 0.80, banda: improbable}, {min: 0.0, banda: inviable}]
 
 # ── Procedimientos de subasta (Fase 5J-1, ADR-0022) ──────────────────────────
-# Datos legales por procedimiento para los resultados INFORMATIVOS de
-# `app/engine/procedimiento.py`. Ningún módulo M01-M14 los lee: no mueven la
-# escalera, el RVC, el semáforo ni la rentabilidad.
+# Datos legales por procedimiento (`app/engine/procedimiento.py`). Los umbrales de
+# aprobación son INFORMATIVOS. Desde la Fase 5J-2b, tres datos SÍ entran en el cálculo:
+# el depósito (plan de puja, ADR-0024), la forma de puja (táctica de M13, ADR-0025) y los
+# meses de inmovilización (plazo de la operación en M06, ADR-0026).
 # Fuente: docs/INVESTIGACION_PROCEDIMIENTOS_SUBASTA.md (consulta del BOE de 2026-10-06).
 # Cada dato es {valor, articulo, estado[, nota]}:
 #   · estado: confirmado (literal del texto consolidado del BOE) | sin_confirmar.
@@ -253,6 +254,13 @@ procedimiento:
   # Fecha de efectos de la LO 1/2025 (DF 38.ª); solo se aplica a los procedimientos
   # incoados después (DT 9.ª.1). Se muestra en el formulario y en los avisos.
   fecha_lo_1_2025: "2025-04-03"
+  # Fase 5J-2b (ADR-0026): meses de cierre → pago del resto que se suman al plazo de la
+  # operación cuando la norma no los da (venta extrajudicial, concursal, venta no reglada).
+  # P4: el mayor de los plazos de la tabla, no el más favorable. No tiene base legal.
+  # Si el procedimiento es judicial y no consta su fecha de inicio, se suma el mayor de los
+  # dos regímenes judiciales (ADR-0026), igual que el depósito toma el mayor (ADR-0024).
+  meses_inmovilizacion_si_no_consta: {valor: 2.5, articulo: "Estimación prudente, sin base legal (el mayor de los plazos de la tabla)",
+                                      estado: sin_confirmar}
   regimenes:
     judicial_lec_2025:
       nombre: "Judicial (LEC tras la LO 1/2025, procedimientos iniciados desde el 3-4-2025)"
@@ -265,6 +273,9 @@ procedimiento:
       umbral_cubre_deuda_pct: {valor: 0.40, articulo: "LEC, art. 670, apdo. 3, párrafo 4", estado: confirmado}
       vivienda_habitual_umbral_pct: {valor: 0.70, articulo: "LEC, art. 670, apdo. 3, último párrafo", estado: confirmado}
       vivienda_habitual_suelo_pct: {valor: 0.60, articulo: "LEC, art. 670, apdo. 3, último párrafo", estado: confirmado}
+      forma_puja: {valor: secretas_sin_prorroga, articulo: "LEC, art. 648, regla 6.ª, y art. 649, apdo. 1 (redacción de la LO 1/2025)",
+                   estado: confirmado,
+                   nota: "Pujas secretas durante la subasta; plazo improrrogable de 20 días; solo cuenta la última puja de cada postor y, a igual importe, la anterior en el tiempo"}
       meses_inmovilizacion: {valor: 1.8, articulo: "LEC, arts. 649, 670 (apdos. 3 y 4)", estado: sin_confirmar,
                              nota: "Plazo legal máximo con mejora por tercero; incluye un plazo de notificación que la ley no fija"}
     judicial_lec_2015:
@@ -278,6 +289,9 @@ procedimiento:
       umbral_cubre_deuda_pct: {valor: 0.0, articulo: "LEC, art. 670, apdo. 4 (redacción de 2015)", estado: confirmado}
       vivienda_habitual_umbral_pct: {valor: 0.70, articulo: "LEC, art. 670 (redacción de 2015)", estado: confirmado}
       vivienda_habitual_suelo_pct: {valor: 0.60, articulo: "LEC, art. 670 (redacción de 2015)", estado: confirmado}
+      forma_puja: {valor: visibles_con_prorroga, articulo: "LEC, art. 648, regla 6.ª, y art. 649, apdo. 1 (redacción de 2015)",
+                   estado: confirmado,
+                   nota: "El portal publica la puja más alta; el cierre se prorroga 1 hora tras una puja que mejore la más alta, hasta 24 horas"}
       meses_inmovilizacion: {valor: 2.5, articulo: "LEC, arts. 649 y 670 (redacción de 2015)", estado: sin_confirmar,
                              nota: "Plazo legal máximo con el trámite de mejora; incluye notificaciones que la ley no fija"}
     aeat:
@@ -289,6 +303,8 @@ procedimiento:
                               nota: "Por debajo decide la Mesa, sin precio mínimo"}
       puja_minima_pct: {valor: 0.10, articulo: "RGR, art. 104, apdo. 3", estado: confirmado,
                         nota: "Salvo que las cargas igualen o superen el 25 % de la valoración"}
+      forma_puja: {valor: visibles_con_prorroga, articulo: "RGR, art. 104, apdos. 2 y 3", estado: confirmado,
+                   nota: "El portal publica cada puja; el cierre se prorroga 1 hora tras la última puja, hasta 24 horas"}
       meses_inmovilizacion: {valor: 1.7, articulo: "RGR, arts. 104 y 104 bis", estado: sin_confirmar,
                              nota: "Incluye el plazo de notificación de la adjudicación, que la norma no fija"}
     tgss:
@@ -301,6 +317,8 @@ procedimiento:
       umbral_aprobacion_pct: {valor: 0.60, articulo: "RGRSS, art. 120", estado: sin_confirmar,
                               estricto: true, nota: "Primera subasta: la postura debe superar el 60 %"}
       umbral_cubre_deuda_pct: {valor: 0.25, articulo: "RGRSS, art. 120", estado: sin_confirmar}
+      forma_puja: {valor: presencial, articulo: "RGRSS, art. 117, apdo. 1, letras c y f; arts. 118 y 120, apdo. 3", estado: confirmado,
+                   nota: "Sobre cerrado antes del acto y pujas a viva voz en él; no se ha comprobado si en la práctica se celebran ya en el Portal del BOE"}
       meses_inmovilizacion: {valor: 0.3, articulo: "RGRSS, art. 120", estado: sin_confirmar}
     notarial:
       nombre: "Subasta notarial (Ley del Notariado)"
@@ -308,6 +326,8 @@ procedimiento:
       plazo_pago_dias: {valor: 10, unidad: habiles, articulo: "Ley del Notariado, art. 75", estado: confirmado}
       umbral_aprobacion_segura_pct: {valor: null, articulo: "Ley del Notariado, art. 72, apdo. 2 (remite a la LEC)", estado: sin_confirmar}
       umbral_aprobacion_pct: {valor: null, articulo: "Ley del Notariado, art. 72, apdo. 2 (remite a la LEC)", estado: sin_confirmar}
+      forma_puja: {valor: visibles, articulo: "Ley del Notariado, art. 75, apdo. 1, regla 3.ª", estado: confirmado,
+                   nota: "El portal informa de la existencia y cuantía de las pujas; la norma no fija la prórroga del cierre (remite a la LEC)"}
       meses_inmovilizacion: {valor: 1.2, articulo: "Ley del Notariado, art. 75", estado: sin_confirmar,
                              nota: "20 días de subasta y 10 hábiles de pago, convertidos a meses de forma aproximada"}
     extrajudicial:
@@ -320,6 +340,8 @@ procedimiento:
                                nota: "El suelo del 40 % es de la LO 1/2025; no consta qué redacción aplica a cada venta"}
       vivienda_habitual_umbral_pct: {valor: 0.70, articulo: "LH, art. 129, apdo. 2, letras b y d", estado: confirmado}
       vivienda_habitual_suelo_pct: {valor: 0.60, articulo: "LH, art. 129, apdo. 2, letras b y d", estado: confirmado}
+      forma_puja: {valor: null, articulo: "LH, art. 129, apdo. 2, letra d (remite a la LEC)", estado: sin_confirmar,
+                   nota: "La norma remite a la LEC sin decir qué redacción aplica: puede ser con pujas secretas y sin prórroga"}
       meses_inmovilizacion: {valor: null, articulo: "Reglamento Hipotecario, art. 236 y siguientes", estado: sin_confirmar}
     concursal:
       nombre: "Concursal (Texto Refundido de la Ley Concursal)"
@@ -327,6 +349,8 @@ procedimiento:
       plazo_pago_dias: {valor: null, articulo: "TRLC, art. 423 (reglas de liquidación de cada concurso)", estado: sin_confirmar}
       umbral_aprobacion_segura_pct: {valor: null, articulo: "TRLC, art. 423", estado: sin_confirmar}
       umbral_aprobacion_pct: {valor: null, articulo: "TRLC, art. 423", estado: sin_confirmar}
+      forma_puja: {valor: null, articulo: "TRLC, art. 423, apdo. 2", estado: sin_confirmar,
+                   nota: "Portal del BOE u otro portal especializado: las reglas de puja dependen del portal elegido"}
       meses_inmovilizacion: {valor: null, articulo: "TRLC, art. 423", estado: sin_confirmar}
 
 scoring_expres:                    # Fase 12 — pesos del scoring exprés de captación (orientativo)

@@ -1,16 +1,25 @@
 """Fase 5H.1 — guarda invariante del motor.
 
 `datos/invariante_5h1.json` es la foto del resultado COMPLETO (salvo el Markdown del
-informe, que vigila `test_informe_coherencia.py`) del caso §19 y del §19 con hipoteca,
-tomada con el motor de `ea60803` ANTES de tocar nada en la 5H.1.
+informe, que vigila `test_informe_coherencia.py`) del caso §19 y del §19 con hipoteca.
 
-- Caso §19: no puede cambiar NI UNA hoja. Los campos que añade la 5H.1 (VAN, colchón…)
-  no están en la foto y no se comparan: añadir no es cambiar.
+- Caso §19: no puede cambiar NI UNA hoja. Los campos que se añadan después de la foto
+  no están en ella y no se comparan: añadir no es cambiar.
 - Caso con hipoteca: solo puede cambiar lo que lista `CAMBIOS_HIPOTECA`, y exactamente
   al valor indicado. Cualquier otra diferencia hace fallar el test.
 
 Nunca se regenera la foto para «arreglar» este test: si un cambio es legítimo, se añade
-a `CAMBIOS_HIPOTECA` con su justificación.
+a `CAMBIOS_HIPOTECA` con su justificación. La única excepción es una fase que cambia
+cifras por decisión expresa del responsable, con su tabla antes/después aprobada:
+
+- Tomada con el motor de `ea60803`, antes de la 5H.1.
+- **Regenerada en la Fase 5J-2b** (ADR-0024, ADR-0025, ADR-0026): el depósito sale del
+  régimen del procedimiento, la táctica de puja depende de la forma de puja y el plazo
+  suma la inmovilización entre el cierre y la posesión. Con la regeneración la foto
+  vigila también los campos añadidos desde la 5H.1 (176 hojas más por caso), y los
+  cambios previstos de la 5H.1 en el caso con hipoteca quedan dentro de ella.
+- **Regenerada en la Fase 5J-3** (ADR-0027): aviso de la franja del letrado (techo naranja en el
+  §19, ningún número cambia) y cesión de remate de SEM-EJEC-01 y M13. 13 hojas por caso.
 """
 from __future__ import annotations
 
@@ -25,17 +34,10 @@ from tests.test_golden_caso19 import entrada_caso_19
 
 FOTO = json.loads((Path(__file__).parent / "datos" / "invariante_5h1.json").read_text(encoding="utf-8"))
 
-# Ruta → valor nuevo. Cada entrada, con el bloque de la 5H.1 que la justifica.
-CAMBIOS_HIPOTECA: dict[str, object] = {
-    # 5H.1-B (D5, auditoría E1): el coste de capital deja de cobrarse a la parte financiada
-    # (0,7 · P_max). 3.659,05 − 2.603,76 = 1.055,29 €, y el límite sube 1.056 € al redondear.
-    "decision.precios.detalle.coste_capital": 2603.76,
-    "decision.precios.p_limite": 78156.0,
-    # 5H.1-B: los dos textos que citan el límite, y solo esa cifra.
-    "checklist[17].detalle": "Objetivo 57.812 € · Máx 66.266 € · Límite 78.156 €",
-    "puja.plan[0]": ("Cargar límites en la interfaz antes de abrir la puja: objetivo 57.812 € · "
-                     "máximo 66.266 € · límite absoluto 78.156 € (infranqueable por software)"),
-}
+# Ruta → valor nuevo. Cada entrada, con el bloque que la justifica. Vacío desde la
+# regeneración de la 5J-2b: los cambios de la 5H.1-B (coste de capital sobre el capital
+# propio, D5) ya están dentro de la foto.
+CAMBIOS_HIPOTECA: dict[str, object] = {}
 
 
 def con_hipoteca(entrada: AnalisisInput) -> AnalisisInput:
@@ -64,10 +66,13 @@ def _diferencias(foto: dict, entrada: AnalisisInput) -> dict[str, tuple[object, 
     return {r: (v, ahora.get(r, "<AUSENTE>")) for r, v in antes.items() if ahora.get(r, "<AUSENTE>") != v}
 
 
-def test_la_foto_es_la_de_antes_de_la_fase():
-    assert "ea60803" in FOTO["_origen"]
-    assert FOTO["caso19"]["decision"]["precios"]["p_limite"] == 80022.0
-    assert FOTO["hipoteca"]["decision"]["precios"]["p_limite"] == 77100.0
+def test_la_foto_es_la_de_la_5j3():
+    assert "5J-3" in FOTO["_origen"]
+    assert FOTO["caso19"]["decision"]["semaforo"] == "naranja"
+    assert FOTO["caso19"]["procedimiento"]["aviso_aprobacion"]["franja"] == "bajo_suelo"
+    assert FOTO["caso19"]["decision"]["precios"]["p_limite"] == 78529.0
+    assert FOTO["hipoteca"]["decision"]["precios"]["p_limite"] == 76499.0
+    assert FOTO["caso19"]["costes"]["plazo_desglose"]["inmovilizacion"] == 2.5
 
 
 def test_el_caso_dorado_no_cambia_ni_un_valor():

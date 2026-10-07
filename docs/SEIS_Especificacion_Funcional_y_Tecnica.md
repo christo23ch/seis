@@ -1120,7 +1120,7 @@ coste_capital  = cc · capital_propio · plazo_P80 / 12          # interés simp
 - En la decisión solo afecta al precio límite. ROI, ROI anualizado y TIR no lo incluyen; sí los
   indicadores informativos VAN_cc y Δ_cc (§7.7) y el colchón de plazo (§9.5). El perfil
   rentista tiene además su propio límite, P(y_suelo) (§9.2).
-- Sensibilidad medida en el §19 (ADR-0016): la escalera degenera a partir de cc = 6,13 %.
+- Sensibilidad medida en el §19 (ADR-0016): la escalera degenera a partir de cc = 5,14 % desde la Fase 5J-2b (6,13 % antes, con el plazo sin la inmovilización; ADR-0026).
 
 ## 9.2 Derivación (estrategia rentista)
 
@@ -1504,7 +1504,7 @@ Coste de capital (§9.1): 0,015 · I(P_max, C_F^P80) · 18,2/12 = 0,015 · 160.8
 
 **ICO (§8.5):** rentabilidad 15,0 + jurídico 5,6 + urbanístico 4,5 + financiero 8,0 + ubicación 9,9 + revalorización 5,8 + liquidez 10,6 + información 5,0 = **ICO 64**.
 
-**Semáforo:** ICO 64 ⇒ candidato Amarillo (banda 60–74); la regla de ocupación alta sin verificar impone techo Amarillo; pesimista ≥ 0 ✓; RVC ≥ 0,90 ✓; ICI ≥ 45 ✓ ⇒ **🟡 AMARILLO con condiciones** (literales, en el orden en que las da el motor):
+**Semáforo** (cifras de la 5H.1-D; desde la 5J-3 es **🟠 NARANJA**, ver el recuadro final): ICO 64 ⇒ candidato Amarillo (banda 60–74); la regla de ocupación alta sin verificar impone techo Amarillo; pesimista ≥ 0 ✓; RVC ≥ 0,90 ✓; ICI ≥ 45 ✓ ⇒ **🟡 AMARILLO con condiciones** (literales, en el orden en que las da el motor):
 (1) «Judicial: depósito del 5% y pago del remate en plazo legal sin condición suspensiva; cesión de remate solo por el ejecutante (§3.2)»,
 (2) «Solicitar certificado de deuda de la comunidad antes de la puja (deuda estimada al alza mientras tanto, P5)»,
 (3) «Verificar la situación posesoria in situ antes de pujar; dotar provisión de desalojo P80».
@@ -1519,6 +1519,31 @@ Coste de capital (§9.1): 0,015 · I(P_max, C_F^P80) · 18,2/12 = 0,015 · 160.8
 > - **ICI 62 → 63, ICU 68 → 66, comparables 8 (CV 9 %) → 7 (CV 5,3 %), ICO 70 → 64**: son los valores del caso de test, que es el que el motor ejecuta y la suite vigila.
 > - **Escenarios y VE** recalculados con esos costes: pesimista +10.100 → +9.278 €, optimista +61.900 → +53.000 €, VE 34.300 → 32.361 €; MS_valor 25 % → 24,8 %.
 > - **Nuevos desde la 5H.1:** VAN al coste de capital y diferencial (§7.7, ADR-0017) y colchón de plazo (§9.5, ADR-0019).
+
+> **Cifras vigentes desde la Fase 5J-2b** (ADR-0024, ADR-0025, ADR-0026). El ejemplo de arriba es el
+> de la 5H.1-D; la salida completa vigente es `docs/SEIS_informe_ejemplo_caso19.md`. Cambia lo que
+> depende del procedimiento, que en el §19 es judicial sin fecha de inicio conocida:
+>
+> - **Plazo 13 → 15,5 meses** (P80 18,2 → 21,7): se suman 2,5 meses de inmovilización entre el cierre
+>   y la posesión, los del régimen judicial más largo (con la LO 1/2025 serían 1,8). Tenencia P50
+>   3.120 → 3.720 €; C_F 77.544 / 87.708 → 78.144 / 88.548 €; coste de capital 3.659 → 4.363 €.
+> - **Escalera 51.317 / 60.011 / 68.731 / 80.022 → 50.753 / 59.447 / 67.941 / 78.529 €**; RVC 1,08 → 1,06
+>   (alcanzable); ROI 25 % (anualizado 22,9 → 18,9 %); TIR 33,9 → 26,4 %; VAN 33.230 → 32.721 €; VE
+>   32.361 → 32.301 €; colchón 84,8 meses (61,5 a P_max). Semáforo, ICO 64 y RA 40 sin cambio. La
+>   escalera degeneraría a partir de un coste de capital de 5,14 % (antes 6,13 %).
+> - **Depósito del plan de puja 7.600 € (5 %) → 30.400 € (20 %)**, el del régimen de la LO 1/2025, y la
+>   condición (1) pasa a «Judicial: depósito según el régimen del procedimiento (20 % con la LO 1/2025;
+>   5 % si se inició antes del 3-4-2025) y pago del remate…» (SEM-EJEC-01 2026.10).
+> - **Táctica de puja de pujas secretas y cierre improrrogable** (LEC 648.6.ª y 649.1): decidir la cifra
+>   antes de abrir la puja y pujarla directamente, en lugar de «entrar tarde» confiando en la prórroga.
+>
+> **Semáforo vigente desde la Fase 5J-3** (ADR-0027): **🟠 NARANJA**, no amarillo. Ningún número cambia.
+> La puja máxima (67.941 €, 44,7 % del valor de subasta) queda por debajo del suelo de la vivienda
+> habitual del ejecutado (91.200 €, 60 %, LEC 670.3), que se asume por no constar: la ley no aprobaría
+> el remate. El informe lo destaca bajo el semáforo, la decisión añade la condición «Remate no
+> aprobable si es la vivienda habitual del ejecutado…» y el checklist un bloqueante. La condición (1)
+> pasa a decir también que la cesión de remate es del ejecutante y, con la LO 1/2025, de los
+> acreedores posteriores (LEC 647.3; SEM-EJEC-01 2026.10.07).
 
 
 ---

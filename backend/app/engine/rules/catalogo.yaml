@@ -214,12 +214,14 @@ reglas:
     evidencias: [urbanistico.fuera_ordenacion, reforma.nivel]
 
   - codigo: SEM-EJEC-01
-    version: "2026.07"
+    # 5J-2b: depósito según el régimen (ADR-0024); 5J-3: cesión de remate (LEC 647.3). Con formato de
+    # fecha anterior a cualquier versión que cree la API desde entonces (`AAAA.MM.DD.n`), que ordena después.
+    version: "2026.10.07"
     categoria: puja
     prioridad: 50
     cuando:
       all:
         - {hecho: subasta.fuente, op: "==", valor: judicial_boe}
     efecto:
-      condicion: "Judicial: depósito del 5% y pago del remate en plazo legal sin condición suspensiva; cesión de remate solo por el ejecutante (§3.2)"
+      condicion: "Judicial: depósito según el régimen del procedimiento (20 % con la LO 1/2025; 5 % si se inició antes del 3-4-2025) y pago del remate en plazo legal sin condición suspensiva; cesión de remate solo por el ejecutante y, con la LO 1/2025, también por los acreedores posteriores (LEC, art. 647, apdo. 3) (§3.2)"
     evidencias: [subasta.fuente]

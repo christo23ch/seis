@@ -260,7 +260,8 @@ def decidir_semaforo(params, ico: int, ra_res: RAResultado, rent: RentabilidadRe
                      ms_valor: float, rvc: float, ici: int, ici_techo: str | None,
                      escalera: EscaleraPrecios, vetos: list[VetoOut], techos: list[str],
                      inp: AnalisisInput, *,
-                     metodo_valoracion: str = "comparables_ajustados") -> tuple[str, list[str]]:
+                     metodo_valoracion: str = "comparables_ajustados",
+                     aviso_aprobacion=None) -> tuple[str, list[str]]:
     razones: list[str] = []
     # Fase 2 (puente captación → análisis, corte de valoración): sin comparables,
     # M03 no tiene ancla de mercado independiente — VM=VS=VT degenerado,
@@ -312,6 +313,11 @@ def decidir_semaforo(params, ico: int, ra_res: RAResultado, rent: RentabilidadRe
     if ici_techo:
         techos = techos + [ici_techo]
         razones.append(f"ICI {ici} impone techo {ici_techo} (§6.2)")
+    # Fase 5J-3 (ADR-0027): a decisión del letrado o por debajo del suelo ⇒ techo naranja, nunca
+    # veto. Sujeta a mejora (entre la mínima aprobable y la segura): solo condición, sin techo.
+    if aviso_aprobacion is not None and aviso_aprobacion.techo_naranja:
+        techos = techos + ["naranja"]
+        razones.append(f"{aviso_aprobacion.titulo} ⇒ techo Naranja con condición")
     for t in techos:
         if _ORDEN_SEM[t] > _ORDEN_SEM[candidato]:
             razones.append(f"Techo aplicado: {t}")

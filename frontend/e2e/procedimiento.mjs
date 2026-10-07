@@ -120,11 +120,20 @@ try {
   comprobar((await fila(pagina, "deposito")).includes("7.600 €") && (await fila(pagina, "deposito")).includes("5 % del valor de subasta"),
     `depósito exigido del régimen anterior: 7.600 € (${await fila(pagina, "deposito")})`);
   comprobar((await fila(pagina, "plazo")).includes("40 días naturales"), `pago del resto en 40 días (${await fila(pagina, "plazo")})`);
+  // 5J-2b (ADR-0026): los meses que se suman al plazo de la operación, con su origen.
+  comprobar((await fila(pagina, "inmovilizacion")).includes("2,5 meses") && (await fila(pagina, "inmovilizacion")).includes("Plazo legal máximo"),
+    `inmovilización del régimen anterior: 2,5 meses, plazo legal máximo (${await fila(pagina, "inmovilizacion")})`);
   comprobar((await fila(pagina, "minima")).includes("30.000 €"),
     `con la deuda informada, la puja mínima aprobable es la deuda (${await fila(pagina, "minima")})`);
   comprobar((await fila(pagina, "suelo")).includes("No consta"), "sin vivienda habitual no hay suelo absoluto");
   comprobar(await pagina.locator("[data-aviso-orientativo]").innerText().then((t) => t.startsWith("Cálculo orientativo")),
     "se muestra el aviso de cálculo orientativo");
+  // 5J-3 (ADR-0027): con la deuda informada (30.000 €, 40 %) la puja máxima supera la mínima
+  // aprobable y no la segura (70 %): franja «sujeta a mejora», sin techo.
+  const aviso = pagina.locator('[data-aviso-aprobacion="sujeta_a_mejora"]');
+  comprobar(await aviso.count() === 1 && (await aviso.innerText()).includes("Aprobación del remate sujeta a mejora")
+            && (await aviso.innerText()).includes("No limita el semáforo"),
+    "el panel destaca el aviso de la franja «sujeta a mejora» (5J-3)");
 
   await pagina.getByRole("button", { name: "Guardar análisis" }).click();
   await pagina.waitForURL((u) => /\/app\/inversiones\/[0-9a-f-]{36}/.test(u.pathname), { timeout: 20000 });
@@ -133,6 +142,16 @@ try {
   await panel.waitFor({ timeout: 10000 }).catch(() => {});
   comprobar(await panel.count() === 1 && (await fila(pagina, "deposito")).includes("7.600 €"),
     "la pestaña «Estrategia de puja» del detalle muestra el mismo panel");
+  // 5J-2b: régimen anterior ⇒ pujas visibles con prórroga (ADR-0025) y su depósito legal (ADR-0024).
+  const estrategia = await pagina.locator("main").innerText();
+  comprobar(estrategia.includes("Entrar tarde con límites precargados") && estrategia.includes("Depósito requerido: 7.600 €"),
+    "el plan de puja usa la táctica y el depósito del régimen anterior");
+  const baseLegal = panel.locator("details", { hasText: "Base legal aplicada" });
+  await baseLegal.locator("summary").click();
+  const legal = await baseLegal.innerText();
+  comprobar(legal.includes("Forma de puja (pujas visibles; el cierre se prorroga tras la última puja):")
+            && legal.includes("LEC, art. 648, regla 6.ª, y art. 649, apdo. 1 (redacción de 2015)"),
+    "la base legal incluye la forma de puja con su artículo (5J-2b)");
 
   // Lo respondido llega a la entrada guardada y al resultado.
   const tok = (await (await fetch(`${BACKEND}/auth/login`, { method: "POST",

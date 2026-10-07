@@ -1,5 +1,5 @@
 {
- "_origen": "motor de ea60803, antes de la 5H.1; generado por un script de captura, no a mano",
+ "_origen": "motor de la Fase 5J-3 (rama fase/5j-3-avisos, sobre la 5J-2b); regenerada con aprobación expresa del responsable: aviso de la franja del letrado, techo naranja y cesión de remate (ADR-0027). Antes, la de la 5J-2b. Generado por un script de captura, no a mano",
  "caso19": {
   "checklist": [
    {
@@ -124,7 +124,7 @@
    },
    {
     "bloqueante": true,
-    "detalle": "7.600 €",
+    "detalle": "30.400 €",
     "estado": "pendiente",
     "grupo": "D. Económico",
     "orden": 16,
@@ -140,7 +140,7 @@
    },
    {
     "bloqueante": true,
-    "detalle": "Objetivo 60.011 € · Máx 68.731 € · Límite 80.022 €",
+    "detalle": "Objetivo 59.447 € · Máx 67.941 € · Límite 78.529 €",
     "estado": "ok",
     "grupo": "D. Económico",
     "orden": 18,
@@ -204,15 +204,15 @@
    },
    {
     "bloqueante": true,
-    "detalle": "Judicial: depósito del 5% y pago del remate en plazo legal sin condición suspensiva; cesión de remate solo por el ejecutante (§3.2); Solicitar certificado de deuda de la comunidad antes de la puja (deuda estimada al alza mientras tanto, P5); Verificar la situación posesoria in situ antes de pujar; dotar provisión de desalojo P80",
-    "estado": "ok",
+    "detalle": "Judicial: depósito según el régimen del procedimiento (20 % con la LO 1/2025; 5 % si se inició antes del 3-4-2025) y pago del remate en plazo legal sin condición suspensiva; cesión de remate solo por el ejecutante y, con la LO 1/2025, también por los acreedores posteriores (LEC, art. 647, apdo. 3) (§3.2); Remate no aprobable si es la vivienda habitual del ejecutado: la puja máxima (67.941 €) queda por debajo del suelo legal (91.200 €, 60 %); confirmar en el edicto si lo es y asumir por escrito el riesgo; Solicitar certificado de deuda de la comunidad antes de la puja (deuda estimada al alza mientras tanto, P5); Verificar la situación posesoria in situ antes de pujar; dotar provisión de desalojo P80",
+    "estado": "pendiente",
     "grupo": "F. Ejecución",
     "orden": 26,
     "texto": "Semáforo Verde/Amarillo, o Naranja con todas sus condiciones verificadas y firmadas"
    },
    {
     "bloqueante": true,
-    "detalle": "RVC = 1,08 · P adjudicación esperado 63.840 €",
+    "detalle": "RVC = 1,06 · P adjudicación esperado 63.840 €",
     "estado": "ok",
     "grupo": "F. Ejecución",
     "orden": 27,
@@ -241,13 +241,21 @@
     "grupo": "F. Ejecución",
     "orden": 30,
     "texto": "Post-adjudicación: lista de primeras 72 h preparada"
+   },
+   {
+    "bloqueante": true,
+    "detalle": "Remate no aprobable si es la vivienda habitual del ejecutado: la puja máxima (67.941 €) queda por debajo del suelo legal (91.200 €, 60 %); confirmar en el edicto si lo es y asumir por escrito el riesgo",
+    "estado": "pendiente",
+    "grupo": "F. Ejecución",
+    "orden": 31,
+    "texto": "Riesgo de aprobación del remate asumido por escrito"
    }
   ],
   "costes": {
    "base_fiscal_minima": 0.0,
    "base_fiscal_origen": "precio_pagado",
-   "c_f_p50": 77544.06,
-   "c_f_p80": 87707.76,
+   "c_f_p50": 78144.06,
+   "c_f_p80": 88547.76,
    "c_v": 0.064,
    "c_v_desglose": {
     "aranceles_variables": 0.004,
@@ -263,7 +271,7 @@
     "ocupacion_desalojo": 6500.0,
     "plusvalia_municipal": 0.0,
     "reforma": 50052.8,
-    "tenencia": 3120.0
+    "tenencia": 3720.0
    },
    "desglose_p80": {
     "adquisicion_fija": 2700.0,
@@ -274,18 +282,36 @@
     "ocupacion_desalojo": 9500.0,
     "plusvalia_municipal": 0.0,
     "reforma": 61064.42,
-    "tenencia": 4368.0
+    "tenencia": 5208.0
    },
-   "plazo_meses_p50": 13.0,
-   "plazo_meses_p80": 18.2,
+   "plazo_desglose": {
+    "comercializacion": 3.0,
+    "inmovilizacion": 2.5,
+    "multiplicador_p80": 1.4,
+    "obra": 3.0,
+    "ocupacion": 7.0
+   },
+   "plazo_meses_p50": 15.5,
+   "plazo_meses_p80": 21.7,
    "regimen_fiscal": "itp",
    "tenencia_mensual": 240.0,
    "tipo_base_minima": 0.0,
    "tipo_impositivo": 0.06
   },
   "decision": {
+   "colchon_detalle": {
+    "beneficio": 35348.772,
+    "coste_capital_mensual": 176.744585,
+    "coste_mensual": 416.74458500000003,
+    "intereses_mensuales": 0.0,
+    "inversion": 141395.668,
+    "tenencia_mensual": 240.0
+   },
+   "colchon_plazo_meses": 84.8,
+   "colchon_plazo_meses_p_max": 61.5,
    "condiciones": [
-    "Judicial: depósito del 5% y pago del remate en plazo legal sin condición suspensiva; cesión de remate solo por el ejecutante (§3.2)",
+    "Judicial: depósito según el régimen del procedimiento (20 % con la LO 1/2025; 5 % si se inició antes del 3-4-2025) y pago del remate en plazo legal sin condición suspensiva; cesión de remate solo por el ejecutante y, con la LO 1/2025, también por los acreedores posteriores (LEC, art. 647, apdo. 3) (§3.2)",
+    "Remate no aprobable si es la vivienda habitual del ejecutado: la puja máxima (67.941 €) queda por debajo del suelo legal (91.200 €, 60 %); confirmar en el edicto si lo es y asumir por escrito el riesgo",
     "Solicitar certificado de deuda de la comunidad antes de la puja (deuda estimada al alza mientras tanto, P5)",
     "Verificar la situación posesoria in situ antes de pujar; dotar provisión de desalojo P80"
    ],
@@ -307,28 +333,43 @@
    "precios": {
     "degenerada": false,
     "detalle": {
-     "coste_capital": 3659.05,
+     "capital_propio": 160837.44,
+     "coste_capital": 4362.72,
      "coste_capital_anual": 0.015,
      "delta_v_aplicado": 0.0,
+     "m_excepcional_ajustado": 0.3375,
      "m_minimo_ajustado": 0.17,
      "m_objetivo_ajustado": 0.25,
-     "p_por_margen_min": 69097.33,
-     "p_por_pesimista": 68730.9,
+     "p_limite_bruto": 82891.62,
+     "p_por_margen_min": 68533.42,
+     "p_por_pesimista": 67941.43,
+     "piso_pesimista": 0.0,
+     "stress_mercado": 0.09,
      "vs_pesimista": 160837.44
     },
-    "p_ideal": 51317.0,
-    "p_limite": 80022.0,
-    "p_max": 68731.0,
-    "p_objetivo": 60011.0
+    "p_ideal": 50753.0,
+    "p_limite": 78529.0,
+    "p_max": 67941.0,
+    "p_objetivo": 59447.0,
+    "tramos_fiscales": {
+     "p_ideal": "unico",
+     "p_limite": "unico",
+     "p_objetivo": "unico",
+     "p_por_margen_min": "unico",
+     "p_por_pesimista": "unico"
+    }
    },
    "ra": 40,
    "razones": [
-    "ICO 64 en banda 60–74 o límites de Verde no alcanzados"
+    "ICO 64 en banda 60–74 o límites de Verde no alcanzados",
+    "Remate no aprobable si es la vivienda habitual del ejecutado ⇒ techo Naranja con condición",
+    "Techo aplicado: naranja"
    ],
-   "rvc": 1.077,
-   "semaforo": "amarillo",
+   "rvc": 1.064,
+   "semaforo": "naranja",
    "techos_aplicados": [
-    "amarillo"
+    "amarillo",
+    "naranja"
    ],
    "version_parametros": "2026.07",
    "version_reglas": "2026.07",
@@ -359,6 +400,7 @@
    "efecto_delta_v_pp": 2.0,
    "ici": 63,
    "penalizaciones": [],
+   "penalizaciones_detalle": [],
    "techo_semaforo": null
   },
   "icu": {
@@ -388,24 +430,205 @@
    "tendencia_5a_pct": 3.0,
    "y_zona_pct": 5.5
   },
+  "procedimiento": {
+   "aviso_aprobacion": {
+    "alcance": "El semáforo queda como máximo en naranja.",
+    "condicion": "Remate no aprobable si es la vivienda habitual del ejecutado: la puja máxima (67.941 €) queda por debajo del suelo legal (91.200 €, 60 %); confirmar en el edicto si lo es y asumir por escrito el riesgo",
+    "datos_legales": [
+     {
+      "articulo": "LEC, art. 670, apdo. 1",
+      "dato": "Aprobación segura",
+      "estado": "confirmado",
+      "nota": null,
+      "texto": null,
+      "valor": 0.7
+     },
+     {
+      "articulo": "LEC, art. 670, apdo. 3, párrafo 4",
+      "dato": "Aprobación sin depender de la autoridad",
+      "estado": "confirmado",
+      "nota": null,
+      "texto": null,
+      "valor": 0.5
+     },
+     {
+      "articulo": "LEC, art. 670, apdo. 3, último párrafo",
+      "dato": "Vivienda habitual del ejecutado: umbral",
+      "estado": "confirmado",
+      "nota": null,
+      "texto": null,
+      "valor": 0.7
+     },
+     {
+      "articulo": "LEC, art. 670, apdo. 3, último párrafo",
+      "dato": "Vivienda habitual del ejecutado: suelo absoluto",
+      "estado": "confirmado",
+      "nota": null,
+      "texto": null,
+      "valor": 0.6
+     }
+    ],
+    "franja": "bajo_suelo",
+    "p_max": 67941.0,
+    "p_max_pct": 0.447,
+    "puja_aprobacion_segura": 106400.0,
+    "puja_minima_aprobable": 106400.0,
+    "regimen_asumido": true,
+    "riesgo": "La puja máxima recomendada (67.941 €, 44,7 % del valor de subasta) queda por debajo del suelo de la vivienda habitual del ejecutado (91.200 €, 60 %): la ley no aprueba el remate por debajo de esa cifra, ni siquiera si cubre la deuda. Riesgo: ganar la subasta sin poder obtener el remate. No consta si es la vivienda habitual: se asume que sí, por prudencia; si no lo es, el suelo no se aplica y la aprobación dependería de los umbrales generales. No consta cuándo se inició el procedimiento: se aplican los umbrales del régimen de la LO 1/2025.",
+    "suelo_absoluto": 91200.0,
+    "suelo_absoluto_pct": 0.6,
+    "techo_naranja": true,
+    "titulo": "Remate no aprobable si es la vivienda habitual del ejecutado",
+    "umbral_aprobacion_pct": 0.7,
+    "umbral_aprobacion_segura_pct": 0.7,
+    "umbrales": [
+     "aprobación segura (70 %) — LEC, art. 670, apdo. 1 (confirmado)",
+     "aprobación sin depender de la autoridad (50 %) — LEC, art. 670, apdo. 3, párrafo 4 (confirmado)",
+     "vivienda habitual del ejecutado: umbral (70 %) — LEC, art. 670, apdo. 3, último párrafo (confirmado)",
+     "vivienda habitual del ejecutado: suelo absoluto (60 %) — LEC, art. 670, apdo. 3, último párrafo (confirmado)"
+    ],
+    "vivienda_habitual_asumida": true
+   },
+   "aviso_orientativo": "Cálculo orientativo con los parámetros legales de SEIS (versión 2026.07): no es asesoramiento jurídico. Confirme depósito, plazos y umbrales en el edicto y con un profesional antes de pujar. Los umbrales de aprobación no modifican la escalera de precios, el RVC ni el semáforo; el depósito exigido sí se usa en el plan de puja, y los meses de inmovilización, en el plazo de la operación.",
+   "avisos": [
+    "El alta no indica el procedimiento: se toma el de la fuente de la subasta, Judicial (LEC tras la LO 1/2025, procedimientos iniciados desde el 3-4-2025). Confírmelo en el edicto.",
+    "No consta cuándo se inició el procedimiento judicial: se aplica el régimen desfavorable, el de la LO 1/2025 (depósito del 20 %, 30.400 €, y pago del resto en 20 días naturales). Si se inició antes del 3-4-2025, el depósito es del 5 % y el plazo de 40 días. Compruebe la fecha de incoación en el edicto.",
+    "No consta si es la vivienda habitual del ejecutado: se asume que sí, por prudencia. El remate no se aprueba por debajo del 70 % del valor de subasta (106.400 €) salvo que cubra lo debido al ejecutante, y nunca por debajo del 60 % (91.200 €). Confírmelo en el edicto o en la escritura.",
+    "El depósito indicado en el alta (5 %) no coincide con el que fija la norma para este procedimiento (20 %). Prevalece el que figure en el edicto.",
+    "Sin la cantidad reclamada no se puede aplicar la aprobación por cubrir la deuda (desde el 40 % del valor de subasta): se toma el umbral general.",
+    "Por no constar la fecha de inicio, el plazo de la operación suma 2,5 meses de cierre y pago, los del régimen judicial más largo (con la LO 1/2025 serían 1,8).",
+    "Datos sin confirmar en la norma: meses de inmovilización del depósito. No los use sin validarlos."
+   ],
+   "cantidad_reclamada": null,
+   "capital_para_pujar": 30400.0,
+   "datos_legales": [
+    {
+     "articulo": "LEC, art. 669, apdo. 1 (LO 1/2025)",
+     "dato": "Depósito para pujar",
+     "estado": "confirmado",
+     "nota": "El letrado de la Administración de Justicia puede elevarlo o reducirlo",
+     "texto": null,
+     "valor": 0.2
+    },
+    {
+     "articulo": "LEC, art. 669, apdo. 1 (LO 1/2025)",
+     "dato": "Depósito mínimo",
+     "estado": "confirmado",
+     "nota": null,
+     "texto": null,
+     "valor": 1000.0
+    },
+    {
+     "articulo": "LEC, art. 670, apdos. 1 y 4",
+     "dato": "Plazo de pago del resto",
+     "estado": "confirmado",
+     "nota": null,
+     "texto": null,
+     "valor": 20.0
+    },
+    {
+     "articulo": "LEC, art. 670, apdo. 1",
+     "dato": "Aprobación segura",
+     "estado": "confirmado",
+     "nota": null,
+     "texto": null,
+     "valor": 0.7
+    },
+    {
+     "articulo": "LEC, art. 670, apdo. 3, párrafo 4",
+     "dato": "Aprobación sin depender de la autoridad",
+     "estado": "confirmado",
+     "nota": null,
+     "texto": null,
+     "valor": 0.5
+    },
+    {
+     "articulo": "LEC, art. 670, apdo. 3, párrafo 4",
+     "dato": "Aprobación si la puja cubre la deuda",
+     "estado": "confirmado",
+     "nota": null,
+     "texto": null,
+     "valor": 0.4
+    },
+    {
+     "articulo": "LEC, art. 670, apdo. 3, último párrafo",
+     "dato": "Vivienda habitual del ejecutado: umbral",
+     "estado": "confirmado",
+     "nota": null,
+     "texto": null,
+     "valor": 0.7
+    },
+    {
+     "articulo": "LEC, art. 670, apdo. 3, último párrafo",
+     "dato": "Vivienda habitual del ejecutado: suelo absoluto",
+     "estado": "confirmado",
+     "nota": null,
+     "texto": null,
+     "valor": 0.6
+    },
+    {
+     "articulo": "LEC, arts. 649, 670 (apdos. 3 y 4)",
+     "dato": "Meses de inmovilización del depósito",
+     "estado": "sin_confirmar",
+     "nota": "Plazo legal máximo con mejora por tercero; incluye un plazo de notificación que la ley no fija",
+     "texto": null,
+     "valor": 1.8
+    },
+    {
+     "articulo": "LEC, art. 648, regla 6.ª, y art. 649, apdo. 1 (redacción de la LO 1/2025)",
+     "dato": "Forma de puja",
+     "estado": "confirmado",
+     "nota": "Pujas secretas durante la subasta; plazo improrrogable de 20 días; solo cuenta la última puja de cada postor y, a igual importe, la anterior en el tiempo",
+     "texto": "pujas secretas; cierre improrrogable",
+     "valor": null
+    }
+   ],
+   "deposito_declarado_pct": 0.05,
+   "deposito_eur": 30400.0,
+   "deposito_pct": 0.2,
+   "forma_puja": "secretas_sin_prorroga",
+   "meses_inmovilizacion": 1.8,
+   "meses_inmovilizacion_aplicados": 2.5,
+   "meses_inmovilizacion_asumidos": false,
+   "plazo_pago_dias": 20,
+   "plazo_pago_unidad": "naturales",
+   "procedimiento": "judicial",
+   "procedimiento_deducido": true,
+   "puja_aprobacion_segura": 106400.0,
+   "puja_minima_aprobable": 106400.0,
+   "puja_minima_estricta": false,
+   "regimen": "judicial_lec_2025",
+   "regimen_asumido": true,
+   "regimen_nombre": "Judicial (LEC tras la LO 1/2025, procedimientos iniciados desde el 3-4-2025)",
+   "suelo_absoluto": 91200.0,
+   "suelo_absoluto_pct": 0.6,
+   "umbral_aprobacion_pct": 0.7,
+   "umbral_aprobacion_segura_pct": 0.7,
+   "valor_subasta": 152000.0,
+   "vivienda_habitual": "no_consta",
+   "vivienda_habitual_asumida": true
+  },
   "puja": {
+   "ajustes_ratio": [],
    "banda_rvc": "alcanzable",
    "p_adj_esperado": 63840.0,
    "plan": [
-    "Cargar límites en la interfaz antes de abrir la puja: objetivo 60.011 € · máximo 68.731 € · límite absoluto 80.022 € (infranqueable por software)",
-    "Pujar siempre el tramo mínimo; sin pujas psicológicas redondas",
-    "Entrar tarde con límites precargados: la extensión automática del cierre neutraliza el sniping; la ventaja es la disciplina",
-    "Depósito requerido: 7.600 € (5 % del valor de subasta)",
+    "Decidir la cifra antes de abrir la puja, entre objetivo 59.447 € · máximo 67.941 € · límite absoluto 78.529 € (infranqueable por software)",
+    "Pujas secretas y cierre improrrogable (LO 1/2025): no se ven las pujas ajenas ni hay prórroga, así que no cabe reaccionar al final ni subir por tramos; se puja directamente la cifra decidida; si el procedimiento se inició antes del 3-4-2025, las pujas se ven y el cierre se prorroga, y esta táctica sigue siendo válida",
+    "No apurar el cierre: sin prórroga, una puja que no llegue a tiempo por un fallo técnico queda fuera",
+    "Depósito requerido: 30.400 € (20 % del valor de subasta); supuesto desfavorable: no consta cuándo se inició el procedimiento judicial (si fue antes del 3-4-2025, es menor)",
     "Si aparece información nueva durante la subasta, re-análisis exprés; si el semáforo cae, retirada"
    ],
+   "ratio_acotado": false,
    "ratio_base": 0.42,
+   "ratio_segmento": 0.42,
    "riesgo_ejecucion": [
     "Suspensión/sobreseimiento del procedimiento: capital del depósito inmovilizado sin operación",
     "Pago del remate en plazo legal sin condición suspensiva de financiación (incumplir ⇒ pérdida del depósito)",
     "Cargas descubiertas entre puja y pago: mitigación con nota simple ≤ 5 días antes del cierre",
-    "Cesión de remate solo disponible para el ejecutante: la estructura compradora final debe pujar directamente"
+    "Cesión de remate solo disponible para el ejecutante y los acreedores posteriores (LEC, art. 647, apdo. 3, LO 1/2025): un postor que no sea uno de ellos no puede cederlo: la estructura compradora final debe pujar directamente; si el procedimiento se inició antes del 3-4-2025, solo el ejecutante"
    ],
-   "rvc": 1.077
+   "rvc": 1.064
   },
   "reforma": {
    "nivel": "media",
@@ -451,56 +674,78 @@
     "categoria": "puja",
     "codigo": "SEM-EJEC-01",
     "efecto": {
-     "condicion": "Judicial: depósito del 5% y pago del remate en plazo legal sin condición suspensiva; cesión de remate solo por el ejecutante (§3.2)"
+     "condicion": "Judicial: depósito según el régimen del procedimiento (20 % con la LO 1/2025; 5 % si se inició antes del 3-4-2025) y pago del remate en plazo legal sin condición suspensiva; cesión de remate solo por el ejecutante y, con la LO 1/2025, también por los acreedores posteriores (LEC, art. 647, apdo. 3) (§3.2)"
     },
     "evidencias": [
      "subasta.fuente"
     ],
-    "version": "2026.07"
+    "version": "2026.10.07"
    }
   ],
   "rentabilidad": {
-   "beneficio": 35348.68,
+   "beneficio": 35348.77,
    "cash_on_cash": null,
+   "diferencial_tir_coste_capital": 24.91,
    "dscr": null,
    "escenarios": [
     {
-     "beneficio": 9277.98,
-     "coste_total": 151559.46,
+     "beneficio": 9038.07,
+     "coste_total": 151799.37,
      "nombre": "pesimista",
-     "plazo_meses": 18.2,
+     "plazo_meses": 21.7,
      "probabilidad": 0.25,
-     "roi": 0.0612,
-     "roi_anualizado": 0.04,
+     "roi": 0.0595,
+     "roi_anualizado": 0.0325,
      "vs": 160837.44
     },
     {
-     "beneficio": 35348.68,
-     "coste_total": 141395.76,
+     "beneficio": 35348.77,
+     "coste_total": 141395.67,
      "nombre": "base",
-     "plazo_meses": 13.0,
+     "plazo_meses": 15.5,
      "probabilidad": 0.55,
      "roi": 0.25,
-     "roi_anualizado": 0.2287,
+     "roi_anualizado": 0.1886,
      "vs": 176744.44
     },
     {
-     "beneficio": 52999.92,
-     "coste_total": 133995.7,
+     "beneficio": 53000.01,
+     "coste_total": 133995.6,
      "nombre": "optimista",
-     "plazo_meses": 11.0,
+     "plazo_meses": 13.2,
      "probabilidad": 0.2,
      "roi": 0.3955,
-     "roi_anualizado": 0.4361,
+     "roi_anualizado": 0.3547,
      "vs": 186995.62
     }
    ],
-   "inversion_total": 141395.76,
-   "precio_evaluado": 60011.0,
+   "flujos_base": [
+    -74282.09,
+    -232.5,
+    -232.5,
+    -232.5,
+    -232.5,
+    -232.5,
+    -232.5,
+    -6732.5,
+    -10243.06,
+    -10243.06,
+    -10243.06,
+    -10243.06,
+    -10243.06,
+    -232.5,
+    -232.5,
+    -232.5,
+    169671.16
+   ],
+   "inversion_total": 141395.67,
+   "precio_evaluado": 59447.0,
    "roi": 0.25,
-   "roi_anualizado": 0.2287,
-   "tir_anual": 0.3387,
-   "valor_esperado": 32361.25,
+   "roi_anualizado": 0.1886,
+   "tasa_van": 0.015,
+   "tir_anual": 0.2641,
+   "valor_esperado": 32301.34,
+   "van_coste_capital": 32721.46,
    "y_neta": null
   },
   "riesgos": {
@@ -511,6 +756,12 @@
      "dimension": "juridico",
      "evidencias": [
       "procedimiento_subasta"
+     ],
+     "evidencias_detalle": [
+      {
+       "dato": "procedimiento_subasta",
+       "valor": null
+      }
      ],
      "impacto": 3,
      "mitigable": true,
@@ -529,6 +780,12 @@
      "evidencias": [
       "ICI=63"
      ],
+     "evidencias_detalle": [
+      {
+       "dato": "ICI",
+       "valor": "63"
+      }
+     ],
      "impacto": 3,
      "mitigable": true,
      "nivel": "medio",
@@ -541,6 +798,12 @@
      "evidencias": [
       "estado=precario"
      ],
+     "evidencias_detalle": [
+      {
+       "dato": "estado",
+       "valor": "precario"
+      }
+     ],
      "impacto": 3,
      "mitigable": true,
      "nivel": "alto",
@@ -551,6 +814,7 @@
      "condiciones": [],
      "dimension": "urbanistico",
      "evidencias": [],
+     "evidencias_detalle": [],
      "impacto": 2,
      "mitigable": true,
      "nivel": "bajo",
@@ -566,6 +830,16 @@
       "nivel_reforma=media",
       "sin_visita_interior"
      ],
+     "evidencias_detalle": [
+      {
+       "dato": "nivel_reforma",
+       "valor": "media"
+      },
+      {
+       "dato": "sin_visita_interior",
+       "valor": null
+      }
+     ],
      "impacto": 3,
      "mitigable": true,
      "nivel": "medio",
@@ -578,6 +852,12 @@
      "evidencias": [
       "estructura=cash"
      ],
+     "evidencias_detalle": [
+      {
+       "dato": "estructura",
+       "valor": "cash"
+      }
+     ],
      "impacto": 2,
      "mitigable": true,
      "nivel": "bajo",
@@ -588,6 +868,7 @@
      "condiciones": [],
      "dimension": "comercial",
      "evidencias": [],
+     "evidencias_detalle": [],
      "impacto": 3,
      "mitigable": true,
      "nivel": "medio",
@@ -600,6 +881,12 @@
      "evidencias": [
       "DOM=75d"
      ],
+     "evidencias_detalle": [
+      {
+       "dato": "DOM",
+       "valor": "75d"
+      }
+     ],
      "impacto": 2,
      "mitigable": true,
      "nivel": "bajo",
@@ -610,6 +897,7 @@
      "condiciones": [],
      "dimension": "mercado",
      "evidencias": [],
+     "evidencias_detalle": [],
      "impacto": 3,
      "mitigable": true,
      "nivel": "medio",
@@ -618,8 +906,20 @@
     }
    ],
    "dominancia_aplicada": "una_alta",
+   "pesos": {
+    "comercial": 0.1,
+    "documental": 0.08,
+    "financiero": 0.1,
+    "juridico": 0.16,
+    "liquidez": 0.1,
+    "mercado": 0.12,
+    "ocupacion": 0.14,
+    "tecnico": 0.1,
+    "urbanistico": 0.1
+   },
    "ra": 40,
-   "ra_base": 25.36
+   "ra_base": 25.36,
+   "suelo_dominancia": 40.0
   },
   "valoracion": {
    "confianza": 0.756,
@@ -806,7 +1106,7 @@
    },
    {
     "bloqueante": true,
-    "detalle": "7.600 €",
+    "detalle": "30.400 €",
     "estado": "pendiente",
     "grupo": "D. Económico",
     "orden": 16,
@@ -822,7 +1122,7 @@
    },
    {
     "bloqueante": true,
-    "detalle": "Objetivo 57.812 € · Máx 66.266 € · Límite 77.100 €",
+    "detalle": "Objetivo 57.000 € · Máx 65.197 € · Límite 76.499 €",
     "estado": "ok",
     "grupo": "D. Económico",
     "orden": 18,
@@ -886,15 +1186,15 @@
    },
    {
     "bloqueante": true,
-    "detalle": "Judicial: depósito del 5% y pago del remate en plazo legal sin condición suspensiva; cesión de remate solo por el ejecutante (§3.2); Solicitar certificado de deuda de la comunidad antes de la puja (deuda estimada al alza mientras tanto, P5); Verificar la situación posesoria in situ antes de pujar; dotar provisión de desalojo P80",
-    "estado": "ok",
+    "detalle": "Judicial: depósito según el régimen del procedimiento (20 % con la LO 1/2025; 5 % si se inició antes del 3-4-2025) y pago del remate en plazo legal sin condición suspensiva; cesión de remate solo por el ejecutante y, con la LO 1/2025, también por los acreedores posteriores (LEC, art. 647, apdo. 3) (§3.2); Remate no aprobable si es la vivienda habitual del ejecutado: la puja máxima (65.197 €) queda por debajo del suelo legal (91.200 €, 60 %); confirmar en el edicto si lo es y asumir por escrito el riesgo; Solicitar certificado de deuda de la comunidad antes de la puja (deuda estimada al alza mientras tanto, P5); Verificar la situación posesoria in situ antes de pujar; dotar provisión de desalojo P80",
+    "estado": "pendiente",
     "grupo": "F. Ejecución",
     "orden": 26,
     "texto": "Semáforo Verde/Amarillo, o Naranja con todas sus condiciones verificadas y firmadas"
    },
    {
     "bloqueante": true,
-    "detalle": "RVC = 1,04 · P adjudicación esperado 63.840 €",
+    "detalle": "RVC = 1,02 · P adjudicación esperado 63.840 €",
     "estado": "pendiente",
     "grupo": "F. Ejecución",
     "orden": 27,
@@ -923,18 +1223,26 @@
     "grupo": "F. Ejecución",
     "orden": 30,
     "texto": "Post-adjudicación: lista de primeras 72 h preparada"
+   },
+   {
+    "bloqueante": true,
+    "detalle": "Remate no aprobable si es la vivienda habitual del ejecutado: la puja máxima (65.197 €) queda por debajo del suelo legal (91.200 €, 60 %); confirmar en el edicto si lo es y asumir por escrito el riesgo",
+    "estado": "pendiente",
+    "grupo": "F. Ejecución",
+    "orden": 31,
+    "texto": "Riesgo de aprobación del remate asumido por escrito"
    }
   ],
   "costes": {
    "base_fiscal_minima": 0.0,
    "base_fiscal_origen": "precio_pagado",
-   "c_f_p50": 77944.06,
-   "c_f_p80": 88107.76,
-   "c_v": 0.09754,
+   "c_f_p50": 78544.06,
+   "c_f_p80": 88947.76,
+   "c_v": 0.10265,
    "c_v_desglose": {
     "aranceles_variables": 0.004,
     "financiacion_apertura": 0.007,
-    "financiacion_intereses": 0.02654,
+    "financiacion_intereses": 0.03165,
     "itp": 0.06
    },
    "contingencia_pct": 0.1,
@@ -947,7 +1255,7 @@
     "ocupacion_desalojo": 6500.0,
     "plusvalia_municipal": 0.0,
     "reforma": 50052.8,
-    "tenencia": 3120.0
+    "tenencia": 3720.0
    },
    "desglose_p80": {
     "adquisicion_fija": 3100.0,
@@ -958,18 +1266,36 @@
     "ocupacion_desalojo": 9500.0,
     "plusvalia_municipal": 0.0,
     "reforma": 61064.42,
-    "tenencia": 4368.0
+    "tenencia": 5208.0
    },
-   "plazo_meses_p50": 13.0,
-   "plazo_meses_p80": 18.2,
+   "plazo_desglose": {
+    "comercializacion": 3.0,
+    "inmovilizacion": 2.5,
+    "multiplicador_p80": 1.4,
+    "obra": 3.0,
+    "ocupacion": 7.0
+   },
+   "plazo_meses_p50": 15.5,
+   "plazo_meses_p80": 21.7,
    "regimen_fiscal": "itp",
    "tenencia_mensual": 240.0,
    "tipo_base_minima": 0.0,
    "tipo_impositivo": 0.06
   },
   "decision": {
+   "colchon_detalle": {
+    "beneficio": 35349.330000000016,
+    "coste_capital_mensual": 126.86888749999997,
+    "coste_mensual": 483.24388749999997,
+    "intereses_mensuales": 116.37500000000001,
+    "inversion": 141395.11,
+    "tenencia_mensual": 240.0
+   },
+   "colchon_plazo_meses": 73.2,
+   "colchon_plazo_meses_p_max": 52.2,
    "condiciones": [
-    "Judicial: depósito del 5% y pago del remate en plazo legal sin condición suspensiva; cesión de remate solo por el ejecutante (§3.2)",
+    "Judicial: depósito según el régimen del procedimiento (20 % con la LO 1/2025; 5 % si se inició antes del 3-4-2025) y pago del remate en plazo legal sin condición suspensiva; cesión de remate solo por el ejecutante y, con la LO 1/2025, también por los acreedores posteriores (LEC, art. 647, apdo. 3) (§3.2)",
+    "Remate no aprobable si es la vivienda habitual del ejecutado: la puja máxima (65.197 €) queda por debajo del suelo legal (91.200 €, 60 %); confirmar en el edicto si lo es y asumir por escrito el riesgo",
     "Solicitar certificado de deuda de la comunidad antes de la puja (deuda estimada al alza mientras tanto, P5)",
     "Verificar la situación posesoria in situ antes de pujar; dotar provisión de desalojo P80"
    ],
@@ -991,28 +1317,43 @@
    "precios": {
     "degenerada": false,
     "detalle": {
-     "coste_capital": 3659.05,
+     "capital_propio": 115199.41,
+     "coste_capital": 3124.78,
      "coste_capital_anual": 0.015,
      "delta_v_aplicado": 0.0,
+     "m_excepcional_ajustado": 0.3375,
      "m_minimo_ajustado": 0.17,
      "m_objetivo_ajustado": 0.25,
-     "p_por_margen_min": 66621.32,
-     "p_por_pesimista": 66266.09,
+     "p_limite_bruto": 79623.34,
+     "p_por_margen_min": 65768.43,
+     "p_por_pesimista": 65197.19,
+     "piso_pesimista": 0.0,
+     "stress_mercado": 0.09,
      "vs_pesimista": 160837.44
     },
-    "p_ideal": 49384.0,
-    "p_limite": 77100.0,
-    "p_max": 66266.0,
-    "p_objetivo": 57812.0
+    "p_ideal": 48611.0,
+    "p_limite": 76499.0,
+    "p_max": 65197.0,
+    "p_objetivo": 57000.0,
+    "tramos_fiscales": {
+     "p_ideal": "unico",
+     "p_limite": "unico",
+     "p_objetivo": "unico",
+     "p_por_margen_min": "unico",
+     "p_por_pesimista": "unico"
+    }
    },
    "ra": 40,
    "razones": [
-    "ICO 62 en banda 60–74 o límites de Verde no alcanzados"
+    "ICO 62 en banda 60–74 o límites de Verde no alcanzados",
+    "Remate no aprobable si es la vivienda habitual del ejecutado ⇒ techo Naranja con condición",
+    "Techo aplicado: naranja"
    ],
-   "rvc": 1.038,
-   "semaforo": "amarillo",
+   "rvc": 1.021,
+   "semaforo": "naranja",
    "techos_aplicados": [
-    "amarillo"
+    "amarillo",
+    "naranja"
    ],
    "version_parametros": "2026.07",
    "version_reglas": "2026.07",
@@ -1043,6 +1384,7 @@
    "efecto_delta_v_pp": 2.0,
    "ici": 63,
    "penalizaciones": [],
+   "penalizaciones_detalle": [],
    "techo_semaforo": null
   },
   "icu": {
@@ -1072,25 +1414,206 @@
    "tendencia_5a_pct": 3.0,
    "y_zona_pct": 5.5
   },
+  "procedimiento": {
+   "aviso_aprobacion": {
+    "alcance": "El semáforo queda como máximo en naranja.",
+    "condicion": "Remate no aprobable si es la vivienda habitual del ejecutado: la puja máxima (65.197 €) queda por debajo del suelo legal (91.200 €, 60 %); confirmar en el edicto si lo es y asumir por escrito el riesgo",
+    "datos_legales": [
+     {
+      "articulo": "LEC, art. 670, apdo. 1",
+      "dato": "Aprobación segura",
+      "estado": "confirmado",
+      "nota": null,
+      "texto": null,
+      "valor": 0.7
+     },
+     {
+      "articulo": "LEC, art. 670, apdo. 3, párrafo 4",
+      "dato": "Aprobación sin depender de la autoridad",
+      "estado": "confirmado",
+      "nota": null,
+      "texto": null,
+      "valor": 0.5
+     },
+     {
+      "articulo": "LEC, art. 670, apdo. 3, último párrafo",
+      "dato": "Vivienda habitual del ejecutado: umbral",
+      "estado": "confirmado",
+      "nota": null,
+      "texto": null,
+      "valor": 0.7
+     },
+     {
+      "articulo": "LEC, art. 670, apdo. 3, último párrafo",
+      "dato": "Vivienda habitual del ejecutado: suelo absoluto",
+      "estado": "confirmado",
+      "nota": null,
+      "texto": null,
+      "valor": 0.6
+     }
+    ],
+    "franja": "bajo_suelo",
+    "p_max": 65197.0,
+    "p_max_pct": 0.4289,
+    "puja_aprobacion_segura": 106400.0,
+    "puja_minima_aprobable": 106400.0,
+    "regimen_asumido": true,
+    "riesgo": "La puja máxima recomendada (65.197 €, 42,9 % del valor de subasta) queda por debajo del suelo de la vivienda habitual del ejecutado (91.200 €, 60 %): la ley no aprueba el remate por debajo de esa cifra, ni siquiera si cubre la deuda. Riesgo: ganar la subasta sin poder obtener el remate. No consta si es la vivienda habitual: se asume que sí, por prudencia; si no lo es, el suelo no se aplica y la aprobación dependería de los umbrales generales. No consta cuándo se inició el procedimiento: se aplican los umbrales del régimen de la LO 1/2025.",
+    "suelo_absoluto": 91200.0,
+    "suelo_absoluto_pct": 0.6,
+    "techo_naranja": true,
+    "titulo": "Remate no aprobable si es la vivienda habitual del ejecutado",
+    "umbral_aprobacion_pct": 0.7,
+    "umbral_aprobacion_segura_pct": 0.7,
+    "umbrales": [
+     "aprobación segura (70 %) — LEC, art. 670, apdo. 1 (confirmado)",
+     "aprobación sin depender de la autoridad (50 %) — LEC, art. 670, apdo. 3, párrafo 4 (confirmado)",
+     "vivienda habitual del ejecutado: umbral (70 %) — LEC, art. 670, apdo. 3, último párrafo (confirmado)",
+     "vivienda habitual del ejecutado: suelo absoluto (60 %) — LEC, art. 670, apdo. 3, último párrafo (confirmado)"
+    ],
+    "vivienda_habitual_asumida": true
+   },
+   "aviso_orientativo": "Cálculo orientativo con los parámetros legales de SEIS (versión 2026.07): no es asesoramiento jurídico. Confirme depósito, plazos y umbrales en el edicto y con un profesional antes de pujar. Los umbrales de aprobación no modifican la escalera de precios, el RVC ni el semáforo; el depósito exigido sí se usa en el plan de puja, y los meses de inmovilización, en el plazo de la operación.",
+   "avisos": [
+    "El alta no indica el procedimiento: se toma el de la fuente de la subasta, Judicial (LEC tras la LO 1/2025, procedimientos iniciados desde el 3-4-2025). Confírmelo en el edicto.",
+    "No consta cuándo se inició el procedimiento judicial: se aplica el régimen desfavorable, el de la LO 1/2025 (depósito del 20 %, 30.400 €, y pago del resto en 20 días naturales). Si se inició antes del 3-4-2025, el depósito es del 5 % y el plazo de 40 días. Compruebe la fecha de incoación en el edicto.",
+    "No consta si es la vivienda habitual del ejecutado: se asume que sí, por prudencia. El remate no se aprueba por debajo del 70 % del valor de subasta (106.400 €) salvo que cubra lo debido al ejecutante, y nunca por debajo del 60 % (91.200 €). Confírmelo en el edicto o en la escritura.",
+    "El depósito indicado en el alta (5 %) no coincide con el que fija la norma para este procedimiento (20 %). Prevalece el que figure en el edicto.",
+    "Sin la cantidad reclamada no se puede aplicar la aprobación por cubrir la deuda (desde el 40 % del valor de subasta): se toma el umbral general.",
+    "Por no constar la fecha de inicio, el plazo de la operación suma 2,5 meses de cierre y pago, los del régimen judicial más largo (con la LO 1/2025 serían 1,8).",
+    "Datos sin confirmar en la norma: meses de inmovilización del depósito. No los use sin validarlos."
+   ],
+   "cantidad_reclamada": null,
+   "capital_para_pujar": 30400.0,
+   "datos_legales": [
+    {
+     "articulo": "LEC, art. 669, apdo. 1 (LO 1/2025)",
+     "dato": "Depósito para pujar",
+     "estado": "confirmado",
+     "nota": "El letrado de la Administración de Justicia puede elevarlo o reducirlo",
+     "texto": null,
+     "valor": 0.2
+    },
+    {
+     "articulo": "LEC, art. 669, apdo. 1 (LO 1/2025)",
+     "dato": "Depósito mínimo",
+     "estado": "confirmado",
+     "nota": null,
+     "texto": null,
+     "valor": 1000.0
+    },
+    {
+     "articulo": "LEC, art. 670, apdos. 1 y 4",
+     "dato": "Plazo de pago del resto",
+     "estado": "confirmado",
+     "nota": null,
+     "texto": null,
+     "valor": 20.0
+    },
+    {
+     "articulo": "LEC, art. 670, apdo. 1",
+     "dato": "Aprobación segura",
+     "estado": "confirmado",
+     "nota": null,
+     "texto": null,
+     "valor": 0.7
+    },
+    {
+     "articulo": "LEC, art. 670, apdo. 3, párrafo 4",
+     "dato": "Aprobación sin depender de la autoridad",
+     "estado": "confirmado",
+     "nota": null,
+     "texto": null,
+     "valor": 0.5
+    },
+    {
+     "articulo": "LEC, art. 670, apdo. 3, párrafo 4",
+     "dato": "Aprobación si la puja cubre la deuda",
+     "estado": "confirmado",
+     "nota": null,
+     "texto": null,
+     "valor": 0.4
+    },
+    {
+     "articulo": "LEC, art. 670, apdo. 3, último párrafo",
+     "dato": "Vivienda habitual del ejecutado: umbral",
+     "estado": "confirmado",
+     "nota": null,
+     "texto": null,
+     "valor": 0.7
+    },
+    {
+     "articulo": "LEC, art. 670, apdo. 3, último párrafo",
+     "dato": "Vivienda habitual del ejecutado: suelo absoluto",
+     "estado": "confirmado",
+     "nota": null,
+     "texto": null,
+     "valor": 0.6
+    },
+    {
+     "articulo": "LEC, arts. 649, 670 (apdos. 3 y 4)",
+     "dato": "Meses de inmovilización del depósito",
+     "estado": "sin_confirmar",
+     "nota": "Plazo legal máximo con mejora por tercero; incluye un plazo de notificación que la ley no fija",
+     "texto": null,
+     "valor": 1.8
+    },
+    {
+     "articulo": "LEC, art. 648, regla 6.ª, y art. 649, apdo. 1 (redacción de la LO 1/2025)",
+     "dato": "Forma de puja",
+     "estado": "confirmado",
+     "nota": "Pujas secretas durante la subasta; plazo improrrogable de 20 días; solo cuenta la última puja de cada postor y, a igual importe, la anterior en el tiempo",
+     "texto": "pujas secretas; cierre improrrogable",
+     "valor": null
+    }
+   ],
+   "deposito_declarado_pct": 0.05,
+   "deposito_eur": 30400.0,
+   "deposito_pct": 0.2,
+   "forma_puja": "secretas_sin_prorroga",
+   "meses_inmovilizacion": 1.8,
+   "meses_inmovilizacion_aplicados": 2.5,
+   "meses_inmovilizacion_asumidos": false,
+   "plazo_pago_dias": 20,
+   "plazo_pago_unidad": "naturales",
+   "procedimiento": "judicial",
+   "procedimiento_deducido": true,
+   "puja_aprobacion_segura": 106400.0,
+   "puja_minima_aprobable": 106400.0,
+   "puja_minima_estricta": false,
+   "regimen": "judicial_lec_2025",
+   "regimen_asumido": true,
+   "regimen_nombre": "Judicial (LEC tras la LO 1/2025, procedimientos iniciados desde el 3-4-2025)",
+   "suelo_absoluto": 91200.0,
+   "suelo_absoluto_pct": 0.6,
+   "umbral_aprobacion_pct": 0.7,
+   "umbral_aprobacion_segura_pct": 0.7,
+   "valor_subasta": 152000.0,
+   "vivienda_habitual": "no_consta",
+   "vivienda_habitual_asumida": true
+  },
   "puja": {
+   "ajustes_ratio": [],
    "banda_rvc": "ajustado",
    "p_adj_esperado": 63840.0,
    "plan": [
-    "Cargar límites en la interfaz antes de abrir la puja: objetivo 57.812 € · máximo 66.266 € · límite absoluto 77.100 € (infranqueable por software)",
-    "Pujar siempre el tramo mínimo; sin pujas psicológicas redondas",
-    "Entrar tarde con límites precargados: la extensión automática del cierre neutraliza el sniping; la ventaja es la disciplina",
-    "Depósito requerido: 7.600 € (5 % del valor de subasta)",
+    "Decidir la cifra antes de abrir la puja, entre objetivo 57.000 € · máximo 65.197 € · límite absoluto 76.499 € (infranqueable por software)",
+    "Pujas secretas y cierre improrrogable (LO 1/2025): no se ven las pujas ajenas ni hay prórroga, así que no cabe reaccionar al final ni subir por tramos; se puja directamente la cifra decidida; si el procedimiento se inició antes del 3-4-2025, las pujas se ven y el cierre se prorroga, y esta táctica sigue siendo válida",
+    "No apurar el cierre: sin prórroga, una puja que no llegue a tiempo por un fallo técnico queda fuera",
+    "Depósito requerido: 30.400 € (20 % del valor de subasta); supuesto desfavorable: no consta cuándo se inició el procedimiento judicial (si fue antes del 3-4-2025, es menor)",
     "Si aparece información nueva durante la subasta, re-análisis exprés; si el semáforo cae, retirada",
     "RVC 0,90–1,05: operación de oportunidad, no de plan — aceptar por escrito antes de pujar"
    ],
+   "ratio_acotado": false,
    "ratio_base": 0.42,
+   "ratio_segmento": 0.42,
    "riesgo_ejecucion": [
     "Suspensión/sobreseimiento del procedimiento: capital del depósito inmovilizado sin operación",
     "Pago del remate en plazo legal sin condición suspensiva de financiación (incumplir ⇒ pérdida del depósito)",
     "Cargas descubiertas entre puja y pago: mitigación con nota simple ≤ 5 días antes del cierre",
-    "Cesión de remate solo disponible para el ejecutante: la estructura compradora final debe pujar directamente"
+    "Cesión de remate solo disponible para el ejecutante y los acreedores posteriores (LEC, art. 647, apdo. 3, LO 1/2025): un postor que no sea uno de ellos no puede cederlo: la estructura compradora final debe pujar directamente; si el procedimiento se inició antes del 3-4-2025, solo el ejecutante"
    ],
-   "rvc": 1.038
+   "rvc": 1.021
   },
   "reforma": {
    "nivel": "media",
@@ -1136,56 +1659,78 @@
     "categoria": "puja",
     "codigo": "SEM-EJEC-01",
     "efecto": {
-     "condicion": "Judicial: depósito del 5% y pago del remate en plazo legal sin condición suspensiva; cesión de remate solo por el ejecutante (§3.2)"
+     "condicion": "Judicial: depósito según el régimen del procedimiento (20 % con la LO 1/2025; 5 % si se inició antes del 3-4-2025) y pago del remate en plazo legal sin condición suspensiva; cesión de remate solo por el ejecutante y, con la LO 1/2025, también por los acreedores posteriores (LEC, art. 647, apdo. 3) (§3.2)"
     },
     "evidencias": [
      "subasta.fuente"
     ],
-    "version": "2026.07"
+    "version": "2026.10.07"
    }
   ],
   "rentabilidad": {
-   "beneficio": 35349.4,
+   "beneficio": 35349.33,
    "cash_on_cash": null,
+   "diferencial_tir_coste_capital": 24.91,
    "dscr": null,
    "escenarios": [
     {
-     "beneficio": 9278.7,
-     "coste_total": 151558.74,
+     "beneficio": 9038.63,
+     "coste_total": 151798.81,
      "nombre": "pesimista",
-     "plazo_meses": 18.2,
+     "plazo_meses": 21.7,
      "probabilidad": 0.25,
-     "roi": 0.0612,
-     "roi_anualizado": 0.04,
+     "roi": 0.0595,
+     "roi_anualizado": 0.0325,
      "vs": 160837.44
     },
     {
-     "beneficio": 35349.4,
-     "coste_total": 141395.04,
+     "beneficio": 35349.33,
+     "coste_total": 141395.11,
      "nombre": "base",
-     "plazo_meses": 13.0,
+     "plazo_meses": 15.5,
      "probabilidad": 0.55,
      "roi": 0.25,
-     "roi_anualizado": 0.2287,
+     "roi_anualizado": 0.1886,
      "vs": 176744.44
     },
     {
-     "beneficio": 53000.64,
-     "coste_total": 133994.98,
+     "beneficio": 53000.57,
+     "coste_total": 133995.05,
      "nombre": "optimista",
-     "plazo_meses": 11.0,
+     "plazo_meses": 13.2,
      "probabilidad": 0.2,
      "roi": 0.3955,
-     "roi_anualizado": 0.4361,
+     "roi_anualizado": 0.3547,
      "vs": 186995.62
     }
    ],
-   "inversion_total": 141395.04,
-   "precio_evaluado": 57812.0,
+   "flujos_base": [
+    -74281.53,
+    -232.5,
+    -232.5,
+    -232.5,
+    -232.5,
+    -232.5,
+    -232.5,
+    -6732.5,
+    -10243.06,
+    -10243.06,
+    -10243.06,
+    -10243.06,
+    -10243.06,
+    -232.5,
+    -232.5,
+    -232.5,
+    169671.16
+   ],
+   "inversion_total": 141395.11,
+   "precio_evaluado": 57000.0,
    "roi": 0.25,
-   "roi_anualizado": 0.2287,
-   "tir_anual": 0.3387,
-   "valor_esperado": 32361.97,
+   "roi_anualizado": 0.1886,
+   "tasa_van": 0.015,
+   "tir_anual": 0.2641,
+   "valor_esperado": 32301.9,
+   "van_coste_capital": 32722.02,
    "y_neta": null
   },
   "riesgos": {
@@ -1196,6 +1741,12 @@
      "dimension": "juridico",
      "evidencias": [
       "procedimiento_subasta"
+     ],
+     "evidencias_detalle": [
+      {
+       "dato": "procedimiento_subasta",
+       "valor": null
+      }
      ],
      "impacto": 3,
      "mitigable": true,
@@ -1214,6 +1765,12 @@
      "evidencias": [
       "ICI=63"
      ],
+     "evidencias_detalle": [
+      {
+       "dato": "ICI",
+       "valor": "63"
+      }
+     ],
      "impacto": 3,
      "mitigable": true,
      "nivel": "medio",
@@ -1226,6 +1783,12 @@
      "evidencias": [
       "estado=precario"
      ],
+     "evidencias_detalle": [
+      {
+       "dato": "estado",
+       "valor": "precario"
+      }
+     ],
      "impacto": 3,
      "mitigable": true,
      "nivel": "alto",
@@ -1236,6 +1799,7 @@
      "condiciones": [],
      "dimension": "urbanistico",
      "evidencias": [],
+     "evidencias_detalle": [],
      "impacto": 2,
      "mitigable": true,
      "nivel": "bajo",
@@ -1251,6 +1815,16 @@
       "nivel_reforma=media",
       "sin_visita_interior"
      ],
+     "evidencias_detalle": [
+      {
+       "dato": "nivel_reforma",
+       "valor": "media"
+      },
+      {
+       "dato": "sin_visita_interior",
+       "valor": null
+      }
+     ],
      "impacto": 3,
      "mitigable": true,
      "nivel": "medio",
@@ -1265,6 +1839,12 @@
      "evidencias": [
       "estructura=hipoteca"
      ],
+     "evidencias_detalle": [
+      {
+       "dato": "estructura",
+       "valor": "hipoteca"
+      }
+     ],
      "impacto": 3,
      "mitigable": true,
      "nivel": "medio",
@@ -1275,6 +1855,7 @@
      "condiciones": [],
      "dimension": "comercial",
      "evidencias": [],
+     "evidencias_detalle": [],
      "impacto": 3,
      "mitigable": true,
      "nivel": "medio",
@@ -1287,6 +1868,12 @@
      "evidencias": [
       "DOM=75d"
      ],
+     "evidencias_detalle": [
+      {
+       "dato": "DOM",
+       "valor": "75d"
+      }
+     ],
      "impacto": 2,
      "mitigable": true,
      "nivel": "bajo",
@@ -1297,6 +1884,7 @@
      "condiciones": [],
      "dimension": "mercado",
      "evidencias": [],
+     "evidencias_detalle": [],
      "impacto": 3,
      "mitigable": true,
      "nivel": "medio",
@@ -1305,8 +1893,20 @@
     }
    ],
    "dominancia_aplicada": "una_alta",
+   "pesos": {
+    "comercial": 0.1,
+    "documental": 0.08,
+    "financiero": 0.1,
+    "juridico": 0.16,
+    "liquidez": 0.1,
+    "mercado": 0.12,
+    "ocupacion": 0.14,
+    "tecnico": 0.1,
+    "urbanistico": 0.1
+   },
    "ra": 40,
-   "ra_base": 26.96
+   "ra_base": 26.96,
+   "suelo_dominancia": 40.0
   },
   "valoracion": {
    "confianza": 0.756,

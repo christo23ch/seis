@@ -8,8 +8,14 @@ contaba dos veces. Ahora:
 
 Sin hipoteca, LTV no interviene y la fórmula es exactamente la de antes (la guarda
 `test_invariante_5h1.py` lo comprueba sobre el §19 hoja a hoja).
+
+Fase 5J-2b: la foto del invariante se regeneró (el plazo suma la inmovilización, ADR-0026),
+así que ya no guarda el estado anterior a D5. Las cifras de antes de D5 quedan aquí como
+historia y lo que se deja de cobrar se comprueba con la fórmula, no restando de la foto.
 """
 from __future__ import annotations
+
+import copy
 
 import pytest
 
@@ -27,20 +33,20 @@ def hipoteca():
 
 
 def test_con_hipoteca_el_precio_limite_sube_lo_medido_en_la_auditoria(hipoteca):
-    antes = FOTO["hipoteca"]["decision"]["precios"]
+    # Historia: antes de D5, 3.659,05 € y límite 77.100 €; con D5 (auditoría E1), 2.603,76 € y
+    # 78.156 € (+1.056 €). Desde la 5J-2b el plazo P80 suma la inmovilización y las cifras son:
     e = hipoteca.decision.precios
-    assert antes["p_limite"] == 77100.0 and antes["detalle"]["coste_capital"] == 3659.05
-    assert e.detalle["coste_capital"] == 2603.76          # auditoría E1: 2.603,76 €
-    assert e.p_limite == 78156.0                          # 78.155,64 → 78.156 €
-    assert e.p_limite - antes["p_limite"] == 1056.0       # la cuenta doble que desaparece
+    assert e.detalle["coste_capital"] == 3124.78
+    assert e.p_limite == 76499.0
 
 
 def test_lo_que_se_deja_de_cobrar_es_exactamente_la_parte_financiada(hipoteca):
     e, c = hipoteca.decision.precios, hipoteca.costes
     p_max = min(e.detalle["p_por_margen_min"], e.detalle["p_por_pesimista"])
     cc, ltv, h = 0.015, 0.7, c.plazo_meses_p80 / 12
-    retirado = FOTO["hipoteca"]["decision"]["precios"]["detalle"]["coste_capital"] - e.detalle["coste_capital"]
-    assert retirado == pytest.approx(cc * ltv * p_max * h, abs=0.01)      # 1.055,29 €
+    sin_d5 = cc * fiscal.inversion(p_max, c, c.c_f_p80) * h               # lo que se cobraba antes de D5
+    retirado = sin_d5 - e.detalle["coste_capital"]
+    assert retirado == pytest.approx(cc * ltv * p_max * h, abs=0.01)      # 1.055,29 € en la 5H.1
     assert e.detalle["capital_propio"] == pytest.approx(
         fiscal.inversion(p_max, c, c.c_f_p80) - ltv * p_max, abs=0.01)
 
@@ -50,7 +56,7 @@ def test_en_cash_el_capital_propio_es_toda_la_inversion():
     e, c = r.decision.precios, r.costes
     p_max = min(e.detalle["p_por_margen_min"], e.detalle["p_por_pesimista"])
     assert e.detalle["capital_propio"] == pytest.approx(fiscal.inversion(p_max, c, c.c_f_p80), abs=0.01)
-    assert e.detalle["coste_capital"] == 3659.05 and e.p_limite == 80022.0
+    assert e.detalle["coste_capital"] == 4362.72 and e.p_limite == 78529.0    # 5J-2b (antes 3.659,05 y 80.022)
 
 
 def test_el_capital_propio_nunca_es_negativo():
@@ -70,7 +76,7 @@ def test_cash_con_ltv_informado_no_resta_nada():
     igual que hace M06 con los intereses (revisión de 5H.1-B)."""
     e = ejecutar_analisis(entrada_caso_19().model_copy(update={"financiacion": FinanciacionInput(
         tipo="cash", ltv=0.7)})).decision.precios
-    assert (e.p_limite, e.detalle["coste_capital"]) == (80022.0, 3659.05)
+    assert (e.p_limite, e.detalle["coste_capital"]) == (78529.0, 4362.72)
 
 
 def test_el_rentista_con_hipoteca_tambien_paga_solo_por_su_capital():
@@ -114,10 +120,13 @@ def test_un_informe_emitido_antes_de_d5_conserva_su_precio_limite(api, headers):
     inf = api.post(f"/api/v1/analisis/{aid}/informes", headers=headers)
     assert inf.status_code == 201, inf.text
     iid = inf.json()["id"]
-    assert inf.json()["resultado"]["decision"]["precios"]["p_limite"] == 78156.0   # emitido con D5
+    assert inf.json()["resultado"]["decision"]["precios"]["p_limite"] == 76499.0   # motor actual (5J-2b)
 
     # Se congela en la fila el resultado que habría emitido el motor anterior a D5.
-    anterior = {**FOTO["hipoteca"], "informe_markdown": "| **Precio límite absoluto** | 77.100 € — infranqueable |"}
+    anterior = copy.deepcopy(FOTO["hipoteca"])
+    anterior["decision"]["precios"]["p_limite"] = 77100.0
+    anterior["decision"]["precios"]["detalle"]["coste_capital"] = 3659.05
+    anterior["informe_markdown"] = "| **Precio límite absoluto** | 77.100 € — infranqueable |"
     db = SessionLocal()
     try:
         fila = db.get(models.Informe, iid)

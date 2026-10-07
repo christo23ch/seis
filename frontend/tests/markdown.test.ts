@@ -106,6 +106,19 @@ describe("informe real del caso §19", () => {
   });
 });
 
+describe("aviso de la franja del letrado (5J-3) en el informe real del §19", () => {
+  it("se maqueta como párrafos con negrita, sin «>» ni marcas en crudo, justo bajo el semáforo", () => {
+    const bloques = analizarMarkdown(INFORME);
+    const i = bloques.findIndex((b) => b.tipo === "titulo" && textoPlano(b.contenido) === "🟠 NARANJA");
+    const aviso = bloques[i + 1] as Extract<Bloque, { tipo: "parrafo" }>;
+    expect(aviso.tipo).toBe("parrafo");
+    expect(aviso.lineas[0][0]).toMatchObject({ tipo: "negrita" });
+    expect(textoPlano(aviso.lineas[0])).toMatch(/^Atención: remate no aprobable si es la vivienda habitual del ejecutado\. /);
+    expect(textoPlano((bloques[i + 2] as Extract<Bloque, { tipo: "parrafo" }>).lineas[0])).toMatch(/^Umbrales aplicados: /);
+    expect(INFORME).not.toMatch(/^>/m);
+  });
+});
+
 describe("correcciones de la revisión de código (5K)", () => {
   it("una fila de «-» en el cuerpo de una tabla es un dato, no un separador", () => {
     const [t] = analizarMarkdown("| A | B |\n|---|---|\n| - | - |\n| 1 | 2 |") as Extract<Bloque, { tipo: "tabla" }>[];

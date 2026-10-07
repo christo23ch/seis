@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from app.engine.contracts import DatoLegal, ProcedimientoResultado
+from app.engine.contracts import AvisoAprobacion, DatoLegal, EscaleraPrecios, ProcedimientoResultado
 from app.engine.formato import decimal, eur, pct
 
 if TYPE_CHECKING:
@@ -55,8 +55,28 @@ NOMBRES_DATO = {
     "vivienda_habitual_suelo_pct": "Vivienda habitual del ejecutado: suelo absoluto",
     "puja_minima_pct": "Puja mínima admitida",
     "meses_inmovilizacion": "Meses de inmovilización del depósito",
+    "forma_puja": "Forma de puja",
+}
+# Fase 5J-2b (ADR-0025): valor legible de `forma_puja`.
+FORMAS_PUJA = {
+    "secretas_sin_prorroga": "pujas secretas; cierre improrrogable",
+    "visibles_con_prorroga": "pujas visibles; el cierre se prorroga tras la última puja",
+    "visibles": "pujas visibles; la norma no fija la prórroga del cierre",
+    "presencial": "presencial: sobre cerrado y pujas a viva voz",
 }
 UNIDAD_PLAZO = {"naturales": "días naturales", "habiles": "días hábiles"}
+
+
+def _texto(regimen: dict, clave: str) -> str | None:
+    """Valor textual de un dato del régimen; `None` si la clave no existe o vale null."""
+    dato = regimen.get(clave)
+    if not isinstance(dato, dict) or dato.get("valor") is None:
+        return None
+    return str(dato["valor"])
+
+
+def _meses_si_no_consta(params: "Parametros") -> float:
+    return float(params.get("procedimiento.meses_inmovilizacion_si_no_consta.valor"))
 
 
 def _valor(regimen: dict, clave: str) -> float | None:
@@ -86,9 +106,26 @@ def _vivienda_habitual(inp: "AnalisisInput") -> str:
 
 
 def _datos_legales(regimen: dict) -> list[DatoLegal]:
-    return [DatoLegal(dato=nombre, valor=_valor(regimen, clave), articulo=str(regimen[clave]["articulo"]),
-                      estado=regimen[clave]["estado"], nota=regimen[clave].get("nota"))
-            for clave, nombre in NOMBRES_DATO.items() if isinstance(regimen.get(clave), dict)]
+    def dato(clave: str, nombre: str) -> DatoLegal:
+        forma = clave == "forma_puja"           # Fase 5J-2b: dato descriptivo, no una cifra
+        texto = _texto(regimen, clave) if forma else None
+        return DatoLegal(dato=nombre, valor=None if forma else _valor(regimen, clave),
+                         articulo=str(regimen[clave]["articulo"]), estado=regimen[clave]["estado"],
+                         nota=regimen[clave].get("nota"),
+                         texto=FORMAS_PUJA.get(texto, texto) if forma else None)
+    return [dato(clave, nombre) for clave, nombre in NOMBRES_DATO.items() if isinstance(regimen.get(clave), dict)]
+
+
+def _minima_estricta(regimen: dict, vt: float, minimo: float | None, vivienda: bool) -> bool | None:
+    """La mínima aprobable hay que superarla, no igualarla, solo si la fija el umbral general
+    marcado `estricto` (régimen anterior: «supere el 50 %»); no si la rebaja la deuda o si manda
+    la vivienda habitual."""
+    if minimo is None:
+        return None
+    aprob = regimen.get("umbral_aprobacion_pct")
+    general = _valor(regimen, "umbral_aprobacion_pct")
+    return bool(isinstance(aprob, dict) and aprob.get("estricto") and not vivienda
+                and general is not None and abs(minimo - general * vt) < 0.005)
 
 
 def _puja_minima_aprobable(regimen: dict, vt: float, cantidad: float | None,
@@ -116,9 +153,12 @@ def _puja_minima_aprobable(regimen: dict, vt: float, cantidad: float | None,
     return minimo
 
 
-def _sin_procedimiento(inp: "AnalisisInput", deducido: bool, aviso_orientativo: str) -> ProcedimientoResultado:
+def _sin_procedimiento(inp: "AnalisisInput", deducido: bool, aviso_orientativo: str,
+                       meses: float) -> ProcedimientoResultado:
     aviso = ("Venta no reglada (bancaria o privada): no hay depósito, plazos ni umbrales legales "
              "que calcular; rigen las condiciones que fije el vendedor.")
+    aviso_meses = (f"Mientras no conste el plazo de pago del vendedor, el plazo de la operación suma "
+                   f"{decimal(meses, 1)} meses de cierre y pago: estimación prudente, sin base legal.")
     return ProcedimientoResultado(
         procedimiento="no_aplica", procedimiento_deducido=deducido, regimen=None,
         regimen_nombre=NOMBRE_VENTA_NO_REGLADA, regimen_asumido=False,
@@ -129,7 +169,8 @@ def _sin_procedimiento(inp: "AnalisisInput", deducido: bool, aviso_orientativo: 
         meses_inmovilizacion=None, umbral_aprobacion_pct=None, puja_minima_aprobable=None,
         umbral_aprobacion_segura_pct=None, puja_aprobacion_segura=None,
         suelo_absoluto_pct=None, suelo_absoluto=None, datos_legales=[],
-        avisos=[aviso], aviso_orientativo=aviso_orientativo)
+        avisos=[aviso, aviso_meses], aviso_orientativo=aviso_orientativo,
+        meses_inmovilizacion_aplicados=meses, meses_inmovilizacion_asumidos=True, forma_puja=None)
 
 
 def calcular(inp: "AnalisisInput", params: "Parametros") -> ProcedimientoResultado:
@@ -137,11 +178,12 @@ def calcular(inp: "AnalisisInput", params: "Parametros") -> ProcedimientoResulta
     aviso_orientativo = (
         f"Cálculo orientativo con los parámetros legales de SEIS (versión {params.version}): no es "
         "asesoramiento jurídico. Confirme depósito, plazos y umbrales en el edicto y con un profesional "
-        "antes de pujar. Estos importes no modifican la escalera de precios, el RVC, el semáforo ni la "
-        "rentabilidad.")
+        "antes de pujar. Los umbrales de aprobación no modifican la escalera de precios, el RVC ni el "
+        "semáforo; el depósito exigido sí se usa en el plan de puja, y los meses de inmovilización, en "
+        "el plazo de la operación.")
     procedimiento, deducido = _resolver_procedimiento(inp, params)
     if procedimiento == "no_aplica":
-        return _sin_procedimiento(inp, deducido, aviso_orientativo)
+        return _sin_procedimiento(inp, deducido, aviso_orientativo, _meses_si_no_consta(params))
 
     regimenes = params.seccion("procedimiento.regimenes")
     clave = REGIMEN_JUDICIAL[inp.subasta.regimen_judicial] if procedimiento == "judicial" else procedimiento
@@ -172,6 +214,13 @@ def calcular(inp: "AnalisisInput", params: "Parametros") -> ProcedimientoResulta
                  else _valor(regimen, "puja_minima_pct"))
 
     datos = _datos_legales(regimen)
+    meses_norma = _valor(regimen, "meses_inmovilizacion")
+    meses_aplicados = meses_norma if meses_norma is not None else _meses_si_no_consta(params)
+    if asumido:
+        # Fase 5J-2b: sin fecha de inicio, lo desfavorable en cada dato: el depósito del régimen
+        # de la LO 1/2025 (20 %) y el plazo del régimen que lo tenga más largo.
+        candidatos = [_valor(regimenes[c], "meses_inmovilizacion") for c in set(REGIMEN_JUDICIAL.values())]
+        meses_aplicados = max((m for m in candidatos if m is not None), default=_meses_si_no_consta(params))
     resultado = ProcedimientoResultado(
         procedimiento=procedimiento, procedimiento_deducido=deducido, regimen=clave,
         regimen_nombre=str(regimen["nombre"]), regimen_asumido=asumido,
@@ -180,8 +229,12 @@ def calcular(inp: "AnalisisInput", params: "Parametros") -> ProcedimientoResulta
         deposito_pct=dep_pct, deposito_eur=deposito, deposito_declarado_pct=inp.subasta.deposito_pct,
         capital_para_pujar=deposito,
         plazo_pago_dias=int(plazo) if plazo is not None else None, plazo_pago_unidad=unidad,
-        meses_inmovilizacion=_valor(regimen, "meses_inmovilizacion"),
+        meses_inmovilizacion=meses_norma,
+        meses_inmovilizacion_aplicados=meses_aplicados,
+        meses_inmovilizacion_asumidos=meses_norma is None,
+        forma_puja=_texto(regimen, "forma_puja"),
         umbral_aprobacion_pct=round(minimo / vt, 4) if minimo is not None else None,
+        puja_minima_estricta=_minima_estricta(regimen, vt, minimo, vivienda),
         puja_minima_aprobable=round(minimo, 2) if minimo is not None else None,
         umbral_aprobacion_segura_pct=segura_pct,
         puja_aprobacion_segura=round(segura_pct * vt, 2) if segura_pct is not None else None,
@@ -233,11 +286,33 @@ def _avisos(r: ProcedimientoResultado, regimen: dict, regimenes: dict, inp: "Ana
         desde = "sin porcentaje mínimo" if cubre == 0 else f"desde el {pct(cubre, 0)} del valor de subasta"
         avisos.append(f"Sin la cantidad reclamada no se puede aplicar la aprobación por cubrir la deuda "
                       f"({desde}): se toma el umbral general.")
-    sin_confirmar = [d.dato for d in r.datos_legales if d.estado == "sin_confirmar" and d.valor is not None]
+    if r.meses_inmovilizacion_asumidos and r.meses_inmovilizacion_aplicados is not None:
+        avisos.append(f"La norma no da un plazo de cierre y pago para este procedimiento: el plazo de la "
+                      f"operación suma {decimal(r.meses_inmovilizacion_aplicados, 1)} meses, estimación "
+                      f"prudente, sin base legal.")
+    if r.regimen_asumido and r.meses_inmovilizacion_aplicados != r.meses_inmovilizacion:
+        avisos.append(f"Por no constar la fecha de inicio, el plazo de la operación suma "
+                      f"{decimal(r.meses_inmovilizacion_aplicados or 0.0, 1)} meses de cierre y pago, los del "
+                      f"régimen judicial más largo (con la LO 1/2025 serían "
+                      f"{decimal(r.meses_inmovilizacion or 0.0, 1)}).")
+    sin_confirmar = [d.dato for d in r.datos_legales
+                     if d.estado == "sin_confirmar" and (d.valor is not None or d.texto is not None)]
     if sin_confirmar:
         avisos.append(f"Datos sin confirmar en la norma: {', '.join(sin_confirmar).lower()}. No los use "
                       f"sin validarlos.")
     return avisos
+
+
+def _texto_meses(r: ProcedimientoResultado) -> str:
+    """Fase 5J-2b (ADR-0026): los meses que se suman al plazo de la operación y su origen."""
+    m = r.meses_inmovilizacion_aplicados
+    if m is None:                       # resultado anterior a la fase
+        return "no consta" if r.meses_inmovilizacion is None else f"{decimal(r.meses_inmovilizacion, 1)} meses (plazo legal máximo)"
+    if r.meses_inmovilizacion_asumidos:
+        return f"{decimal(m, 1)} meses (estimación prudente, sin base legal)"
+    if r.regimen_asumido and m != r.meses_inmovilizacion:
+        return f"{decimal(m, 1)} meses (régimen judicial más largo: no consta la fecha de inicio)"
+    return f"{decimal(m, 1)} meses (plazo legal máximo)"
 
 
 def seccion_informe(r: ProcedimientoResultado) -> str:
@@ -250,7 +325,7 @@ def seccion_informe(r: ProcedimientoResultado) -> str:
 
     plazo = ("no consta" if r.plazo_pago_dias is None
              else f"{r.plazo_pago_dias} {UNIDAD_PLAZO.get(r.plazo_pago_unidad or '', 'días')}")
-    meses = "no consta" if r.meses_inmovilizacion is None else f"{decimal(r.meses_inmovilizacion, 1)} meses (plazo legal máximo)"
+    meses = _texto_meses(r)
     regimen = (r.regimen_nombre or NOMBRE_VENTA_NO_REGLADA) + (" — supuesto: no consta la fecha de inicio"
                                                                 if r.regimen_asumido else "")
     filas = [
@@ -265,10 +340,154 @@ def seccion_informe(r: ProcedimientoResultado) -> str:
     ]
     tabla = "\n".join(f"| {k} | {v} |" for k, v in filas)
     avisos = "\n".join(f"- {a}" for a in r.avisos) or "- (ninguno)"
-    fuentes = "\n".join(f"- {d.dato}: {d.articulo} ({'confirmado' if d.estado == 'confirmado' else 'sin confirmar'})"
+    fuentes = "\n".join(f"- {d.dato}{f' ({d.texto})' if d.texto else ''}: {d.articulo} "
+                        f"({'confirmado' if d.estado == 'confirmado' else 'sin confirmar'})"
                         for d in r.datos_legales) or "- (no aplica)"
     return (f"\n\n**Procedimiento y umbrales legales (orientativo)**\n\n"
             f"| Dato | Valor |\n|---|---|\n{tabla}\n\n"
             f"**Avisos del procedimiento:**\n{avisos}\n\n"
             f"**Base legal aplicada:**\n{fuentes}\n\n"
             f"_{r.aviso_orientativo}_")
+
+
+def texto_deposito(r: ProcedimientoResultado) -> str:
+    """Fase 5J-2b (ADR-0024): el depósito exigido, para el plan de puja y el informe."""
+    if r.procedimiento == "no_aplica":
+        return "según las condiciones del vendedor (venta no reglada)"
+    if r.deposito_eur is None or r.deposito_pct is None:
+        return "no consta en la norma para este procedimiento: confírmelo en el edicto"
+    minimo = r.deposito_eur > round(r.deposito_pct * r.valor_subasta, 2)
+    texto = (f"{eur(r.deposito_eur)} ({pct(r.deposito_pct, 0)} del valor de subasta"
+             f"{', con el mínimo legal' if minimo else ''})")
+    if r.regimen_asumido:
+        texto += ("; supuesto desfavorable: no consta cuándo se inició el procedimiento judicial "
+                  "(si fue antes del 3-4-2025, es menor)")
+    return texto
+
+
+# ─────────────── Fase 5J-3 (ADR-0027): la franja del letrado ───────────────
+
+# Procedimientos en los que, por debajo de la aprobación segura, la aprobación del remate deja
+# de ser automática y acaba en manos del letrado de la Administración de Justicia (LEC 670.3).
+AUTORIDAD = {"judicial": "el letrado de la Administración de Justicia"}
+_DATOS_FRANJA = ("Aprobación segura", "Aprobación sin depender de la autoridad",
+                 "Aprobación si la puja cubre la deuda",
+                 "Vivienda habitual del ejecutado: umbral", "Vivienda habitual del ejecutado: suelo absoluto")
+
+
+def aviso_aprobacion(r: ProcedimientoResultado, escalera: EscaleraPrecios) -> AvisoAprobacion | None:
+    """Aviso si la puja máxima recomendada (P_max) cae por debajo de la aprobación segura del
+    remate en un procedimiento judicial. Puro y determinista (P1). No cambia ningún número.
+
+    Franjas (LEC 670, investigación §2.5):
+    - `sujeta_a_mejora`: entre la puja mínima aprobable y la segura. El ejecutado puede presentar
+      un tercero que mejore la postura; si nadie la mejora, se aprueba.
+    - `discrecional`: por debajo de la mínima aprobable. Si nadie la mejora, decide el letrado.
+    - `bajo_suelo`: por debajo del suelo de la vivienda habitual del ejecutado (60 %), que la ley
+      no aprueba en ningún caso. Si no consta si es vivienda habitual, se asume que sí (P4).
+    """
+    autoridad = AUTORIDAD.get(r.procedimiento)
+    if autoridad is None or escalera.degenerada or r.puja_aprobacion_segura is None:
+        return None
+    p_max, vt = escalera.p_max, r.valor_subasta
+    if p_max >= r.puja_aprobacion_segura or vt <= 0:
+        return None
+    vivienda = r.vivienda_habitual == "si" or r.vivienda_habitual_asumida
+    if r.suelo_absoluto is not None and p_max < r.suelo_absoluto:
+        franja = "bajo_suelo"
+    elif r.puja_minima_aprobable is not None and (
+            p_max < r.puja_minima_aprobable
+            or (r.puja_minima_estricta and p_max <= r.puja_minima_aprobable)):
+        franja = "discrecional"
+    else:
+        franja = "sujeta_a_mejora"
+    maximo = f"La puja máxima recomendada ({eur(p_max)}, {pct(p_max / vt, 1)} del valor de subasta)"
+    segura = f"{eur(r.puja_aprobacion_segura)}, {pct(r.umbral_aprobacion_segura_pct or 0.0, 0)}"
+    if franja == "sujeta_a_mejora":
+        titulo = "Aprobación del remate sujeta a mejora"
+        ejecutante = (", y el ejecutante pedir la adjudicación (régimen anterior a la LO 1/2025)"
+                      if r.regimen == "judicial_lec_2015" else "")
+        riesgo = (f"{maximo} no alcanza la aprobación segura ({segura}). Tras el cierre, el ejecutado "
+                  f"puede presentar un tercero que mejore la postura{ejecutante}; si nadie la mejora, el "
+                  f"remate se aprueba. Riesgo: perder la adjudicación después de haber ganado la subasta.")
+        condicion = (f"Aprobación del remate sujeta a mejora: la puja máxima ({eur(p_max)}) no alcanza la "
+                     f"aprobación segura ({segura}); asumir por escrito el riesgo de que un tercero la mejore")
+    elif franja == "discrecional" and vivienda:
+        minima = f"{eur(r.puja_minima_aprobable or 0.0)}, {pct(r.umbral_aprobacion_pct or 0.0, 0)}"
+        suelo = f"{eur(r.suelo_absoluto or 0.0)}, {pct(r.suelo_absoluto_pct or 0.0, 0)}"
+        titulo = "Remate de vivienda habitual aprobable solo si cubre la deuda"
+        riesgo = (f"{maximo} queda por debajo del umbral de la vivienda habitual del ejecutado ({minima}): "
+                  f"la ley no aprueba el remate por debajo de ese umbral salvo que la postura cubra lo "
+                  f"debido al ejecutante, y nunca por debajo del suelo ({suelo}). Riesgo: no obtener el "
+                  f"remate aunque se gane la subasta.")
+        if r.vivienda_habitual_asumida:
+            riesgo += (" No consta si es la vivienda habitual: se asume que sí, por prudencia; si no lo "
+                       "es, la aprobación dependería de los umbrales generales.")
+        condicion = (f"Remate de vivienda habitual aprobable solo si cubre la deuda: la puja máxima "
+                     f"({eur(p_max)}) queda por debajo del umbral ({minima}); confirmar en el edicto si es la "
+                     f"vivienda habitual y lo debido al ejecutante, y asumir por escrito el riesgo")
+    elif franja == "discrecional":
+        minima = f"{eur(r.puja_minima_aprobable or 0.0)}, {pct(r.umbral_aprobacion_pct or 0.0, 0)}"
+        titulo = "Aprobación del remate a decisión del letrado"
+        igual = " o la iguala (la norma exige superarla)" if r.puja_minima_estricta and p_max >= (
+            r.puja_minima_aprobable or 0.0) else ""
+        riesgo = (f"{maximo} queda por debajo de la puja mínima aprobable ({minima}){igual}. Si nadie mejora la "
+                  f"postura, la aprobación del remate la decide {autoridad}, oídas las partes, y puede "
+                  f"denegarla. Riesgo: no obtener el remate aunque se gane la subasta.")
+        condicion = (f"Aprobación del remate a decisión del letrado: la puja máxima ({eur(p_max)}) queda por "
+                     f"debajo de la mínima aprobable ({minima}); asumir por escrito el riesgo de denegación")
+    else:
+        suelo = f"{eur(r.suelo_absoluto or 0.0)}, {pct(r.suelo_absoluto_pct or 0.0, 0)}"
+        titulo = "Remate no aprobable si es la vivienda habitual del ejecutado"
+        riesgo = (f"{maximo} queda por debajo del suelo de la vivienda habitual del ejecutado ({suelo}): "
+                  f"la ley no aprueba el remate por debajo de esa cifra, ni siquiera si cubre la deuda. "
+                  f"Riesgo: ganar la subasta sin poder obtener el remate.")
+        if r.vivienda_habitual_asumida:
+            riesgo += (" No consta si es la vivienda habitual: se asume que sí, por prudencia; si no lo "
+                       "es, el suelo no se aplica y la aprobación dependería de los umbrales generales.")
+        condicion = (f"Remate no aprobable si es la vivienda habitual del ejecutado: la puja máxima "
+                     f"({eur(p_max)}) queda por debajo del suelo legal ({suelo}); confirmar en el edicto "
+                     f"si lo es y asumir por escrito el riesgo")
+    if r.regimen_asumido:
+        riesgo += (" No consta cuándo se inició el procedimiento: se aplican los umbrales del régimen "
+                   "de la LO 1/2025.")
+    techo = franja != "sujeta_a_mejora"
+    datos = [d for d in r.datos_legales if d.dato in _DATOS_FRANJA
+             and (vivienda or not d.dato.startswith("Vivienda"))
+             and (r.cantidad_reclamada is not None or d.dato != "Aprobación si la puja cubre la deuda")]
+    aviso = AvisoAprobacion(
+        franja=franja, techo_naranja=techo, p_max=p_max, p_max_pct=round(p_max / vt, 4),
+        alcance=("El semáforo queda como máximo en naranja." if techo
+                 else "No limita el semáforo: es una condición."),
+        puja_aprobacion_segura=r.puja_aprobacion_segura,
+        umbral_aprobacion_segura_pct=r.umbral_aprobacion_segura_pct or 0.0,
+        puja_minima_aprobable=r.puja_minima_aprobable, umbral_aprobacion_pct=r.umbral_aprobacion_pct,
+        suelo_absoluto=r.suelo_absoluto, suelo_absoluto_pct=r.suelo_absoluto_pct,
+        vivienda_habitual_asumida=r.vivienda_habitual_asumida, regimen_asumido=r.regimen_asumido,
+        titulo=titulo, riesgo=riesgo, condicion=condicion, datos_legales=datos)
+    return aviso.model_copy(update={"umbrales": umbrales_texto(aviso)})
+
+
+def _umbral(d: DatoLegal) -> str:
+    """«aprobación segura (70 %)»; un 0 es el centinela de «sin porcentaje mínimo»."""
+    if d.valor is None:
+        return d.dato.lower()
+    return f"{d.dato.lower()} ({'sin porcentaje mínimo' if d.valor == 0 else pct(d.valor, 0)})"
+
+
+def umbrales_texto(a: AvisoAprobacion) -> list[str]:
+    """Los umbrales aplicados, uno por línea, para la interfaz (mismo texto que el informe)."""
+    return [f"{_umbral(d)} — {d.articulo} ({'confirmado' if d.estado == 'confirmado' else 'sin confirmar'})"
+            for d in a.datos_legales]
+
+
+def bloque_aviso_aprobacion(a: AvisoAprobacion) -> str:
+    """Bloque destacado del §1 del informe. Solo párrafos con negrita y cursiva: el
+    renderizador de la interfaz y el PDF no admiten citas (`>`)."""
+    semaforo = (a.alcance or ("El semáforo queda como máximo en naranja." if a.techo_naranja
+                              else "No limita el semáforo: es una condición.")) + " "
+    umbrales = "; ".join(a.umbrales or umbrales_texto(a))
+    return (f"**Atención: {a.titulo.lower()}.** {a.riesgo}\n\n"
+            f"**Umbrales aplicados:** {umbrales or 'no constan'}.\n\n"
+            f"_{semaforo}Los precios, el RVC y la rentabilidad no cambian. "
+            f"Cálculo orientativo, no asesoramiento jurídico._")

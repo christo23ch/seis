@@ -134,7 +134,7 @@ def test_simular_conserva_contrato_publico(api):
 
         # Sigue devolviendo un AnalisisResult, con el mismo comportamiento
         # determinista de siempre (mismo caso base ya usado en test_api.py).
-        assert resultado_1.decision.semaforo == "amarillo"
+        assert resultado_1.decision.semaforo == "naranja"  # 5J-3 (ADR-0027): P_max bajo el suelo de la vivienda habitual supuesta ⇒ techo naranja
         assert resultado_1.model_dump() == resultado_2.model_dump()
     finally:
         db.close()

@@ -26,11 +26,11 @@ from tests.conftest import entrada_base
 from tests.test_golden_caso19 import caso_19  # noqa: F401 — fixture reutilizada
 
 CLAVE = "capital.coste_capital_anual"
-TEXTO_AVISO = ("Por encima del 6 % la escalera de precios suele degenerar "
-               "(umbral medido en el caso de referencia §19: 6,13 %)")
+TEXTO_AVISO = ("Por encima del 5 % la escalera de precios suele degenerar "
+               "(umbral medido en el caso de referencia §19: 5,14 %)")
 LINEA_CASO19 = ("El coste de capital (1,5 % anual, coste de oportunidad del capital propio) "
                 "solo se descuenta del precio límite (§9.1); ROI y TIR no lo incluyen. "
-                "Importe aplicado: 3.659 €.")
+                "Importe aplicado: 4.363 €.")
 
 
 # ─────────────────────────── helpers ───────────────────────────
@@ -80,7 +80,7 @@ def test_catalogo_describe_el_coste_de_oportunidad_con_rango_y_aviso():
     assert "coste de oportunidad del capital propio" in p.descripcion.lower()
     assert "ROI" in p.advertencia and "TIR" in p.advertencia
     assert "precio límite" in p.impacto
-    assert p.umbral_aviso == 0.06
+    assert p.umbral_aviso == 0.05
     assert p.texto_aviso == TEXTO_AVISO
     # El catálogo no tiene una escala de nivel de riesgo: no se inventa.
     assert p.nivel_riesgo_modificacion == catalogo.PENDIENTE_DE_DEFINIR
@@ -183,7 +183,7 @@ def test_parametros_simulables_devuelve_umbral_de_aviso(api, headers, aid):
     r = api.get(f"/api/v1/analisis/{aid}/parametros-simulables", headers=headers)
     assert r.status_code == 200
     por_clave = {p["clave"]: p for p in r.json()["editables"]}
-    assert por_clave[CLAVE]["umbral_aviso"] == 0.06
+    assert por_clave[CLAVE]["umbral_aviso"] == 0.05
     assert por_clave[CLAVE]["texto_aviso"] == TEXTO_AVISO
     assert por_clave[CLAVE]["rango"] == [0.0, 0.15]
     otros = [p for c, p in por_clave.items() if c != CLAVE]
@@ -198,7 +198,7 @@ def dorado(caso_19):  # noqa: F811
 
 
 def test_informe_explica_el_coste_de_capital_con_su_importe(dorado):
-    assert dorado.decision.precios.detalle["coste_capital"] == 3659.05
+    assert dorado.decision.precios.detalle["coste_capital"] == 4362.72
     assert LINEA_CASO19 in dorado.informe_markdown
 
 
@@ -235,20 +235,23 @@ def test_sin_tasa_o_sin_importe_no_se_imprime_la_linea(dorado, caso_19, tasa, im
 
 # ─────────────── el motor no cambia ni un número (caso §19) ───────────────
 
-# Capturados con el código ANTERIOR a 5G.4 (commit 9c41bbe).
-ESCALERA_ANTES = (51317.0, 60011.0, 68731.0, 80022.0, False)
+# Capturados con el código ANTERIOR a 5G.4 (commit 9c41bbe) y recapturados en la Fase 5J-2b,
+# que cambia cifras con aprobación del responsable: el plazo suma la inmovilización entre el
+# cierre y la posesión (ADR-0026). Antes de la 5J-2b: escalera 51.317 / 60.011 / 68.731 /
+# 80.022, coste de capital 3.659,05, TIR 0,3387 y plazos 18,2 / 13,0 / 11,0.
+ESCALERA_ANTES = (50753.0, 59447.0, 67941.0, 78529.0, False)
 DETALLE_ANTES = {"delta_v_aplicado": 0.0, "m_objetivo_ajustado": 0.25, "m_minimo_ajustado": 0.17,
-                 "vs_pesimista": 160837.44, "p_por_margen_min": 69097.33,
-                 "p_por_pesimista": 68730.9, "coste_capital": 3659.05}
-RENTABILIDAD_ANTES = {"precio_evaluado": 60011.0, "inversion_total": 141395.76,
-                      "beneficio": 35348.68, "roi": 0.25, "roi_anualizado": 0.2287,
-                      "tir_anual": 0.3387, "valor_esperado": 32361.25}
+                 "vs_pesimista": 160837.44, "p_por_margen_min": 68533.42,
+                 "p_por_pesimista": 67941.43, "coste_capital": 4362.72}
+RENTABILIDAD_ANTES = {"precio_evaluado": 59447.0, "inversion_total": 141395.67,
+                      "beneficio": 35348.77, "roi": 0.25, "roi_anualizado": 0.1886,
+                      "tir_anual": 0.2641, "valor_esperado": 32301.34}
 ESCENARIOS_ANTES = [
-    ("pesimista", 160837.44, 151559.46, 9277.98, 0.0612, 0.04, 18.2),
-    ("base", 176744.44, 141395.76, 35348.68, 0.25, 0.2287, 13.0),
-    ("optimista", 186995.62, 133995.7, 52999.92, 0.3955, 0.4361, 11.0),
+    ("pesimista", 160837.44, 151799.37, 9038.07, 0.0595, 0.0325, 21.7),
+    ("base", 176744.44, 141395.67, 35348.77, 0.25, 0.1886, 15.5),
+    ("optimista", 186995.62, 133995.6, 53000.01, 0.3955, 0.3547, 13.2),
 ]
-DECISION_ANTES = ("amarillo", 64, 40, 0.248)
+DECISION_ANTES = ("naranja", 64, 40, 0.248)  # 5J-3 (ADR-0027): P_max bajo el suelo de la vivienda habitual supuesta ⇒ techo naranja (antes amarillo)
 
 
 def test_m11_m12_no_cambian_ningun_valor_numerico(dorado):

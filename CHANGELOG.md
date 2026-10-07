@@ -19,6 +19,79 @@ convertirse en un SaaS. Lo anterior está en el historial de git.
 
 ---
 
+## [Fase 5J-3] — Aviso de la franja del letrado; reglas sincronizadas al sembrar — 2026-10-08
+
+Rama `fase/5j-3-avisos`, apilada sobre la 5J-2b, sin PR ([[ADR-0027]]). **Cambia el semáforo, no
+los números**, con la tabla antes/después aprobada por el responsable. Suite: 1183 passed,
+18 skipped, 0 failed (+34). Vitest: 144 (+1). Revisión de código: 0 críticos, 0 altos; 2 medios y
+4 bajos corregidos. Sin migración.
+
+### Añadido
+- **Aviso de la franja del letrado** (`procedimiento.aviso_aprobacion`, en el motor): en un
+  procedimiento judicial con la puja máxima por debajo de la aprobación segura (70 %), bloque
+  destacado bajo el semáforo con el riesgo y los umbrales T3 (cada uno con su estado), condición en
+  la decisión e ítem en el checklist. Franjas: **por debajo del suelo** de la vivienda habitual y
+  **a decisión del letrado** ⇒ techo naranja e ítem bloqueante; **sujeta a mejora** ⇒ sin techo e
+  ítem no bloqueante. Nunca veto; ningún número cambia. Vivienda habitual «no consta» ⇒ se asume
+  que sí, con aviso. El panel del procedimiento lo destaca.
+- **Las reglas T2 se sincronizan al sembrar** (`scripts/sembrar.py::sincronizar_reglas`): una
+  versión nueva del catálogo sustituye a la sembrada; nunca pisa una creada por la API.
+
+### Cambiado
+- **§19: amarillo → naranja** (por debajo del suelo de la vivienda habitual supuesta, 91.200 €).
+  Guarda invariante regenerada: 13 hojas por caso, ninguna numérica.
+- **SEM-EJEC-01 2026.10.07** y riesgo de ejecución de M13: la cesión de remate es del ejecutante
+  y, con la LO 1/2025, también de los acreedores posteriores (LEC 647.3).
+
+### Despliegue
+- El siguiente `init_db` lleva SEM-EJEC-01 2026.10.07 a las bases ya sembradas (salvo que alguien
+  la haya editado por la API, que manda).
+
+---
+
+## [Fase 5J-2b] — Depósito, táctica de puja y plazo reales — 2026-10-07
+
+Rama `fase/5j-2b-deposito-y-plazo`, sin PR ([[ADR-0024]], [[ADR-0025]], [[ADR-0026]]). **Cambia
+cifras**, con la tabla antes/después aprobada por el responsable. Suite: 1149 passed, 18 skipped,
+0 failed (+49). Vitest: 143 (+2). E2E: 168 comprobaciones (+5), 0 fallos. Sin migración.
+
+### Cambiado (cifras)
+- **Plazo de la operación** = ocupación + obra + comercialización + **meses de inmovilización**
+  entre el cierre y la posesión (T3 por régimen, al plazo legal máximo). Régimen judicial sin
+  fecha de inicio ⇒ el plazo más largo (2,5 meses); sin plazo en la norma o venta no reglada ⇒
+  2,5 meses, «estimación prudente, sin base legal».
+- **§19:** plazo 13 → 15,5 meses (P80 18,2 → 21,7); escalera 51.317 / 60.011 / 68.731 / 80.022 →
+  50.753 / 59.447 / 67.941 / 78.529 €; coste de capital 3.659,05 → 4.362,72 €; RVC 1,077 → 1,064
+  (alcanzable); TIR 33,87 → 26,41 %; VAN 33.230,42 → 32.721,46 €; colchón a P_max 60,9 → 61,5
+  meses; semáforo, ICO, RA, ROI y capital para pujar sin cambio.
+- El aviso del catálogo para el coste de capital pasa del 6 % al 5 %: el umbral medido en el
+  §19 a partir del cual la escalera degenera baja de 6,13 % a 5,14 %.
+
+### Cambiado (textos)
+- **Depósito** del plan de puja, del §2 y del checklist: el del régimen (20 % con la LO 1/2025,
+  supuesto desfavorable si no consta la fecha de inicio), no el 5 % del alta.
+- **Táctica de puja por forma de puja** (nuevo dato T3, contrastado con la API del BOE): pujas
+  secretas sin prórroga, visibles con prórroga, visibles sin prórroga fijada, presencial o «no
+  consta». La forma de puja figura en la base legal del informe y del panel.
+- **SEM-EJEC-01 2026.10:** «depósito según el régimen del procedimiento (20 %…; 5 %…)». Salda el
+  único «%» pegado que quedaba en el informe.
+- El aviso orientativo del procedimiento ya no dice que nada de él mueve las cifras.
+- El informe escribe el plazo con un decimal cuando no es entero («15,5 m»), en el §5 y en los
+  escenarios del §7.
+
+### Despliegue
+- La siembra copia el catálogo de reglas a la tabla `regla` solo si está vacía, y desde entonces el
+  motor ignora el YAML: **las bases ya inicializadas conservan SEM-EJEC-01 2026.07**. La versión
+  2026.10 solo llega a las bases nuevas (ADR-0024). Los parámetros T3 sí llegan.
+
+### Pruebas y referencias
+- `tests/datos/invariante_5h1.json` **regenerada** con aprobación expresa; vigila también los
+  campos añadidos desde la 5H.1. Diff hoja a hoja en el ADR-0026 y en la entrega de la fase.
+- `tests/test_deposito_plazo_5j2b.py` (48). «Ver cálculo» del plazo sustituye la inmovilización;
+  datos de prueba del frontend y `docs/SEIS_informe_ejemplo_caso19.md` regenerados.
+
+---
+
 ## [Fase 5J-2a] — Textos legibles en el informe y el PDF; operandos de «Ver cálculo» — 2026-10-07
 
 Rama `fase/5j-2a-textos-y-datos`, sin PR ([[ADR-0023]]). Ninguna cifra cambia: la guarda del §19

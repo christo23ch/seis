@@ -446,6 +446,33 @@ class DatoLegal(BaseModel):
     articulo: str
     estado: Literal["confirmado", "sin_confirmar"]
     nota: str | None = None
+    # Fase 5J-2b: valor descriptivo de un dato que no es una cifra (la forma de puja).
+    texto: str | None = None
+
+
+class AvisoAprobacion(BaseModel):
+    """Fase 5J-3 (ADR-0027): la puja máxima recomendada cae por debajo de la aprobación segura
+    del remate y su aprobación ya no es automática. Informativo: no cambia ningún número; añade
+    una condición y, solo en las franjas «discrecional» y «bajo_suelo», un techo naranja al
+    semáforo (nunca un veto)."""
+    franja: Literal["sujeta_a_mejora", "discrecional", "bajo_suelo"]
+    techo_naranja: bool = False                       # decisión del responsable: no en «sujeta_a_mejora»
+    p_max: float
+    p_max_pct: float                                  # sobre el valor de subasta
+    puja_aprobacion_segura: float
+    umbral_aprobacion_segura_pct: float
+    puja_minima_aprobable: float | None = None
+    umbral_aprobacion_pct: float | None = None
+    suelo_absoluto: float | None = None
+    suelo_absoluto_pct: float | None = None
+    vivienda_habitual_asumida: bool = False
+    regimen_asumido: bool = False
+    titulo: str
+    riesgo: str
+    condicion: str
+    alcance: str = ""                                 # qué hace con el semáforo, redactado por el motor
+    umbrales: list[str] = []                          # los umbrales aplicados, redactados (informe e interfaz)
+    datos_legales: list[DatoLegal] = []               # los umbrales aplicados, con su estado
 
 
 class ProcedimientoResultado(BaseModel):
@@ -468,6 +495,13 @@ class ProcedimientoResultado(BaseModel):
     plazo_pago_dias: int | None
     plazo_pago_unidad: str | None              # naturales | habiles
     meses_inmovilizacion: float | None
+    # Fase 5J-2b (ADR-0026): meses que se suman al plazo de la operación. Si la norma no los da,
+    # los de `procedimiento.meses_inmovilizacion_si_no_consta` (asumidos = True, sin base legal);
+    # si no consta el régimen judicial, los del régimen judicial más largo.
+    meses_inmovilizacion_aplicados: float | None = None
+    meses_inmovilizacion_asumidos: bool | None = None
+    # Fase 5J-2b (ADR-0025): cómo se puja en este régimen; decide la táctica de M13.
+    forma_puja: str | None = None
     umbral_aprobacion_pct: float | None        # umbral aplicable a la puja mínima aprobable
     puja_minima_aprobable: float | None        # sin depender de la decisión de la autoridad
     umbral_aprobacion_segura_pct: float | None
@@ -477,6 +511,11 @@ class ProcedimientoResultado(BaseModel):
     datos_legales: list[DatoLegal]
     avisos: list[str]
     aviso_orientativo: str
+    # Fase 5J-3 (revisión, M1): la norma exige SUPERAR la mínima aprobable, no igualarla
+    # (régimen anterior: «supere el 50 %»). Falso si la rebaja la deuda («cubra») o la vivienda habitual.
+    puja_minima_estricta: bool | None = None
+    # Fase 5J-3 (ADR-0027): solo si la puja máxima no alcanza la aprobación segura.
+    aviso_aprobacion: AvisoAprobacion | None = None
 
 
 class ChecklistItem(BaseModel):
