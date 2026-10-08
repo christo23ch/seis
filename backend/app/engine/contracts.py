@@ -527,6 +527,40 @@ class ChecklistItem(BaseModel):
     detalle: str | None = None
 
 
+class VeredictoPuja(BaseModel):
+    """Fase 5J-4 (ADR-0028): las tres cifras de la puja y si los números merecen la pena.
+
+    - `viable`: la puja mínima aprobable cabe en el precio máximo económico. Se recomienda la
+      mayor entre el precio objetivo y la mínima aprobable.
+    - `inviable`: la mínima aprobable supera el precio máximo económico. No se recomienda ninguna
+      puja; la rentabilidad se muestra a la mínima aprobable, con aviso.
+    - `sin_umbral`: la norma no da una mínima aprobable; la recomendación es la económica.
+    Informativo: no veta nada y el usuario puede seguir simulando. Semáforo (diseño C): un
+    inviable es rojo si la mínima aprobable supera P_límite y, si cabe, como máximo naranja."""
+    estado: Literal["viable", "inviable", "sin_umbral"]
+    p_max: float
+    p_objetivo: float
+    p_limite: float | None = None
+    cabe_en_limite: bool | None = None                # inviable: mínima aprobable ≤ P_límite
+    # Inviable: qué pasaría con una puja de P_máx (segunda línea del veredicto; no lo cambia).
+    aprobacion: Literal["no_aprobable", "solo_si_cubre_deuda", "discrecional"] | None = None
+    aprobacion_texto: str | None = None
+    condicion: str | None = None                      # inviable dentro del límite: la del naranja
+    # Vivienda habitual «no consta» (se asume que sí): la mínima si no lo fuera.
+    puja_minima_sin_vivienda: float | None = None
+    alternativa_vivienda: str | None = None
+    puja_minima_aprobable: float | None = None        # tal como la calcula la 5J-1
+    puja_minima_efectiva: float | None = None         # +1 € si la norma exige superarla
+    puja_aprobacion_segura: float | None = None
+    puja_recomendada: float | None = None             # None si inviable
+    puja_evaluada: float                              # la de la rentabilidad
+    autoridad: str | None = None
+    titulo: str
+    texto: str
+    cambios: list[str] = []                           # qué tendría que cambiar (si inviable)
+    aviso_rentabilidad: str | None = None
+
+
 class DecisionFinal(BaseModel):
     semaforo: Semaforo
     ico: int
@@ -551,6 +585,8 @@ class DecisionFinal(BaseModel):
     # Fase 5J-2a (informativo, opcional): operandos del colchón a P_objetivo.
     colchon_detalle: ColchonDetalle | None = None
     colchon_plazo_meses_p_max: float | None = None
+    # Fase 5J-4 (ADR-0028): veredicto de la puja; `None` en resultados anteriores o sin escalera.
+    veredicto: VeredictoPuja | None = None
 
 
 class AnalisisResult(BaseModel):

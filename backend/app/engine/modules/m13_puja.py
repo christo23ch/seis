@@ -82,7 +82,8 @@ def _cesion_remate(procedimiento: ProcedimientoResultado | None) -> str:
 
 
 def ejecutar(inp: AnalisisInput, params, hechos: dict, escalera: EscaleraPrecios,
-             vm: float, procedimiento: ProcedimientoResultado | None = None) -> PujaResultado:
+             vm: float, procedimiento: ProcedimientoResultado | None = None,
+             veredicto=None) -> PujaResultado:
     vt = inp.subasta.valor_subasta
     ratio = _ratio_segmento(inp, params)
     ratio_segmento = ratio
@@ -127,9 +128,19 @@ def ejecutar(inp: AnalisisInput, params, hechos: dict, escalera: EscaleraPrecios
             "No cargar límites ni pujar: la escalera de precios es degenerada (§9.3); "
             "la estructura de costes consume el valor y no hay precio límite utilizable",
         ]
+    elif veredicto is not None and veredicto.estado == "inviable":
+        # Fase 5J-4 (ADR-0028): no se inventa una recomendación.
+        tacticas = [
+            f"No pujar con estas condiciones: la puja mínima aprobable ({eur(veredicto.puja_minima_efectiva)}) "
+            f"supera el precio máximo económico ({eur(veredicto.p_max)}); el informe dice qué tendría que cambiar",
+        ]
     else:
         tacticas = (_tacticas(escalera, procedimiento.forma_puja, procedimiento.regimen_asumido) if procedimiento
                     else _tacticas(escalera, "visibles_con_prorroga"))
+        if veredicto is not None and veredicto.puja_recomendada is not None \
+                and veredicto.puja_recomendada != escalera.p_objetivo:
+            tacticas.insert(0, f"Puja recomendada: {eur(veredicto.puja_recomendada)}, la mínima aprobable (el "
+                               f"objetivo de {eur(escalera.p_objetivo)} no se aprobaría sin depender de la autoridad)")
     plan = [
         *tacticas,
         # Fase 5J-2b (ADR-0024): el depósito exigido por el régimen, no el 5 % del alta.

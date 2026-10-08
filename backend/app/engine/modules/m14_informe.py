@@ -18,7 +18,7 @@ from app.engine.formato import pct as _pct
 # Fase 5J-2a: el informe nombra los códigos y símbolos del motor con su texto legible.
 from app.engine.textos import etiqueta as _et
 from app.engine.textos import legible as _leg
-from app.engine.procedimiento import bloque_aviso_aprobacion, texto_deposito
+from app.engine.procedimiento import bloque_aviso_aprobacion, bloque_veredicto, texto_deposito
 
 
 def _meses(x: float) -> str:
@@ -116,6 +116,15 @@ def construir_checklist(inp: AnalisisInput, dec: DecisionFinal, hechos: dict, *,
         # límites que cargar; mismo patrón que «sin comparables».
         add("D. Económico", "Escalera de precios cargada en la interfaz de puja", True, "pendiente",
             "Escalera de precios degenerada (§9.3): no hay escalera utilizable para pujar.")
+    elif getattr(dec, "veredicto", None) is not None and dec.veredicto.estado == "inviable":
+        # Fase 5J-4 (ADR-0028): sin puja recomendable no hay escalera que cargar.
+        ver = dec.veredicto
+        limite = ("cabe en el límite absoluto, pero solo aceptando por escrito un margen menor que el del perfil"
+                  if ver.cabe_en_limite else "supera también el límite absoluto")
+        add("D. Económico", "Escalera de precios cargada en la interfaz de puja", True, "pendiente",
+            f"Inviable con estas condiciones: la puja mínima aprobable ({_eur(ver.puja_minima_efectiva)}) "
+            f"supera el precio máximo económico ({_eur(dec.precios.p_max)}) y {limite} "
+            f"({_eur(dec.precios.p_limite)}).")
     else:
         add("D. Económico", "Escalera de precios cargada en la interfaz de puja", True, "ok",
             f"Objetivo {_eur(dec.precios.p_objetivo)} · Máx {_eur(dec.precios.p_max)} · Límite {_eur(dec.precios.p_limite)}")
@@ -261,13 +270,24 @@ def construir_informe(inp: AnalisisInput, res_parciales: dict, dec: DecisionFina
     # Fase 5J-3 (ADR-0027): la franja del letrado, destacada bajo el semáforo.
     aviso = procedimiento.aviso_aprobacion if procedimiento is not None else None
     bloque_aviso = f"\n{bloque_aviso_aprobacion(aviso)}\n" if aviso is not None else ""
+    # Fase 5J-4 (ADR-0028): las tres cifras de la puja y el veredicto.
+    ver = getattr(dec, "veredicto", None)
+    bloque_ver = f"\n{bloque_veredicto(ver)}\n" if ver is not None else ""
+    filas_puja = ""
+    if ver is not None and ver.estado != "sin_umbral":
+        filas_puja = (f"\n| **Puja mínima aprobable** | {_eur(ver.puja_minima_efectiva)} |"
+                      f"\n| Puja de aprobación segura | "
+                      f"{_eur(ver.puja_aprobacion_segura) if ver.puja_aprobacion_segura is not None else 'no consta'} |"
+                      f"\n| **Veredicto** | {ver.titulo} |")
+    a_que = ("P objetivo" if ver is None or ver.puja_evaluada == dec.precios.p_objetivo
+             else f"puja {'recomendada' if ver.estado == 'viable' else 'mínima aprobable'} {_eur(ver.puja_evaluada)}")
 
     return f"""# Informe de análisis SEIS
 
 ## 1 · Página de decisión
 
 # {_SEM_ICONO[dec.semaforo]}
-{bloque_aviso}
+{bloque_aviso}{bloque_ver}
 | Métrica | Valor |
 |---|---|
 | **ICO** (calidad de la oportunidad) | **{dec.ico} / 100** |
@@ -276,9 +296,9 @@ def construir_informe(inp: AnalisisInput, res_parciales: dict, dec: DecisionFina
 | ICU (calidad de ubicación) | {dec.icu} / 100 |
 | **Precio ideal** | {_eur(dec.precios.p_ideal)} |
 | **Precio objetivo** | {_eur(dec.precios.p_objetivo)} |
-| **Precio máximo recomendado** | {_eur(dec.precios.p_max)} |
-| **Precio límite absoluto** | {fila_limite} |
-| ROI base (a P objetivo) | {_pct(rent.roi)} ({_pct(rent.roi_anualizado)} anualizado) |
+| **Precio máximo económico** | {_eur(dec.precios.p_max)} |
+| **Precio límite absoluto** | {fila_limite} |{filas_puja}
+| ROI base (a {a_que}) | {_pct(rent.roi)} ({_pct(rent.roi_anualizado)} anualizado) |
 | TIR anual | {_pct(rent.tir_anual)} |
 | Margen de seguridad (caída de VS soportable) | {_pct(dec.margen_seguridad_valor)} |
 | Valor esperado (3 escenarios) | {_eur(rent.valor_esperado)} |
@@ -316,7 +336,7 @@ Reforma nivel **{ref.nivel}**: {_eur(ref.total_p50)} (P50) / {_eur(ref.total_p80
 
 Riesgo agregado **RA {dec.ra}** (banda {_et(ra.banda)}{", dominancia: " + _et(ra.dominancia_aplicada) if ra.dominancia_aplicada else ""}).
 
-## 7 · Análisis financiero (a precio objetivo {_eur(dec.precios.p_objetivo)})
+## 7 · Análisis financiero (a {"precio objetivo " + _eur(dec.precios.p_objetivo) if a_que == "P objetivo" else a_que})
 | Escenario | Prob. | VS | Coste total | Beneficio | ROI | ROI anual | Plazo |
 |---|---|---|---|---|---|---|---|
 {filas_esc}{nota_coste_capital}{nota_van}{nota_colchon}

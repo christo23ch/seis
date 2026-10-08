@@ -94,11 +94,14 @@ def ejecutar_analisis(inp: AnalisisInput, params: Parametros | None = None,
     escenarios = m11_rentabilidad.construir_escenarios(inp, params, hechos, valoracion, costes,
                                                        vs_p, ra_res.banda,
                                                        icu.potencial_revalorizacion, ici.ici)
-    p_eval = max(escalera.p_objetivo, 1.0)
+    # Fase 5J-4 (ADR-0028): la rentabilidad se calcula sobre una puja que se puede aprobar.
+    veredicto = procedimiento.veredicto_puja(inp, params, datos_procedimiento, escalera)
+    p_eval = veredicto.puja_evaluada if veredicto is not None else max(escalera.p_objetivo, 1.0)
     rentabilidad = m11_rentabilidad.evaluar(p_eval, escenarios, costes, inp, params)
 
     # ── Estrategia de puja y viabilidad competitiva ──────────────────────
-    puja = m13_puja.ejecutar(inp, params, hechos, escalera, valoracion.vm, procedimiento=datos_procedimiento)
+    puja = m13_puja.ejecutar(inp, params, hechos, escalera, valoracion.vm, procedimiento=datos_procedimiento,
+                             veredicto=veredicto)
 
     # ── Reglas T2: vetos, techos y condiciones (una sola pasada, determinista) ──
     motor = RuleEngine(reglas)
@@ -115,11 +118,14 @@ def ejecutar_analisis(inp: AnalisisInput, params: Parametros | None = None,
     if aviso is not None:
         datos_procedimiento = datos_procedimiento.model_copy(update={"aviso_aprobacion": aviso})
         condiciones.append(aviso.condicion)
+    # Fase 5J-4 (ADR-0028, diseño C): inviable dentro de P_límite ⇒ condición y techo naranja.
+    if veredicto is not None and veredicto.condicion:
+        condiciones.append(veredicto.condicion)
     semaforo, razones = m12_decision.decidir_semaforo(
         params, ico, ra_res, rentabilidad, ms_valor, puja.rvc, ici.ici,
         ici.techo_semaforo, escalera, vetos, techos, inp,
-        metodo_valoracion=valoracion.metodo, aviso_aprobacion=aviso)
-    if aviso is not None and aviso.techo_naranja:
+        metodo_valoracion=valoracion.metodo, aviso_aprobacion=aviso, veredicto=veredicto)
+    if (aviso is not None and aviso.techo_naranja) or (veredicto is not None and veredicto.condicion):
         techos = techos + ["naranja"]
 
     decision = DecisionFinal(
@@ -137,6 +143,7 @@ def ejecutar_analisis(inp: AnalisisInput, params: Parametros | None = None,
         rvc=puja.rvc, p_adj_esperado=puja.p_adj_esperado, vetos=vetos,
         condiciones=sorted(set(condiciones)), techos_aplicados=sorted(set(techos)),
         razones=razones, version_reglas=version_reglas, version_parametros=params.version,
+        veredicto=veredicto,
     )
 
     reglas_out = [ReglaDisparadaOut(codigo=d.codigo, version=d.version, categoria=d.categoria,
