@@ -472,13 +472,14 @@ export function calculoVeredicto(res: Resultado): Calculo {
     ...(v.p_limite != null ? [{ etiqueta: "P_límite", valor: eur(v.p_limite) }] : []),
     { etiqueta: "Puja evaluada (P_eval)", valor: eur(v.puja_evaluada) },
   ];
-  const limite = v.p_limite != null ? ` y ${v.puja_minima_efectiva <= v.p_limite ? "≤" : ">"} P_límite ${eur(v.p_limite)}` : "";
+  // Los signos salen del estado que dio el motor (`estado`, `cabe_en_limite`), no de recomparar aquí.
+  const inviable = v.estado === "inviable";
+  const limite = inviable && v.p_limite != null ? ` y ${v.cabe_en_limite ? "≤" : ">"} P_límite ${eur(v.p_limite)}` : "";
   return {
     clave: "veredicto", titulo, disponible: true, origen,
     formula: "Viable si mínima aprobable ≤ P_max (recomendada = máx(P_objetivo, mínima)); si no, inviable: "
       + "semáforo rojo si mínima > P_límite y, si cabe, como máximo naranja",
-    sustitucion: `mínima ${eur(v.puja_minima_efectiva)} ${v.puja_minima_efectiva <= v.p_max ? "≤" : ">"} P_max ${eur(v.p_max)}`
-      + (v.estado === "inviable" ? limite : ""),
+    sustitucion: `mínima ${eur(v.puja_minima_efectiva)} ${inviable ? ">" : "≤"} P_max ${eur(v.p_max)}${limite}`,
     resultado: v.titulo,
     filas,
   };

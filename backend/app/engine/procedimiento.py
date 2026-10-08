@@ -546,7 +546,9 @@ def veredicto_puja(inp: "AnalisisInput", params: "Parametros", r: ProcedimientoR
             aviso_rentabilidad=(f"La rentabilidad se calcula a la puja recomendada ({eur(efectiva)}), no al "
                                 f"precio objetivo ({eur(p_obj)})."))
     cabe = efectiva <= p_lim
-    aprobacion, aprobacion_texto = _aprobacion_a_p_max(r, p_max, de_quien)
+    regimen = params.seccion("procedimiento.regimenes").get(r.regimen or "", {})
+    tiene_regla_vh = _valor(regimen, "vivienda_habitual_umbral_pct") is not None
+    aprobacion, aprobacion_texto = _aprobacion_a_p_max(r, p_max, de_quien, tiene_regla_vh)
     limite = (f"Cabe en el precio límite absoluto ({eur(p_lim)}): el semáforo queda como máximo en naranja y "
               f"solo se plantearía aceptando un margen menor que el que exige su perfil." if cabe else
               f"Supera también el precio límite absoluto ({eur(p_lim)}), que el software nunca deja superar: "
@@ -567,12 +569,18 @@ def veredicto_puja(inp: "AnalisisInput", params: "Parametros", r: ProcedimientoR
                             f"no es aprobable sin depender {de_quien}."))
 
 
-def _aprobacion_a_p_max(r: ProcedimientoResultado, p_max: float, de_quien: str) -> tuple[str, str]:
+ETIQUETA_APROBACION = {"no_aprobable": "No aprobable", "solo_si_cubre_deuda": "Aprobable solo si cubre la deuda",
+                       "discrecional": "Aprobación discrecional"}
+
+
+def _aprobacion_a_p_max(r: ProcedimientoResultado, p_max: float, de_quien: str,
+                        tiene_regla_vh: bool) -> tuple[str, str]:
     """Segunda línea del veredicto inviable: qué pasaría con una puja de P_máx. No lo cambia.
 
     En la vivienda habitual del ejecutado no hay discrecionalidad (LEC 670.3, último párrafo):
-    por debajo del suelo no se aprueba nunca, y entre el suelo y el umbral solo si cubre la deuda."""
-    vivienda = r.vivienda_habitual == "si" or r.vivienda_habitual_asumida
+    por debajo del suelo no se aprueba nunca, y entre el suelo y el umbral solo si cubre la deuda.
+    Solo en los regímenes con esa regla: en la AEAT `suelo_absoluto` es la puja mínima admitida."""
+    vivienda = tiene_regla_vh and (r.vivienda_habitual == "si" or r.vivienda_habitual_asumida)
     supuesto = " No consta si es la vivienda habitual: se asume que sí." if r.vivienda_habitual_asumida else ""
     if vivienda and r.suelo_absoluto is not None:
         suelo = f"{eur(r.suelo_absoluto)}, {pct(r.suelo_absoluto_pct or 0.0, 0)}"
@@ -638,8 +646,10 @@ def bloque_veredicto(v: VeredictoPuja) -> str:
               f"aprobación segura {eur(v.puja_aprobacion_segura) if v.puja_aprobacion_segura is not None else 'no consta'}.")
     partes = [f"**Veredicto: {v.titulo.lower()}.**"]
     if v.aprobacion_texto:
-        etiqueta, _, resto = v.aprobacion_texto.partition(": ")
-        partes.append(f"**{etiqueta}:** {resto}")
+        etiqueta = ETIQUETA_APROBACION.get(v.aprobacion or "", "")
+        prefijo = f"{etiqueta}: "
+        partes.append(f"**{etiqueta}:** {v.aprobacion_texto[len(prefijo):]}"
+                      if etiqueta and v.aprobacion_texto.startswith(prefijo) else v.aprobacion_texto)
     partes += [v.texto, cifras]
     if v.alternativa_vivienda:
         partes.append(v.alternativa_vivienda)

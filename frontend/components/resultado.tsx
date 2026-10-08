@@ -170,12 +170,17 @@ export function RiesgosPanel({ riesgos }: { riesgos: Resultado["riesgos"] }) {
   );
 }
 
+/** Fase 5J-4 (ADR-0028): la rentabilidad se evalúa a la puja del veredicto, que viaja como
+ * `precio_evaluado`; un resultado anterior sin ella se evaluó a precio objetivo. */
+const aPuja = (r: Resultado["rentabilidad"]) =>
+  r.precio_evaluado != null ? `a la puja evaluada, ${eur(r.precio_evaluado)}` : "a precio objetivo";
+
 export function EscenariosPanel({ r }: { r: Resultado["rentabilidad"] }) {
   const data = r.escenarios.map((e) => ({ n: e.nombre, beneficio: e.beneficio, prob: e.probabilidad, roi: e.roi_anualizado }));
   return (
     <Card>
       <CardHeader className="flex items-center justify-between">
-        <CardTitle>Escenarios (a precio objetivo)</CardTitle>
+        <CardTitle>Escenarios ({aPuja(r)})</CardTitle>
         <span className="text-[12px] text-slate-500">Valor esperado <b className="cifra text-slate-700">{eur(r.valor_esperado)}</b></span>
       </CardHeader>
       <CardContent>
@@ -268,7 +273,7 @@ export function MetricasClave({ res }: { res: Resultado }) {
     ["Precio máximo", eur(d.precios.p_max)],
     ["Precio límite", d.precios.degenerada ? "No utilizable (escalera degenerada)" : eur(d.precios.p_limite)],
     ["ROI (base)", `${pct(r.roi)} · ${pct(r.roi_anualizado)} anual`], ["TIR anual", pct(r.tir_anual)],
-    ["Margen de seguridad", pct(d.margen_seguridad_valor)], ["Inversión total a P obj.", eur(r.inversion_total)],
+    ["Margen de seguridad", pct(d.margen_seguridad_valor)], [`Inversión total ({aPuja(r)})`, eur(r.inversion_total)],
     ["VS prudente", eur(res.vs_prudente)], ["δ_v aplicado", pct(res.delta_v)],
     // Fase 5H.1-A (ADR-0017): informativos; un resultado anterior no los trae y no se muestran.
     ...(r.van_coste_capital != null ? [["VAN al coste de capital", eur(r.van_coste_capital)] as [string, string]] : []),

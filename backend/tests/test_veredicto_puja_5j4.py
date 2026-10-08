@@ -129,10 +129,12 @@ def test_inviable_dentro_del_limite_es_naranja_con_condicion():
                              "40 % del valor de subasta, sería aprobable. Informe la cantidad reclamada si la conoce.")
 
 
-def test_el_naranja_del_veredicto_es_un_techo_y_nunca_sube_un_rojo():
+def test_un_inviable_dentro_del_limite_con_ico_insuficiente_sigue_rojo():
+    """El naranja del veredicto es un techo: con el ICO por debajo del naranja, el rojo se queda."""
     p = cargar_defaults().con_overrides({f"semaforo.{c}.ico_min": 99 for c in ("verde", "amarillo", "naranja")})
     r = ejecutar_analisis(_entrada("no"), params=p)
     assert r.decision.veredicto.cabe_en_limite and r.decision.semaforo == "rojo" and not r.decision.vetos
+    assert r.decision.razones[0].startswith("No alcanza Naranja")
 
 
 def test_lejos_del_limite_es_rojo_aunque_la_aprobacion_sea_discrecional():
@@ -174,6 +176,35 @@ def test_segunda_linea_discrecional_del_letrado_y_de_la_mesa_de_la_aeat():
     assert aeat.aprobacion_texto == ("Aprobación discrecional: una puja de hasta el precio máximo económico "
                                      "(68.194 €) quedaría a decisión de la Mesa de la subasta, que puede no aprobar "
                                      "el remate. Por debajo del 50 % del valor de subasta no hay precio mínimo legal.")
+
+
+@pytest.mark.parametrize("vivienda", ["si", None])
+def test_en_la_aeat_no_se_aplica_la_regla_de_la_vivienda_habitual(vivienda):
+    """Revisión de la fase: en la AEAT `suelo_absoluto` es la puja mínima admitida (10 %), no un suelo
+    de vivienda habitual; la LEC 670.3 no rige y por debajo del 50 % decide la Mesa."""
+    v = _analizar(vivienda, procedimiento="aeat").decision.veredicto
+    assert v.aprobacion == "discrecional" and "vivienda habitual" not in v.aprobacion_texto
+
+
+@pytest.mark.parametrize("subasta,minima,aprobacion", [
+    ({"procedimiento": "tgss"}, 91201.0, "discrecional"),            # superar el 60 % (sin confirmar)
+    ({"procedimiento": "extrajudicial"}, 106400.0, "no_aprobable"),  # LH 129: la regla de la LEC 670
+])
+def test_tgss_y_extrajudicial(subasta, minima, aprobacion):
+    r = _analizar("no" if aprobacion == "discrecional" else None, **subasta)
+    v = r.decision.veredicto
+    assert (v.estado, v.puja_minima_efectiva, v.aprobacion) == ("inviable", minima, aprobacion)
+    assert v.cabe_en_limite is False and r.decision.semaforo == "rojo"
+
+
+@pytest.mark.parametrize("vivienda,subasta,etiqueta", [
+    (None, {}, "No aprobable"),
+    ("si", {**POSTERIOR, "valor_subasta": 100000.0}, "Aprobable solo si cubre la deuda"),
+    ("no", {}, "Aprobación discrecional"),
+])
+def test_la_segunda_linea_lleva_su_etiqueta_en_negrita(vivienda, subasta, etiqueta):
+    v = _analizar(vivienda, **subasta).decision.veredicto
+    assert f"\n\n**{etiqueta}:** " in procedimiento.bloque_veredicto(v)
 
 
 def test_la_segunda_linea_no_cambia_el_veredicto_ni_el_semaforo():
