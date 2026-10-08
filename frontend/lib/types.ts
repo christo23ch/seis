@@ -20,6 +20,24 @@ export interface Decision {
   /** Fase 5J-2a: operandos del colchón a P_objetivo. */
   colchon_detalle?: { beneficio: number; inversion: number; tenencia_mensual: number; intereses_mensuales: number;
                       coste_capital_mensual: number; coste_mensual: number } | null;
+  /** Fase 5J-4 (ADR-0028): veredicto de la puja; ausente en resultados anteriores o sin escalera. */
+  veredicto?: VeredictoPuja | null;
+}
+
+/** Fase 5J-4 (ADR-0028) — las tres cifras de la puja y si los números merecen la pena. Los textos
+ * los redacta el motor (iguales que en el informe). Informativo: no veta nada. */
+export interface VeredictoPuja {
+  estado: "viable" | "inviable" | "sin_umbral";
+  p_max: number; p_objetivo: number; p_limite?: number | null;
+  /** Inviable: la mínima aprobable cabe en P_límite (semáforo como máximo naranja) o no (rojo). */
+  cabe_en_limite?: boolean | null;
+  aprobacion?: "no_aprobable" | "solo_si_cubre_deuda" | "discrecional" | null;
+  aprobacion_texto?: string | null; condicion?: string | null;
+  puja_minima_aprobable?: number | null; puja_minima_efectiva?: number | null;
+  puja_aprobacion_segura?: number | null; puja_recomendada?: number | null; puja_evaluada: number;
+  puja_minima_sin_vivienda?: number | null; alternativa_vivienda?: string | null;
+  autoridad?: string | null; titulo: string; texto: string; cambios: string[];
+  aviso_rentabilidad?: string | null;
 }
 
 export interface Resultado {

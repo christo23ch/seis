@@ -1,9 +1,9 @@
 {
  "decision": {
-  "semaforo": "naranja",
-  "ico": 64,
+  "semaforo": "rojo",
+  "ico": 49,
   "ico_desglose": {
-   "rentabilidad": 15.0,
+   "rentabilidad": 0.0,
    "juridico": 5.55,
    "urbanistico": 4.48,
    "financiero": 8.0,
@@ -44,13 +44,13 @@
     "p_limite": "unico"
    }
   },
-  "margen_seguridad_valor": 0.248,
+  "margen_seguridad_valor": 0.0,
   "rvc": 1.064,
   "p_adj_esperado": 63840.0,
   "vetos": [],
   "condiciones": [
    "Judicial: depósito según el régimen del procedimiento (20 % con la LO 1/2025; 5 % si se inició antes del 3-4-2025) y pago del remate en plazo legal sin condición suspensiva; cesión de remate solo por el ejecutante y, con la LO 1/2025, también por los acreedores posteriores (LEC, art. 647, apdo. 3) (§3.2)",
-   "Remate no aprobable si es la vivienda habitual del ejecutado: la puja máxima (67.941 €) queda por debajo del suelo legal (91.200 €, 60 %); confirmar en el edicto si lo es y asumir por escrito el riesgo",
+   "Remate no aprobable si es la vivienda habitual del ejecutado: el precio máximo económico (67.941 €) queda por debajo del suelo legal (91.200 €, 60 %); confirmar en el edicto si lo es y asumir por escrito el riesgo",
    "Solicitar certificado de deuda de la comunidad antes de la puja (deuda estimada al alza mientras tanto, P5)",
    "Verificar la situación posesoria in situ antes de pujar; dotar provisión de desalojo P80"
   ],
@@ -59,9 +59,7 @@
    "naranja"
   ],
   "razones": [
-   "ICO 64 en banda 60–74 o límites de Verde no alcanzados",
-   "Remate no aprobable si es la vivienda habitual del ejecutado ⇒ techo Naranja con condición",
-   "Techo aplicado: naranja"
+   "Inviable con estas condiciones: la puja mínima aprobable (106.400 €) supera el precio máximo económico (67.941 €) y el precio límite absoluto (78.529 €)"
   ],
   "version_reglas": "2026.07",
   "version_parametros": "2026.07",
@@ -74,7 +72,32 @@
    "coste_capital_mensual": 176.744585,
    "coste_mensual": 416.74458500000003
   },
-  "colchon_plazo_meses_p_max": 61.5
+  "colchon_plazo_meses_p_max": 61.5,
+  "veredicto": {
+   "estado": "inviable",
+   "p_max": 67941.0,
+   "p_objetivo": 59447.0,
+   "p_limite": 78529.0,
+   "cabe_en_limite": false,
+   "aprobacion": "no_aprobable",
+   "aprobacion_texto": "No aprobable: el precio máximo económico (67.941 €) queda por debajo del suelo de la vivienda habitual del ejecutado (91.200 €, 60 %), y la ley no aprueba el remate por debajo de esa cifra en ningún caso. No consta si es la vivienda habitual: se asume que sí.",
+   "condicion": null,
+   "puja_minima_sin_vivienda": 76000.0,
+   "alternativa_vivienda": "Si no es la vivienda habitual del ejecutado, la puja mínima aprobable sería de 76.000 € (50 % del valor de subasta), también por encima del precio máximo económico (67.941 €).",
+   "puja_minima_aprobable": 106400.0,
+   "puja_minima_efectiva": 106400.0,
+   "puja_aprobacion_segura": 106400.0,
+   "puja_recomendada": null,
+   "puja_evaluada": 106400.0,
+   "autoridad": "el letrado de la Administración de Justicia",
+   "titulo": "Inviable con estas condiciones",
+   "texto": "La puja mínima aprobable (106.400 €, 70 % del valor de subasta) supera el precio máximo económico (67.941 €): ninguna puja es a la vez rentable y aprobable sin depender del letrado de la Administración de Justicia. No se recomienda ninguna puja. Supera también el precio límite absoluto (78.529 €), que el software nunca deja superar: el semáforo es rojo.",
+   "cambios": [
+    "Que el precio máximo económico llegue a 106.400 € (38.459 € más): más valor de salida, menos costes o un margen exigido menor.",
+    "O un valor de subasta de 97.059 € como máximo (un 36 % menos que el actual): con él, la puja mínima aprobable quedaría dentro del precio máximo."
+   ],
+   "aviso_rentabilidad": "La rentabilidad se muestra a la puja mínima aprobable (106.400 €), por encima del precio máximo económico: la puja económica máxima (67.941 €) no es aprobable sin depender del letrado de la Administración de Justicia."
+  }
  },
  "ici": {
   "ici": 63,
@@ -425,52 +448,52 @@
   "suelo_dominancia": 40.0
  },
  "rentabilidad": {
-  "precio_evaluado": 59447.0,
-  "inversion_total": 141395.67,
-  "beneficio": 35348.77,
-  "roi": 0.25,
-  "roi_anualizado": 0.1886,
-  "tir_anual": 0.2641,
-  "valor_esperado": 32301.34,
+  "precio_evaluado": 106400.0,
+  "inversion_total": 191353.66,
+  "beneficio": -14609.22,
+  "roi": -0.0763,
+  "roi_anualizado": -0.0596,
+  "tir_anual": -0.0744,
+  "valor_esperado": -17656.65,
   "escenarios": [
    {
     "nombre": "pesimista",
     "probabilidad": 0.25,
     "vs": 160837.44,
-    "coste_total": 151799.37,
-    "beneficio": 9038.07,
-    "roi": 0.0595,
-    "roi_anualizado": 0.0325,
+    "coste_total": 201757.36,
+    "beneficio": -40919.92,
+    "roi": -0.2028,
+    "roi_anualizado": -0.1178,
     "plazo_meses": 21.7
    },
    {
     "nombre": "base",
     "probabilidad": 0.55,
     "vs": 176744.44,
-    "coste_total": 141395.67,
-    "beneficio": 35348.77,
-    "roi": 0.25,
-    "roi_anualizado": 0.1886,
+    "coste_total": 191353.66,
+    "beneficio": -14609.22,
+    "roi": -0.0763,
+    "roi_anualizado": -0.0596,
     "plazo_meses": 15.5
    },
    {
     "nombre": "optimista",
     "probabilidad": 0.2,
     "vs": 186995.62,
-    "coste_total": 133995.6,
-    "beneficio": 53000.01,
-    "roi": 0.3955,
-    "roi_anualizado": 0.3547,
+    "coste_total": 183953.6,
+    "beneficio": 3042.02,
+    "roi": 0.0165,
+    "roi_anualizado": 0.0151,
     "plazo_meses": 13.2
    }
   ],
   "y_neta": null,
   "dscr": null,
   "cash_on_cash": null,
-  "van_coste_capital": 32721.46,
-  "diferencial_tir_coste_capital": 24.91,
+  "van_coste_capital": -17236.53,
+  "diferencial_tir_coste_capital": -8.94,
   "flujos_base": [
-   -74282.09,
+   -124240.08,
    -232.5,
    -232.5,
    -232.5,
@@ -496,9 +519,7 @@
   "rvc": 1.064,
   "banda_rvc": "alcanzable",
   "plan": [
-   "Decidir la cifra antes de abrir la puja, entre objetivo 59.447 € · máximo 67.941 € · límite absoluto 78.529 € (infranqueable por software)",
-   "Pujas secretas y cierre improrrogable (LO 1/2025): no se ven las pujas ajenas ni hay prórroga, así que no cabe reaccionar al final ni subir por tramos; se puja directamente la cifra decidida; si el procedimiento se inició antes del 3-4-2025, las pujas se ven y el cierre se prorroga, y esta táctica sigue siendo válida",
-   "No apurar el cierre: sin prórroga, una puja que no llegue a tiempo por un fallo técnico queda fuera",
+   "No pujar con estas condiciones: la puja mínima aprobable (106.400 €) supera el precio máximo económico (67.941 €); el informe dice qué tendría que cambiar",
    "Depósito requerido: 30.400 € (20 % del valor de subasta); supuesto desfavorable: no consta cuándo se inició el procedimiento judicial (si fue antes del 3-4-2025, es menor)",
    "Si aparece información nueva durante la subasta, re-análisis exprés; si el semáforo cae, retirada"
   ],
@@ -654,8 +675,8 @@
    "orden": 18,
    "texto": "Escalera de precios cargada en la interfaz de puja",
    "bloqueante": true,
-   "estado": "ok",
-   "detalle": "Objetivo 59.447 € · Máx 67.941 € · Límite 78.529 €"
+   "estado": "pendiente",
+   "detalle": "Inviable con estas condiciones: la puja mínima aprobable (106.400 €) supera el precio máximo económico (67.941 €) y supera también el límite absoluto (78.529 €)."
   },
   {
    "grupo": "D. Económico",
@@ -719,7 +740,7 @@
    "texto": "Semáforo Verde/Amarillo, o Naranja con todas sus condiciones verificadas y firmadas",
    "bloqueante": true,
    "estado": "pendiente",
-   "detalle": "Judicial: depósito según el régimen del procedimiento (20 % con la LO 1/2025; 5 % si se inició antes del 3-4-2025) y pago del remate en plazo legal sin condición suspensiva; cesión de remate solo por el ejecutante y, con la LO 1/2025, también por los acreedores posteriores (LEC, art. 647, apdo. 3) (§3.2); Remate no aprobable si es la vivienda habitual del ejecutado: la puja máxima (67.941 €) queda por debajo del suelo legal (91.200 €, 60 %); confirmar en el edicto si lo es y asumir por escrito el riesgo; Solicitar certificado de deuda de la comunidad antes de la puja (deuda estimada al alza mientras tanto, P5); Verificar la situación posesoria in situ antes de pujar; dotar provisión de desalojo P80"
+   "detalle": "Judicial: depósito según el régimen del procedimiento (20 % con la LO 1/2025; 5 % si se inició antes del 3-4-2025) y pago del remate en plazo legal sin condición suspensiva; cesión de remate solo por el ejecutante y, con la LO 1/2025, también por los acreedores posteriores (LEC, art. 647, apdo. 3) (§3.2); Remate no aprobable si es la vivienda habitual del ejecutado: el precio máximo económico (67.941 €) queda por debajo del suelo legal (91.200 €, 60 %); confirmar en el edicto si lo es y asumir por escrito el riesgo; Solicitar certificado de deuda de la comunidad antes de la puja (deuda estimada al alza mientras tanto, P5); Verificar la situación posesoria in situ antes de pujar; dotar provisión de desalojo P80"
   },
   {
    "grupo": "F. Ejecución",
@@ -759,7 +780,7 @@
    "texto": "Riesgo de aprobación del remate asumido por escrito",
    "bloqueante": true,
    "estado": "pendiente",
-   "detalle": "Remate no aprobable si es la vivienda habitual del ejecutado: la puja máxima (67.941 €) queda por debajo del suelo legal (91.200 €, 60 %); confirmar en el edicto si lo es y asumir por escrito el riesgo"
+   "detalle": "Remate no aprobable si es la vivienda habitual del ejecutado: el precio máximo económico (67.941 €) queda por debajo del suelo legal (91.200 €, 60 %); confirmar en el edicto si lo es y asumir por escrito el riesgo"
   }
  ],
  "reglas_disparadas": [
@@ -934,9 +955,9 @@
    "vivienda_habitual_asumida": true,
    "regimen_asumido": true,
    "titulo": "Remate no aprobable si es la vivienda habitual del ejecutado",
-   "riesgo": "La puja máxima recomendada (67.941 €, 44,7 % del valor de subasta) queda por debajo del suelo de la vivienda habitual del ejecutado (91.200 €, 60 %): la ley no aprueba el remate por debajo de esa cifra, ni siquiera si cubre la deuda. Riesgo: ganar la subasta sin poder obtener el remate. No consta si es la vivienda habitual: se asume que sí, por prudencia; si no lo es, el suelo no se aplica y la aprobación dependería de los umbrales generales. No consta cuándo se inició el procedimiento: se aplican los umbrales del régimen de la LO 1/2025.",
-   "condicion": "Remate no aprobable si es la vivienda habitual del ejecutado: la puja máxima (67.941 €) queda por debajo del suelo legal (91.200 €, 60 %); confirmar en el edicto si lo es y asumir por escrito el riesgo",
-   "alcance": "El semáforo queda como máximo en naranja.",
+   "riesgo": "El precio máximo económico (67.941 €, 44,7 % del valor de subasta) queda por debajo del suelo de la vivienda habitual del ejecutado (91.200 €, 60 %): la ley no aprueba el remate por debajo de esa cifra, ni siquiera si cubre la deuda. Riesgo: ganar la subasta sin poder obtener el remate. No consta si es la vivienda habitual: se asume que sí, por prudencia; si no lo es, el suelo no se aplica y la aprobación dependería de los umbrales generales. No consta cuándo se inició el procedimiento: se aplican los umbrales del régimen de la LO 1/2025.",
+   "condicion": "Remate no aprobable si es la vivienda habitual del ejecutado: el precio máximo económico (67.941 €) queda por debajo del suelo legal (91.200 €, 60 %); confirmar en el edicto si lo es y asumir por escrito el riesgo",
+   "alcance": "El semáforo lo fija el veredicto de la puja: rojo si la puja mínima aprobable supera el precio límite absoluto y, si no, como máximo naranja.",
    "umbrales": [
     "aprobación segura (70 %) — LEC, art. 670, apdo. 1 (confirmado)",
     "aprobación sin depender de la autoridad (50 %) — LEC, art. 670, apdo. 3, párrafo 4 (confirmado)",

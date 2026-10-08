@@ -14,6 +14,7 @@ import type { Opciones, Resultado } from "@/lib/types";
 import { Button, Campo, Card, CardContent, CardHeader, CardTitle, Check, ErrorBox, Input, Select, Spinner } from "@/components/ui";
 import { CondicionesVetos, EscaleraPrecios, EscenariosPanel, IcoDesglose, MetricasClave, RiesgosPanel, SemaforoHero } from "@/components/resultado";
 import { ProcedimientoPanel } from "@/components/procedimiento";
+import { VeredictoPanel } from "@/components/veredicto";
 import { usePesosIco } from "@/lib/ico";
 import { Check as CheckIcon, ChevronLeft, ChevronRight, Plus, RefreshCw, Save, Trash2 } from "lucide-react";
 import { rutaApp } from "@/lib/rutas";
@@ -186,7 +187,8 @@ function CamposProcedimiento({ op }: { op?: Opciones }) {
       )}
       {PROCEDIMIENTOS_CON_DEUDA.has(procedimiento as string) && (
         <FNum name="subasta.cantidad_reclamada" label="Cantidad reclamada (€, opcional)" placeholder="No consta"
-          ayuda="Principal, intereses y costas que reclama el ejecutante. Permite aplicar la aprobación por cubrir la deuda." />
+          ayuda={"Principal, intereses y costas que reclama el ejecutante. Informarla puede bajar la puja mínima "
+            + "aprobable (hasta el 40 % del valor de subasta con la LO 1/2025). Dato orientativo, no asesoramiento."} />
       )}
     </>
   );
@@ -580,6 +582,7 @@ function PasoResultado({ res, cargando, error, onRecalcular, onGuardar, guardand
         <EscaleraPrecios d={res.decision} res={res} />
         <MetricasClave res={res} />
       </div>
+      <VeredictoPanel res={res} />
       <CondicionesVetos d={res.decision} />
       <ProcedimientoPanel datos={res.procedimiento} />
       <div className="grid gap-4 xl:grid-cols-2">

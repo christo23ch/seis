@@ -43,7 +43,7 @@ function Contenido({ datos }: { datos: ProcedimientoResultado }) {
             </ul>
           )}
           <p className="mt-1.5 text-[12px] text-slate-500">
-            {aviso.alcance} Los precios, el RVC y la rentabilidad no cambian.
+            {aviso.alcance} La escalera de precios y el RVC no cambian.
           </p>
         </div>
       )}

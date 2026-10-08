@@ -2,7 +2,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { calculoCf, calculoCv, calculoIci, calculoPlazo, calculoReforma, calculoRiesgos, calculoValoracion,
-         calculosEscalera, calculosMetricas, puntosPenalizacion, type Calculo } from "@/lib/calculos";
+         calculosEscalera, calculosMetricas, calculoVeredicto, definicionPEval, puntosPenalizacion,
+         type Calculo } from "@/lib/calculos";
 import type { Resultado } from "@/lib/types";
 
 /** Resultados REALES del motor (`tests/datos/LEEME.md`): §19, rentista con hipoteca y dos tramos fiscales. */
@@ -244,7 +245,35 @@ describe("correcciones de la revisión de código (5K)", () => {
 
   it("inversión total con P_eval y margen de seguridad acotado a 0", () => {
     const m = calculosMetricas(RES);
-    expect(por(m, "inversion").formula).toContain("P_eval = máx(P_objetivo, 1 €)");
+    // 5J-4 (ADR-0028): el §19 es inviable y el motor evalúa a la puja mínima aprobable.
+    expect(por(m, "inversion").formula).toContain("P_eval = puja mínima aprobable (inviable: supera P_max)");
     expect(por(m, "margen").formula).toBe("MS_valor = máx(0, 1 − inversión total / VS)");
+  });
+});
+
+describe("veredicto de la puja (5J-4)", () => {
+  const v = RES.decision.veredicto!;
+
+  it("P_eval es la puja del veredicto, y la que viaja como precio evaluado", () => {
+    expect(v.estado).toBe("inviable");
+    expect(RES.rentabilidad.precio_evaluado).toBe(v.puja_evaluada);
+    expect(v.puja_evaluada).toBe(106400);
+    const sin = { ...RES, decision: { ...RES.decision, veredicto: undefined } };
+    expect(definicionPEval(sin)).toBe("P_eval = máx(P_objetivo, 1 €)");
+    const viable = { ...RES, decision: { ...RES.decision, veredicto: { ...v, estado: "viable" as const, puja_evaluada: v.p_objetivo } } };
+    expect(definicionPEval(viable)).toBe("P_eval = P_objetivo (alcanza la puja mínima aprobable)");
+  });
+
+  it("«Ver cálculo» escribe la comparación con P_max y P_límite sin recalcular el estado", () => {
+    const c = calculoVeredicto(RES);
+    expect(c.disponible).toBe(true);
+    expect(c.sustitucion).toBe("mínima 106.400 € > P_max 67.941 € y > P_límite 78.529 €");
+    expect(c.resultado).toBe("Inviable con estas condiciones");
+    expect(c.filas!.map((f) => f.etiqueta)).toContain("P_límite");
+  });
+
+  it("un resultado anterior a la fase no trae veredicto: no se inventa", () => {
+    const c = calculoVeredicto({ ...RES, decision: { ...RES.decision, veredicto: undefined } });
+    expect(c.disponible).toBe(false);
   });
 });
