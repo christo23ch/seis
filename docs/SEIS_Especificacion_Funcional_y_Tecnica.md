@@ -1504,7 +1504,7 @@ Coste de capital (§9.1): 0,015 · I(P_max, C_F^P80) · 18,2/12 = 0,015 · 160.8
 
 **ICO (§8.5):** rentabilidad 15,0 + jurídico 5,6 + urbanístico 4,5 + financiero 8,0 + ubicación 9,9 + revalorización 5,8 + liquidez 10,6 + información 5,0 = **ICO 64**.
 
-**Semáforo** (cifras de la 5H.1-D; desde la 5J-3 es **🟠 NARANJA**, ver el recuadro final): ICO 64 ⇒ candidato Amarillo (banda 60–74); la regla de ocupación alta sin verificar impone techo Amarillo; pesimista ≥ 0 ✓; RVC ≥ 0,90 ✓; ICI ≥ 45 ✓ ⇒ **🟡 AMARILLO con condiciones** (literales, en el orden en que las da el motor):
+**Semáforo** (cifras de la 5H.1-D; desde la 5J-3 fue **🟠 NARANJA** y desde la 5J-4 es **🔴 ROJO**, ver los recuadros finales): ICO 64 ⇒ candidato Amarillo (banda 60–74); la regla de ocupación alta sin verificar impone techo Amarillo; pesimista ≥ 0 ✓; RVC ≥ 0,90 ✓; ICI ≥ 45 ✓ ⇒ **🟡 AMARILLO con condiciones** (literales, en el orden en que las da el motor):
 (1) «Judicial: depósito del 5% y pago del remate en plazo legal sin condición suspensiva; cesión de remate solo por el ejecutante (§3.2)»,
 (2) «Solicitar certificado de deuda de la comunidad antes de la puja (deuda estimada al alza mientras tanto, P5)»,
 (3) «Verificar la situación posesoria in situ antes de pujar; dotar provisión de desalojo P80».
@@ -1544,6 +1544,17 @@ Coste de capital (§9.1): 0,015 · I(P_max, C_F^P80) · 18,2/12 = 0,015 · 160.8
 > aprobable si es la vivienda habitual del ejecutado…» y el checklist un bloqueante. La condición (1)
 > pasa a decir también que la cesión de remate es del ejecutante y, con la LO 1/2025, de los
 > acreedores posteriores (LEC 647.3; SEM-EJEC-01 2026.10.07).
+>
+> **Veredicto y semáforo vigentes desde la Fase 5J-4** (ADR-0028): **inviable con estas condiciones** y
+> **🔴 ROJO**. La puja mínima aprobable es **106.400 €** (70 % del valor de subasta, vivienda habitual
+> supuesta), por encima del precio máximo económico (67.941 €) y del precio límite absoluto (78.529 €):
+> ninguna puja es a la vez rentable y aprobable sin depender del letrado, y no se recomienda ninguna.
+> La escalera, los costes y el RVC no cambian; la rentabilidad, el ICO y el margen se calculan a la
+> mínima aprobable: ROI −7,6 %, TIR −7,4 %, VAN −17.237 €, **ICO 49**, margen de seguridad 0 %. Las
+> cifras de arriba (ROI 25 %, ICO 64, margen 24,8 %) siguen siendo las del mismo caso **al precio
+> objetivo** (sin umbral legal de aprobación). El informe añade «qué tendría que cambiar» (P_max de
+> 106.400 € o un valor de subasta de 97.059 € como máximo) y que, si no fuera la vivienda habitual, la
+> mínima sería 76.000 € (50 %). El plan de puja dice «No pujar con estas condiciones».
 
 
 ---

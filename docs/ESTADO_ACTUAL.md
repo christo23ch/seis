@@ -10,8 +10,8 @@
 
 ## Frentes abiertos
 
-**Actualizado:** 2026-10-08 · **Rama de trabajo:** `fase/5j-3-avisos` (apilada sobre `fase/5j-2b-deposito-y-plazo`, PR #35; sin PR propio todavía) · **Suite (SQLite):** 1183 passed, 18 skipped, 0 failed · **Frontend:** 144 tests unitarios (vitest, `npm test`) · **E2E:** alta, simulaciones, alta de inversión, validación guiada, datos del procedimiento y presentación (1440 y 390 px) en la CI (job `e2e`) · **Migraciones:** hasta `0016`; la siguiente libre es la `0017`
-**Última fase cerrada:** 5J-2a (PR #34) · **En revisión:** 5J-2b, depósito, táctica y plazo (PR #35) · **En curso:** 5J-3, aviso de la franja del letrado y reglas sincronizadas al sembrar (ADR-0027) · **Siguiente:** 5J-4, puja mínima aprobable como recomendación (diseño C) · **Puerta: ABIERTA**
+**Actualizado:** 2026-10-09 · **Rama de trabajo:** `fase/5j-4-puja-aprobable` (apilada sobre `fase/5j-3-avisos`, PR #36, que va sobre la 5J-2b, PR #35) · **Suite (SQLite):** 1224 passed, 18 skipped, 0 failed · **Frontend:** 148 tests unitarios (vitest, `npm test`) · **E2E:** alta, simulaciones, alta de inversión, validación guiada, datos del procedimiento (con el panel del veredicto) y presentación (1440 y 390 px) en la CI (job `e2e`) · **Migraciones:** hasta `0016`; la siguiente libre es la `0017`
+**Última fase cerrada:** 5J-2a (PR #34) · **En revisión:** 5J-2b (PR #35) y 5J-3 (PR #36) · **En curso:** 5J-4, puja mínima aprobable como recomendación y veredicto de la puja (ADR-0028), que **cambia cifras y el veredicto** con la tabla aprobada (semáforo C) · **Siguiente:** lo que queda del diseño C (comparativa, lista y mapa sin el veredicto) · **Puerta: ABIERTA**
 
 ### 🟡 Requisito de PRODUCTO registrado, sin implementar: perfil de inversor por cuestionario
 
@@ -570,6 +570,34 @@ Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VER
 4. **`m12_decision.calcular_escalera` sigue creciendo** (pasa con mucho de 50 líneas): los
    candidatos del rentista y los tramos fiscales podrían ir en funciones propias. Anotado en la
    revisión de la 5J-2a; no se refactoriza sin autorización para tocar el motor.
+
+**Veredicto de la puja (5J-4, ADR-0028)**
+
+1. **El colchón de plazo sigue a P_objetivo y a P_max** (decisión del responsable): no se mueve a la
+   puja evaluada. En un inviable el colchón describe una puja que no se aprobaría.
+2. **La lista, el mapa, la comparativa y la comparación de simulaciones no muestran el veredicto**:
+   solo el detalle, el asistente, el informe y el PDF. `ListItem` sigue con `p_objetivo` y `p_max`.
+3. **La e2e recorre el panel del veredicto en un caso viable**; el inviable (con «qué tendría que
+   cambiar») lo cubren las pruebas del motor, vitest y la vista previa del informe.
+4. **Los umbrales de la TGSS siguen «sin confirmar»** (5J-1) y deciden su veredicto: en la TGSS la
+   mínima es superar el 60 % (+1 €). Validarlos antes de fiarse del veredicto en ese procedimiento.
+5. **Con más meses, la TIR de un inviable sale menos negativa**: anualizar una pérdida sobre más
+   tiempo reduce su tasa (`test_deposito_plazo_5j2b.py`). El ROI total sí empeora. Aritmética, no error.
+6. **El aviso de la 5J-3 y el veredicto se solapan** en el §1 cuando el veredicto es inviable: los dos
+   hablan de P_max frente a la aprobación. Se mantienen los dos (el aviso trae los umbrales con su
+   artículo); unificarlos queda para una revisión de textos.
+7. **Revisión de código (pendientes deliberados):**
+   - **Rojo de C en la AEAT y la TGSS** (M-2): en la AEAT el 50 % no impide adjudicar (decide la
+     Mesa) y los umbrales de la TGSS están sin confirmar, pero si la mínima supera P_límite el
+     semáforo es rojo, como se aprobó. La segunda subasta de la TGSS (50 %) no se modela.
+   - **El RVC se calcula sobre la escalera** (P_objetivo) y entra en el umbral del naranja, mientras
+     el ICO y el margen van a la puja evaluada (M-4).
+   - **Plan de puja del viable a la mínima** (L-1): antepone «Puja recomendada: X», pero la táctica
+     siguiente sigue citando el objetivo y el máximo de la escalera.
+   - **Condición y razón dobles** en el judicial inviable dentro del límite (L-2): la del aviso de la
+     5J-3 y la del veredicto.
+   - **`_minima_estricta` compara cifras** (L-6): una deuda exactamente igual al 50 % se marcaría
+     estricta (+1 €). Caso marginal.
 
 **Franja del letrado y reglas sincronizadas (5J-3, ADR-0027)**
 

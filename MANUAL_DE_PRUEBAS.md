@@ -237,13 +237,14 @@ Inicia sesión y pulsa **Nueva inversión**. Introduce exactamente esto (lo no m
 
 **Resultado esperado** (tolerancias de redondeo):
 
-- Semáforo **🟠 NARANJA** con condiciones (desde la Fase 5J-3; antes amarillo) · **ICO 64** (60–74) · **RA 40** (medio, dominancia *una_alta* por ocupación 4×3)
-- Bajo el semáforo, **«Atención: remate no aprobable si es la vivienda habitual del ejecutado»**: la puja máxima (67.941 €, 44,7 %) queda por debajo del suelo de 91.200 € (60 %), con la vivienda habitual supuesta por no constar, y los umbrales aplicados con su artículo (5J-3)
+- Semáforo **🔴 ROJO** (desde la Fase 5J-4; naranja en la 5J-3, amarillo antes) · **ICO 49** (calculado a la puja mínima aprobable) · **RA 40** (medio, dominancia *una_alta* por ocupación 4×3)
+- Bajo el semáforo, **«Atención: remate no aprobable si es la vivienda habitual del ejecutado»**: el precio máximo económico (67.941 €, 44,7 %) queda por debajo del suelo de 91.200 € (60 %), con la vivienda habitual supuesta por no constar, y los umbrales aplicados con su artículo (5J-3)
+- Debajo, **«Veredicto: inviable con estas condiciones»** (5J-4): «No aprobable…»; puja mínima aprobable **106.400 €** (70 %) por encima del precio máximo económico (67.941 €) y del límite absoluto (78.529 €); si no fuera la vivienda habitual, la mínima sería 76.000 €; qué tendría que cambiar (P_max de 106.400 € o valor de subasta de 97.059 € como máximo). No se recomienda ninguna puja
 - ICI ≈ 63 · ICU ≈ 66 · δ_v 6 % · VS prudente ≈ **176.700 €**
 - Escalera: ideal **≈ 50.750** · objetivo **≈ 59.450** · máximo **≈ 67.950** · límite **≈ 78.500 €** (la línea discontinua del P. adjudicación esperado, **63.840 €**, cruza entre objetivo y máximo)
 - Plazo **15,5 meses** (P50) / **21,7** (P80): 7 de ocupación + 3 de obra + 3 de comercialización + **2,5 de inmovilización** (Fase 5J-2b: no consta la fecha de inicio del procedimiento judicial ⇒ el régimen más largo)
-- ROI base **25 %** (≈ 19 % anualizado) · TIR **≈ 26 %** · Margen de seguridad **≈ 25 %** · RVC **1,06 (alcanzable)**
-- Plan de puja: **pujas secretas y cierre improrrogable** (decidir la cifra antes, sin tramos) y depósito **30.400 €** (20 %, supuesto desfavorable)
+- Rentabilidad **a la puja mínima aprobable (106.400 €)**: ROI **−7,6 %** · TIR **≈ −7,4 %** · Margen de seguridad **0 %** · RVC **1,06 (alcanzable)**. Al precio objetivo (el mismo caso con *No aplica* como procedimiento) el ROI es del 25 %, la TIR ≈ 26 % y el margen ≈ 25 %
+- Plan de puja: **«No pujar con estas condiciones…»** y depósito **30.400 €** (20 %, supuesto desfavorable)
 - Condiciones: verificación posesoria in situ; certificado de comunidad
 - Checklist: bloqueantes pendientes de **nota simple ≤ 5 días** y **verificación posesoria**
 
@@ -332,9 +333,11 @@ Lo recorre la e2e `frontend/e2e/procedimiento.mjs`, que lanza `e2e/correr_simula
 
 ### Pruebas del aviso de la franja del letrado (Fase 5J-3, ADR-0027)
 
-Ningún número cambia: solo el semáforo, una condición, un ítem del checklist y el aviso.
+Ningún número cambia: solo el semáforo, una condición, un ítem del checklist y el aviso. **Desde la
+5J-4** el semáforo de las franjas con techo lo fija el veredicto (§19 rojo; vivienda habitual «No»,
+naranja): ver *Pruebas del veredicto de la puja*.
 
-1. **Caso §19 tal cual:** semáforo **naranja**, aviso «Remate no aprobable si es la vivienda habitual
+1. **Caso §19 tal cual:** aviso «Remate no aprobable si es la vivienda habitual
    del ejecutado» en el informe y en el panel del procedimiento; ítem bloqueante «Riesgo de
    aprobación del remate asumido por escrito».
 2. **Vivienda habitual «No»:** aviso «Aprobación del remate a decisión del letrado» (puja máxima por
@@ -351,6 +354,34 @@ Ningún número cambia: solo el semáforo, una condición, un ítem del checklis
 
 Lo recorren `backend/tests/test_aviso_aprobacion_5j3.py`, `backend/tests/test_sincronizar_reglas_5j3.py`
 y la e2e `frontend/e2e/procedimiento.mjs` (franja sujeta a mejora en el panel).
+
+### Pruebas del veredicto de la puja (Fase 5J-4, ADR-0028)
+
+Cambian cifras y el semáforo. Panel **«Veredicto de la puja»** en el resumen del detalle y en el
+asistente, con «Ver cálculo»; el mismo texto en el §1 del informe y en el PDF.
+
+1. **Caso §19 tal cual:** **inviable**, **rojo** (mínima 106.400 € > límite 78.529 €), segunda línea
+   «No aprobable», sin puja recomendada y con «Qué tendría que cambiar».
+2. **Vivienda habitual «No»:** mínima **76.000 €** (50 %), inviable pero dentro del límite: **naranja**
+   con la condición «solo se plantearía aceptando por escrito un margen menor…»; segunda línea
+   «Aprobación discrecional… del letrado»; «qué tendría que cambiar» sugiere informar la cantidad
+   reclamada.
+3. **Régimen «Antes del 3-4-2025» y vivienda habitual «No»:** mínima **76.001 €** (hay que superar el
+   50 %); naranja.
+4. **Procedimiento AEAT:** mínima 76.000 €, naranja; «…de la Mesa de la subasta… Por debajo del 50 %
+   del valor de subasta no hay precio mínimo legal».
+5. **Régimen posterior, vivienda habitual «No» y cantidad reclamada 60.000 €:** **viable**, puja
+   recomendada **60.800 €** (la mínima: el objetivo de 59.605 € no se aprobaría); la rentabilidad se
+   calcula a 60.800 €; amarillo.
+6. **Valor de subasta 80.000 €:** viable, se mantiene el precio objetivo; nada cambia respecto a antes.
+7. **Concursal, notarial o «No aplica»:** «Sin puja mínima aprobable en la norma»; recomendación
+   económica.
+8. **Formulario:** la ayuda de «Cantidad reclamada» dice que informarla puede bajar la puja mínima
+   aprobable (hasta el 40 % con la LO 1/2025).
+
+Lo recorren `backend/tests/test_veredicto_puja_5j4.py`, `frontend/tests/calculos.test.ts`,
+`frontend/tests/markdown.test.ts` y la e2e `frontend/e2e/procedimiento.mjs` (caso viable, panel y
+ayuda del formulario).
 
 ### Pruebas de presentación (Fase 5K)
 

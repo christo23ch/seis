@@ -19,6 +19,43 @@ convertirse en un SaaS. Lo anterior está en el historial de git.
 
 ---
 
+## [Fase 5J-4] — Puja mínima aprobable como recomendación y veredicto de la puja — 2026-10-09
+
+Rama `fase/5j-4-puja-aprobable`, apilada sobre la 5J-3 ([[ADR-0028]]). **Cambia cifras y el
+veredicto**, con la tabla antes/después aprobada por el responsable (semáforo C). Suite: 1224 passed,
+18 skipped, 0 failed (+41). Vitest: 148 (+4). Revisión de código: 0 críticos, 0 altos; 2 medios y
+4 bajos corregidos, 2 medios escritos en el ADR y 3 bajos en la deuda. Sin migración.
+
+### Añadido
+- **Veredicto de la puja** (`procedimiento.veredicto_puja`, en `DecisionFinal.veredicto`): tres cifras
+  (precio máximo económico, puja mínima aprobable según régimen y vivienda habitual, puja de
+  aprobación segura) y un estado. **Viable** ⇒ se recomienda la mayor entre el precio objetivo y la
+  mínima aprobable. **Inviable con estas condiciones** (la mínima supera P_max) ⇒ no se recomienda
+  ninguna puja, se explica qué tendría que cambiar y el plan dice «No pujar con estas condiciones».
+  **Sin umbral** (notarial, concursal, venta no reglada) ⇒ la recomendación económica de siempre.
+- **Segunda línea del veredicto inviable**: no aprobable (bajo el suelo de la vivienda habitual),
+  aprobable solo si cubre la deuda (vivienda habitual entre el suelo y el umbral) o aprobación
+  discrecional (letrado, Mesa o notario; en la AEAT, sin precio mínimo legal por debajo del 50 %).
+- **Vivienda habitual «no consta»**: el veredicto asume que sí y el informe da la mínima aprobable
+  si no lo fuera.
+- **Interfaz**: panel «Veredicto de la puja» en el resumen del detalle y en el asistente, con «Ver
+  cálculo»; la ayuda de la cantidad reclamada explica que informarla puede bajar la mínima aprobable.
+
+### Cambiado
+- **La rentabilidad, el ICO y el margen de seguridad se calculan a la puja evaluada**: la recomendada
+  en los viables y la mínima aprobable en los inviables, con aviso. El colchón de plazo sigue a
+  P_objetivo y P_max (deuda).
+- **Semáforo C**: inviable y mínima aprobable por encima de P_límite ⇒ **rojo**; si cabe en P_límite
+  ⇒ como máximo **naranja**, con la condición de aceptar un margen menor que el del perfil. Nunca
+  veto.
+- **§19: naranja → rojo** (mínima aprobable 106.400 € > P_límite 78.529 €). ROI 25 % → −7,6 %, TIR
+  26,4 % → −7,4 %, ICO 64 → 49, margen 24,8 % → 0 %. La escalera, los costes y el RVC no cambian.
+  Guarda invariante regenerada: 44 hojas en el §19 y 45 en el caso con hipoteca.
+- El aviso de la 5J-3 llama a P_max «precio máximo económico» y dice que el semáforo lo fija el
+  veredicto; la fila del informe «Precio máximo recomendado» pasa a «Precio máximo económico».
+
+---
+
 ## [Fase 5J-3] — Aviso de la franja del letrado; reglas sincronizadas al sembrar — 2026-10-08
 
 Rama `fase/5j-3-avisos`, apilada sobre la 5J-2b, sin PR ([[ADR-0027]]). **Cambia el semáforo, no
