@@ -20,6 +20,10 @@ cifras por decisión expresa del responsable, con su tabla antes/después aproba
   cambios previstos de la 5H.1 en el caso con hipoteca quedan dentro de ella.
 - **Regenerada en la Fase 5J-3** (ADR-0027): aviso de la franja del letrado (techo naranja en el
   §19, ningún número cambia) y cesión de remate de SEM-EJEC-01 y M13. 13 hojas por caso.
+- **Regenerada en la Fase 5J-4** (ADR-0028): veredicto de la puja. El §19 es inviable con estas
+  condiciones (mínima aprobable 106.400 € > P_límite 78.529 €): rojo, rentabilidad, ICO y margen a
+  la mínima aprobable, «No pujar» en el plan y la escalera como bloqueante pendiente. 44 hojas en
+  el §19 y 45 en el caso con hipoteca; la escalera, los costes y el RVC no cambian.
 """
 from __future__ import annotations
 
@@ -66,9 +70,11 @@ def _diferencias(foto: dict, entrada: AnalisisInput) -> dict[str, tuple[object, 
     return {r: (v, ahora.get(r, "<AUSENTE>")) for r, v in antes.items() if ahora.get(r, "<AUSENTE>") != v}
 
 
-def test_la_foto_es_la_de_la_5j3():
-    assert "5J-3" in FOTO["_origen"]
-    assert FOTO["caso19"]["decision"]["semaforo"] == "naranja"
+def test_la_foto_es_la_de_la_5j4():
+    assert "5J-4" in FOTO["_origen"]
+    assert FOTO["caso19"]["decision"]["semaforo"] == "rojo"
+    assert FOTO["caso19"]["decision"]["veredicto"]["estado"] == "inviable"
+    assert FOTO["caso19"]["rentabilidad"]["precio_evaluado"] == 106400.0
     assert FOTO["caso19"]["procedimiento"]["aviso_aprobacion"]["franja"] == "bajo_suelo"
     assert FOTO["caso19"]["decision"]["precios"]["p_limite"] == 78529.0
     assert FOTO["hipoteca"]["decision"]["precios"]["p_limite"] == 76499.0

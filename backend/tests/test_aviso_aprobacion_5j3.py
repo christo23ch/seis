@@ -11,6 +11,10 @@ segura del remate:
   veto) e ítem bloqueante; sujeta a mejora (entre la mínima aprobable y la segura), sin techo e
   ítem no bloqueante;
 - ningún número cambia. Vivienda habitual «no consta» ⇒ se asume que sí, con aviso.
+
+Desde la 5J-4 (ADR-0028, diseño C) las franjas con techo son siempre inviables y el semáforo lo
+fija el veredicto: rojo si la mínima aprobable supera P_límite (el §19) y, si no, naranja. El
+aviso sigue sin mover ningún número; la rentabilidad a la puja evaluada es cosa del veredicto.
 """
 from __future__ import annotations
 
@@ -50,8 +54,8 @@ def _item(r):
 # ─────────────────────────── franjas ───────────────────────────
 
 @pytest.mark.parametrize("vivienda,subasta,franja,techo,semaforo", [
-    (None, {}, "bajo_suelo", True, "naranja"),                       # §19: vivienda habitual supuesta
-    ("si", {}, "bajo_suelo", True, "naranja"),
+    (None, {}, "bajo_suelo", True, "rojo"),        # §19: VH supuesta; mínima 106.400 > P_límite 78.529
+    ("si", {}, "bajo_suelo", True, "rojo"),
     ("no", {}, "discrecional", True, "naranja"),
     ("no", {"procedimiento": "judicial", "regimen_judicial": "anterior"}, "discrecional", True, "naranja"),
     ("no", {**POSTERIOR, "cantidad_reclamada": 60000.0}, "sujeta_a_mejora", False, "amarillo"),
@@ -106,16 +110,17 @@ def test_sin_aviso_fuera_del_judicial_o_con_p_max_aprobable():
 def test_el_informe_lo_destaca_bajo_el_semaforo():
     md = _analizar().informe_markdown
     cabeza = md[:md.index("| Métrica")]
-    assert cabeza.startswith("# Informe de análisis SEIS\n\n## 1 · Página de decisión\n\n# 🟠 NARANJA\n\n"
+    assert cabeza.startswith("# Informe de análisis SEIS\n\n## 1 · Página de decisión\n\n# 🔴 ROJO\n\n"
                              "**Atención: remate no aprobable si es la vivienda habitual del ejecutado.** "
-                             "La puja máxima recomendada (67.941 €, 44,7 % del valor de subasta) queda por "
+                             "El precio máximo económico (67.941 €, 44,7 % del valor de subasta) queda por "
                              "debajo del suelo de la vivienda habitual del ejecutado (91.200 €, 60 %)")
     assert "No consta si es la vivienda habitual: se asume que sí, por prudencia" in cabeza
     assert "No consta cuándo se inició el procedimiento" in cabeza
     assert ("**Umbrales aplicados:** aprobación segura (70 %) — LEC, art. 670, apdo. 1 (confirmado); "
             "aprobación sin depender de la autoridad (50 %) — LEC, art. 670, apdo. 3, párrafo 4 (confirmado); "
             "vivienda habitual del ejecutado: umbral (70 %) — ") in cabeza
-    assert "_El semáforo queda como máximo en naranja. Los precios, el RVC y la rentabilidad no cambian." in cabeza
+    assert ("_El semáforo lo fija el veredicto de la puja: rojo si la puja mínima aprobable supera el precio "
+            "límite absoluto y, si no, como máximo naranja. La escalera de precios y el RVC no cambian.") in cabeza
 
 
 def test_sujeta_a_mejora_no_limita_el_semaforo_y_lo_dice():

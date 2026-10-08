@@ -26,13 +26,21 @@ LINEA_CASO19 = ("VAN al coste de capital (1,5 %): 32.721 € · "
                 "TIR frente a coste de capital: +24,91 puntos")
 
 
+def _entrada():
+    """El §19 sin umbral legal de aprobación (venta no reglada: misma escalera y mismos costes),
+    evaluado al precio objetivo. Desde la 5J-4 (ADR-0028) el §19 real es inviable y su rentabilidad
+    se evalúa a la puja mínima aprobable; aquí se prueba la aritmética del VAN, no el veredicto."""
+    e = entrada_caso_19()
+    return e.model_copy(update={"subasta": e.subasta.model_copy(update={"procedimiento": "no_aplica"})})
+
+
 def _con_cc(cc: float):
-    return ejecutar_analisis(entrada_caso_19(), params=cargar_defaults().con_overrides({CC: cc}))
+    return ejecutar_analisis(_entrada(), params=cargar_defaults().con_overrides({CC: cc}))
 
 
 @pytest.fixture(scope="module")
 def dorado():
-    return ejecutar_analisis(entrada_caso_19())
+    return ejecutar_analisis(_entrada())
 
 
 # ─────────────────────────── valores ───────────────────────────
@@ -70,7 +78,7 @@ def test_con_hipoteca_se_calcula_igual(dorado):
     """M11 trabaja sobre la inversión total (auditoría H1/H2): los flujos son los mismos salvo
     el redondeo de P_objetivo al euro (57.812 frente a 60.011), que mueve el beneficio base
     unos céntimos (35.349,40 frente a 35.348,68) y el VAN en la misma medida."""
-    r = ejecutar_analisis(con_hipoteca(entrada_caso_19())).rentabilidad
+    r = ejecutar_analisis(con_hipoteca(_entrada())).rentabilidad
     assert r.van_coste_capital == pytest.approx(dorado.rentabilidad.van_coste_capital, abs=1.0)
     assert r.diferencial_tir_coste_capital == dorado.rentabilidad.diferencial_tir_coste_capital
 

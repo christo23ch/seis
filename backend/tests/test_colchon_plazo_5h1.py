@@ -198,8 +198,10 @@ def test_sin_colchon_a_p_max_el_informe_omite_el_parentesis(dorado):
 
 
 def test_un_valor_existente_no_cambia(dorado):
-    """El colchón es nuevo: la guarda de la 5H.1 (`test_invariante_5h1.py`) vigila el resto."""
-    assert dorado.decision.margen_seguridad_valor == 0.248 and dorado.decision.ico == 64
+    """El colchón es nuevo: la guarda de la 5H.1 (`test_invariante_5h1.py`) vigila el resto. Desde
+    la 5J-4 (ADR-0028) el margen y el ICO del §19 se calculan a la puja evaluada (la mínima
+    aprobable, 106.400 €); el colchón sigue a P_objetivo y P_max (deuda anotada)."""
+    assert dorado.decision.margen_seguridad_valor == 0.0 and dorado.decision.ico == 49
 
 
 def test_la_comparacion_trae_el_colchon(api, headers):

@@ -12,6 +12,10 @@ Esta fase CAMBIA CIFRAS, con la tabla antes/después aprobada por el responsable
    (parámetro T3, al plazo legal máximo), con su tenencia y su coste de capital. Sin plazo
    legal, 2,5 meses: estimación prudente, sin base legal. Régimen judicial sin fecha de
    inicio ⇒ el plazo más largo de los dos regímenes.
+
+Desde la 5J-4 (ADR-0028) el §19 es inviable: la rentabilidad se evalúa a la puja mínima aprobable y
+el plan dice «No pujar con estas condiciones». Las tácticas se prueban con un valor de subasta de
+80.000 €, en el que la mínima aprobable queda por debajo del precio objetivo (viable).
 """
 from __future__ import annotations
 
@@ -36,6 +40,11 @@ def _entrada(**subasta) -> AnalisisInput:
 
 def _analizar(params=None, **subasta):
     return ejecutar_analisis(_entrada(**subasta), params=params)
+
+
+def _viable(params=None, **subasta):
+    """El §19 con un valor de subasta de 80.000 €: la mínima aprobable cabe en el objetivo (5J-4)."""
+    return _analizar(params, **{"valor_subasta": 80000.0, **subasta})
 
 
 def _deposito(r) -> str:
@@ -79,18 +88,31 @@ def test_mas_inmovilizacion_mas_coste_y_menos_precio():
     for campo in ("p_ideal", "p_objetivo", "p_max", "p_limite"):
         assert getattr(largo.decision.precios, campo) < getattr(corto.decision.precios, campo), campo
     assert largo.decision.precios.detalle["coste_capital"] > corto.decision.precios.detalle["coste_capital"]
+    # 5J-4: el §19 es inviable y los dos se evalúan a la misma puja, la mínima aprobable (106.400 €).
+    # Más meses ⇒ más coste ⇒ menos beneficio y menos ROI. La TIR anual, en cambio, sale MENOS
+    # negativa (−7,4 % frente a −7,9 %): anualizar una pérdida sobre más meses reduce su tasa. No es
+    # un error del cálculo.
+    assert largo.decision.veredicto.puja_evaluada == corto.decision.veredicto.puja_evaluada == 106400.0
+    assert largo.rentabilidad.roi < corto.rentabilidad.roi < 0
+    assert largo.rentabilidad.tir_anual > corto.rentabilidad.tir_anual
+    # Con una puja viable (beneficio positivo), más meses ⇒ menos TIR, como antes de la 5J-4.
+    corto, largo = _viable(**POSTERIOR), _viable(**ANTERIOR)
     assert largo.rentabilidad.tir_anual < corto.rentabilidad.tir_anual
 
 
 def test_mismos_meses_mismas_cifras_aunque_cambie_el_procedimiento():
-    """Lo que mueve las cifras es el plazo: con los mismos meses, la escalera y la
-    rentabilidad coinciden; cambian el plan de puja y los avisos."""
+    """Lo que mueve la escalera es el plazo: con los mismos meses, la escalera y los costes
+    coinciden; cambian el plan de puja y los avisos. Desde la 5J-4 la rentabilidad coincide si
+    coincide la puja evaluada: sin umbral legal (concursal, venta no reglada) es el objetivo."""
     base = _analizar()                                   # 2,5: régimen judicial más largo
     for subasta in (ANTERIOR, {"procedimiento": "concursal"}, {"procedimiento": "no_aplica"}):
         otro = _analizar(**subasta)
         assert otro.decision.precios == base.decision.precios, subasta
-        assert otro.rentabilidad == base.rentabilidad, subasta
         assert otro.costes == base.costes, subasta
+    assert _analizar(**ANTERIOR).rentabilidad == base.rentabilidad
+    for subasta in ({"procedimiento": "concursal"}, {"procedimiento": "no_aplica"}):
+        v = _analizar(**subasta).decision.veredicto
+        assert v.estado == "sin_umbral" and v.puja_evaluada == base.decision.precios.p_objetivo, subasta
 
 
 def test_los_meses_son_parametros_t3():
@@ -203,7 +225,7 @@ def _tacticas(r) -> list[str]:
 
 
 def test_judicial_lo_1_2025_pujas_secretas_sin_prorroga():
-    t = _tacticas(_analizar(**POSTERIOR))
+    t = _tacticas(_viable(**POSTERIOR))
     assert t[0].startswith("Decidir la cifra antes de abrir la puja, entre objetivo ")
     assert t[1].startswith("Pujas secretas y cierre improrrogable (LO 1/2025)")
     assert "antes del 3-4-2025" not in t[1]
@@ -212,14 +234,14 @@ def test_judicial_lo_1_2025_pujas_secretas_sin_prorroga():
 
 
 def test_sin_fecha_de_inicio_la_tactica_vale_para_los_dos_regimenes():
-    t = _tacticas(_analizar())
+    t = _tacticas(_viable())
     assert t[1].endswith("si el procedimiento se inició antes del 3-4-2025, las pujas se ven y el "
                          "cierre se prorroga, y esta táctica sigue siendo válida")
 
 
 @pytest.mark.parametrize("subasta", [ANTERIOR, {"procedimiento": "aeat"}])
 def test_pujas_visibles_con_prorroga_mantienen_la_tactica_anterior(subasta):
-    t = _tacticas(_analizar(**subasta))
+    t = _tacticas(_viable(**subasta))
     assert t[0].startswith("Cargar límites en la interfaz antes de abrir la puja: objetivo ")
     assert t[1] == "Pujar siempre el tramo mínimo; sin pujas psicológicas redondas"
     assert t[2].startswith("Entrar tarde con límites precargados")
@@ -231,7 +253,7 @@ def test_notarial_pujas_visibles_sin_prorroga_fijada():
 
 
 def test_tgss_presencial():
-    t = _tacticas(_analizar(procedimiento="tgss"))
+    t = _tacticas(_viable(procedimiento="tgss"))
     assert t[0].startswith("Llevar decididas la cifra del sobre cerrado y el límite de la puja a viva voz")
     assert "a viva voz" in t[1] and "2 % del tipo" in t[1]
 
@@ -239,9 +261,15 @@ def test_tgss_presencial():
 @pytest.mark.parametrize("subasta", [{"procedimiento": "extrajudicial"}, {"procedimiento": "concursal"},
                                      {"procedimiento": "no_aplica"}])
 def test_sin_forma_de_puja_se_remite_al_edicto(subasta):
-    t = _tacticas(_analizar(**subasta))
+    t = _tacticas(_viable(**subasta))
     assert t[0].startswith("Cargar límites antes de pujar: objetivo ")
     assert t[1].startswith("No consta cómo se puja en este procedimiento")
+
+
+def test_inviable_no_hay_tactica_aunque_haya_forma_de_puja():
+    """5J-4: el §19 es inviable con estas condiciones; no se inventa una táctica."""
+    t = _tacticas(_analizar(**POSTERIOR))
+    assert len(t) == 1 and t[0].startswith("No pujar con estas condiciones: la puja mínima aprobable (106.400 €)")
 
 
 def test_con_escalera_degenerada_no_hay_tactica_aunque_haya_forma_de_puja():

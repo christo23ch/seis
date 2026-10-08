@@ -69,4 +69,4 @@ def test_el_caso_dorado_tiene_antiguedades_validas_y_se_analiza():
     `test_invariante_5h1` vigila que no cambie ni un valor)."""
     entrada = entrada_caso_19()
     assert all(c.meses_antiguedad >= 0 for c in entrada.comparables)
-    assert ejecutar_analisis(entrada).decision.semaforo == "naranja"  # 5J-3 (ADR-0027): P_max bajo el suelo de la vivienda habitual supuesta ⇒ techo naranja
+    assert ejecutar_analisis(entrada).decision.semaforo == "rojo"  # 5J-4 (ADR-0028): inviable, la mínima aprobable (106.400 €) supera P_límite ⇒ rojo

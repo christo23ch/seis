@@ -102,7 +102,10 @@ def casos(caso_19):  # noqa: F811
             renta_mensual_estimada=950, ibi_anual=350, comunidad_mensual=60))),
         "verde": ejecutar_analisis(AnalisisInput(**vacio), params=cargar_defaults().con_overrides(
             {"semaforo.verde.ico_min": 60})),
-        "no_alcanza_naranja": ejecutar_analisis(caso_19, params=sin_naranja),
+        # 5J-4 (ADR-0028): el §19 es inviable (rojo antes de evaluar el ICO); sin umbral legal (venta
+        # no reglada: misma escalera y costes) se llega a la razón «No alcanza Naranja».
+        "no_alcanza_naranja": ejecutar_analisis(_con(caso_19, subasta=caso_19.subasta.model_copy(
+            update={"procedimiento": "no_aplica"})), params=sin_naranja),
     }
 
 

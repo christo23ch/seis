@@ -203,20 +203,35 @@ def _sin_procedimiento(r) -> dict:
     return d
 
 
-@pytest.mark.parametrize("cambio", [
-    {"cantidad_reclamada": 30000.0}, {"cantidad_reclamada": 200000.0},
-    {"procedimiento": "judicial"},                 # el mismo que se deduce de la fuente
-])
-def test_los_umbrales_del_procedimiento_no_mueven_nada_mas(cambio):
+def test_el_procedimiento_declarado_igual_al_deducido_no_mueve_nada_mas():
     base = _sin_procedimiento(ejecutar_analisis(entrada_caso_19()))
-    otro = _sin_procedimiento(ejecutar_analisis(_entrada(**cambio)))
+    otro = _sin_procedimiento(ejecutar_analisis(_entrada(procedimiento="judicial")))
     assert otro == base
+
+
+@pytest.mark.parametrize("cantidad,minima", [(30000.0, 91200.0), (200000.0, 106400.0)])
+def test_la_cantidad_reclamada_no_mueve_la_escalera_ni_los_costes(cantidad, minima):
+    """Desde la 5J-4 (ADR-0028) la puja mínima aprobable decide el veredicto y la puja a la que se
+    evalúa la rentabilidad; la escalera, los costes y el RVC siguen sin moverse. Con la vivienda
+    habitual supuesta, una deuda pequeña baja la mínima al suelo del 60 % (91.200 €)."""
+    base, otro = ejecutar_analisis(entrada_caso_19()), ejecutar_analisis(_entrada(cantidad_reclamada=cantidad))
+    assert otro.decision.precios == base.decision.precios
+    assert otro.costes == base.costes and otro.decision.rvc == base.decision.rvc
+    assert otro.decision.veredicto.puja_minima_efectiva == minima
+    assert otro.decision.veredicto.estado == "inviable" and otro.decision.semaforo == "rojo"
 
 
 def test_vivienda_habitual_no_mueve_nada_mas():
+    """«Sí» y «no consta» (se asume que sí) dan lo mismo; desde la 5J-4 el veredicto del supuesto
+    añade la mínima aprobable si no fuera la vivienda habitual y lo dice en la segunda línea."""
     base = _sin_procedimiento(ejecutar_analisis(entrada_caso_19()))
     otro = _sin_procedimiento(ejecutar_analisis(_entrada(activo={"vivienda_habitual_ejecutado": "si"})))
+    v_base, v_otro = base["decision"].pop("veredicto"), otro["decision"].pop("veredicto")
     assert otro == base
+    assert v_base["puja_minima_sin_vivienda"] == 76000.0 and v_otro["puja_minima_sin_vivienda"] is None
+    assert v_base["aprobacion_texto"].endswith("No consta si es la vivienda habitual: se asume que sí.")
+    distintos = {"puja_minima_sin_vivienda", "alternativa_vivienda", "aprobacion_texto"}
+    assert {k for k in v_base if v_base[k] != v_otro[k]} == distintos
 
 
 def test_el_resultado_lleva_el_procedimiento_y_es_determinista():

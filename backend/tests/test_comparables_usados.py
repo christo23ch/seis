@@ -193,7 +193,7 @@ def test_caso_dorado_persiste_7_snapshots_y_el_resultado_no_cambia(api):
             assert f.origen == c.origen
 
         # Resultado numérico idéntico al del motor puro (regresión, Doc §19).
-        assert resultado.decision.semaforo == referencia.decision.semaforo == "naranja"  # 5J-3 (ADR-0027): P_max bajo el suelo de la vivienda habitual supuesta ⇒ techo naranja
+        assert resultado.decision.semaforo == referencia.decision.semaforo == "rojo"  # 5J-4 (ADR-0028): inviable, la mínima aprobable (106.400 €) supera P_límite ⇒ rojo
         assert resultado.decision.ico == referencia.decision.ico
         assert resultado.decision.ici == referencia.decision.ici
         assert resultado.decision.ra == referencia.decision.ra

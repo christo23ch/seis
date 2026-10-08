@@ -251,10 +251,16 @@ ESCENARIOS_ANTES = [
     ("base", 176744.44, 141395.67, 35348.77, 0.25, 0.1886, 15.5),
     ("optimista", 186995.62, 133995.6, 53000.01, 0.3955, 0.3547, 13.2),
 ]
-DECISION_ANTES = ("naranja", 64, 40, 0.248)  # 5J-3 (ADR-0027): P_max bajo el suelo de la vivienda habitual supuesta ⇒ techo naranja (antes amarillo)
+# Al precio objetivo (el §19 sin umbral legal: misma escalera y mismos costes). El §19 real, desde la
+# 5J-4 (ADR-0028), es inviable y se evalúa a la mínima aprobable: rojo, ICO 49, margen 0.
+DECISION_ANTES = ("amarillo", 64, 40, 0.248)
+DECISION_5J4 = ("rojo", 49, 40, 0.0)
 
 
-def test_m11_m12_no_cambian_ningun_valor_numerico(dorado):
+def test_m11_m12_no_cambian_ningun_valor_numerico(dorado, caso_19):  # noqa: F811
+    a_p_objetivo = ejecutar_analisis(caso_19.model_copy(update={
+        "subasta": caso_19.subasta.model_copy(update={"procedimiento": "no_aplica"})}))
+    assert a_p_objetivo.decision.precios == dorado.decision.precios
     e = dorado.decision.precios
     assert (e.p_ideal, e.p_objetivo, e.p_max, e.p_limite, e.degenerada) == ESCALERA_ANTES
     # Claves nuevas de `detalle`, solo de trazabilidad: la tasa aplicada (5G.4) y la base
@@ -263,9 +269,11 @@ def test_m11_m12_no_cambian_ningun_valor_numerico(dorado):
     nuevas = {"coste_capital_anual", "capital_propio",
               "m_excepcional_ajustado", "stress_mercado", "piso_pesimista", "p_limite_bruto"}
     assert {k: v for k, v in e.detalle.items() if k not in nuevas} == DETALLE_ANTES
-    rt = dorado.rentabilidad
+    rt = a_p_objetivo.rentabilidad
     assert {k: getattr(rt, k) for k in RENTABILIDAD_ANTES} == RENTABILIDAD_ANTES
     assert [(x.nombre, x.vs, x.coste_total, x.beneficio, x.roi, x.roi_anualizado, x.plazo_meses)
             for x in rt.escenarios] == ESCENARIOS_ANTES
-    d = dorado.decision
+    d = a_p_objetivo.decision
     assert (d.semaforo, d.ico, d.ra, d.margen_seguridad_valor) == DECISION_ANTES
+    d = dorado.decision
+    assert (d.semaforo, d.ico, d.ra, d.margen_seguridad_valor) == DECISION_5J4

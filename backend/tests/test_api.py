@@ -29,17 +29,18 @@ def test_flujo_completo_analisis(api, headers):
     assert r.status_code == 200, r.text
     body = r.json()
     analisis_id = body["id"]
-    assert body["resultado"]["decision"]["semaforo"] == "naranja"  # 5J-3 (ADR-0027): P_max bajo el suelo de la vivienda habitual supuesta ⇒ techo naranja
+    assert body["resultado"]["decision"]["semaforo"] == "rojo"  # 5J-4 (ADR-0028): inviable, la mínima aprobable (106.400 €) supera P_límite ⇒ rojo
 
     r = api.get("/api/v1/analisis", headers=headers)
     assert any(a["id"] == analisis_id for a in r.json())
 
     r = api.get(f"/api/v1/analisis/{analisis_id}", headers=headers)
     assert r.status_code == 200
-    assert r.json()["resultado"]["decision"]["ico"] >= 60
+    assert r.json()["resultado"]["decision"]["ico"] == 49              # 5J-4: a la mínima aprobable
+    assert r.json()["resultado"]["decision"]["veredicto"]["estado"] == "inviable"
 
     r = api.get(f"/api/v1/analisis/{analisis_id}/informe", headers=headers)
-    assert r.status_code == 200 and "NARANJA" in r.text
+    assert r.status_code == 200 and "ROJO" in r.text and "inviable con estas condiciones" in r.text
 
     r = api.get(f"/api/v1/analisis/{analisis_id}/checklist", headers=headers)
     assert r.status_code == 200 and len(r.json()) >= 25
