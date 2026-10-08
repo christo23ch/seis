@@ -237,10 +237,14 @@ Inicia sesión y pulsa **Nueva inversión**. Introduce exactamente esto (lo no m
 
 **Resultado esperado** (tolerancias de redondeo):
 
-- Semáforo **🟡 AMARILLO** con condiciones · **ICO 64** (60–74) · **RA 40** (medio, dominancia *una_alta* por ocupación 4×3)
+- Semáforo **🔴 ROJO** (desde la Fase 5J-4; naranja en la 5J-3, amarillo antes) · **ICO 49** (calculado a la puja mínima aprobable) · **RA 40** (medio, dominancia *una_alta* por ocupación 4×3)
+- Bajo el semáforo, **«Atención: remate no aprobable si es la vivienda habitual del ejecutado»**: el precio máximo económico (67.941 €, 44,7 %) queda por debajo del suelo de 91.200 € (60 %), con la vivienda habitual supuesta por no constar, y los umbrales aplicados con su artículo (5J-3)
+- Debajo, **«Veredicto: inviable con estas condiciones»** (5J-4): «No aprobable…»; puja mínima aprobable **106.400 €** (70 %) por encima del precio máximo económico (67.941 €) y del límite absoluto (78.529 €); si no fuera la vivienda habitual, la mínima sería 76.000 €; qué tendría que cambiar (P_max de 106.400 € o valor de subasta de 97.059 € como máximo). No se recomienda ninguna puja
 - ICI ≈ 63 · ICU ≈ 66 · δ_v 6 % · VS prudente ≈ **176.700 €**
-- Escalera: ideal **≈ 51.300** · objetivo **≈ 60.000** · máximo **≈ 68.700** · límite **≈ 80.000 €** (la línea discontinua del P. adjudicación esperado, **63.840 €**, cruza entre objetivo y máximo)
-- ROI base **25 %** (≈ 23 % anualizado) · TIR ~26 % · Margen de seguridad **≈ 25 %** · RVC **1,08 (alcanzable)**
+- Escalera: ideal **≈ 50.750** · objetivo **≈ 59.450** · máximo **≈ 67.950** · límite **≈ 78.500 €** (la línea discontinua del P. adjudicación esperado, **63.840 €**, cruza entre objetivo y máximo)
+- Plazo **15,5 meses** (P50) / **21,7** (P80): 7 de ocupación + 3 de obra + 3 de comercialización + **2,5 de inmovilización** (Fase 5J-2b: no consta la fecha de inicio del procedimiento judicial ⇒ el régimen más largo)
+- Rentabilidad **a la puja mínima aprobable (106.400 €)**: ROI **−7,6 %** · TIR **≈ −7,4 %** · Margen de seguridad **0 %** · RVC **1,06 (alcanzable)**. Al precio objetivo (el mismo caso con *No aplica* como procedimiento) el ROI es del 25 %, la TIR ≈ 26 % y el margen ≈ 25 %
+- Plan de puja: **«No pujar con estas condiciones…»** y depósito **30.400 €** (20 %, supuesto desfavorable)
 - Condiciones: verificación posesoria in situ; certificado de comunidad
 - Checklist: bloqueantes pendientes de **nota simple ≤ 5 días** y **verificación posesoria**
 
@@ -291,8 +295,10 @@ Lo recorren las e2e `frontend/e2e/nueva-inversion.mjs` y `validacion-alta.mjs`, 
 
 ### Pruebas de los datos del procedimiento (Fase 5J-1, ADR-0022)
 
-Todo lo de esta sección es **informativo**: no cambia la escalera, el RVC, el semáforo ni la
-rentabilidad. Con el caso §19 (sección 6), los precios siguen siendo los mismos.
+Los umbrales de aprobación son **informativos**. Desde la Fase 5J-2b, el depósito exigido va al
+plan de puja, la forma de puja decide la táctica y los meses de inmovilización entran en el plazo
+de la operación (ADR-0024 a ADR-0026): cambiar el procedimiento o el régimen **sí** mueve la
+escalera y la rentabilidad.
 
 1. **Valores por defecto.** En el paso 1, «Tipo de procedimiento» viene en *Judicial* (el de la
    fuente) y «¿Cuándo se inició el procedimiento judicial?» en *No sé*. En el paso 2, «¿Es la
@@ -301,20 +307,81 @@ rentabilidad. Con el caso §19 (sección 6), los precios siguen siendo los mismo
    régimen y la cantidad reclamada. Si cambias el procedimiento a mano, ya no sigue a la fuente.
 3. **Caso §19 tal cual** (judicial, «No sé», «No consta», sin cantidad): el panel
    «Procedimiento y umbrales legales» del resultado (y de la pestaña *Estrategia de puja*) muestra
-   depósito **30.400 €** (20 %), pago en **20 días naturales**, inmovilización **1,8 meses**, puja
+   depósito **30.400 €** (20 %), pago en **20 días naturales**, inmovilización **2,5 meses** («régimen
+   judicial más largo: no consta la fecha de inicio»; con la LO 1/2025 serían 1,8), puja
    mínima aprobable y de aprobación segura **106.400 €** (70 %) y suelo absoluto **91.200 €** (60 %),
    con avisos de régimen supuesto, vivienda habitual supuesta y depósito del alta (5 %) distinto del
    legal. El informe (vista previa) lleva el mismo subapartado al final del §8 y el aviso «Cálculo
    orientativo…».
 4. **Régimen anterior con deuda.** Elige «Antes del 3-4-2025», cantidad reclamada «30.000» y vivienda
-   habitual «No»: depósito **7.600 €** (5 %), pago en **40 días**, puja mínima aprobable **30.000 €**,
-   sin suelo absoluto y sin avisos de supuestos.
+   habitual «No»: depósito **7.600 €** (5 %), pago en **40 días**, inmovilización **2,5 meses** («plazo
+   legal máximo»), puja mínima aprobable **30.000 €**, sin suelo absoluto y sin avisos de supuestos.
+   En *Estrategia de puja*, la táctica es la de pujas visibles con prórroga («Entrar tarde con
+   límites precargados…») y «Base legal aplicada» incluye «Forma de puja (pujas visibles; el cierre
+   se prorroga tras la última puja)».
 5. **Datos ausentes.** Con *Venta extrajudicial hipotecaria* el depósito y el capital para pujar dicen
-   «No consta» y hay un aviso; con *Concursal*, todos los importes. Nunca aparece un 0.
-6. **Validación.** «mucho» en la cantidad reclamada da «Introduzca un número»; «0», «Debe ser mayor
+   «No consta» y hay un aviso; con *Concursal*, todos los importes. Nunca aparece un 0. El plazo suma
+   2,5 meses con el aviso «estimación prudente, sin base legal», y el plan remite al edicto para el
+   depósito y la forma de puja.
+6. **Régimen y cifras (5J-2b).** Con el §19, cambia «¿Cuándo se inició…?» a *Después del 3-4-2025*:
+   la inmovilización baja a 1,8 meses, el plazo a 14,8 y los precios suben (P_max ≈ 68.160 €); la
+   táctica sigue siendo la de pujas secretas, sin la nota sobre el régimen anterior.
+7. **Validación.** «mucho» en la cantidad reclamada da «Introduzca un número»; «0», «Debe ser mayor
    que cero».
 
 Lo recorre la e2e `frontend/e2e/procedimiento.mjs`, que lanza `e2e/correr_simulaciones.sh`.
+
+### Pruebas del aviso de la franja del letrado (Fase 5J-3, ADR-0027)
+
+Ningún número cambia: solo el semáforo, una condición, un ítem del checklist y el aviso. **Desde la
+5J-4** el semáforo de las franjas con techo lo fija el veredicto (§19 rojo; vivienda habitual «No»,
+naranja): ver *Pruebas del veredicto de la puja*.
+
+1. **Caso §19 tal cual:** aviso «Remate no aprobable si es la vivienda habitual
+   del ejecutado» en el informe y en el panel del procedimiento; ítem bloqueante «Riesgo de
+   aprobación del remate asumido por escrito».
+2. **Vivienda habitual «No»:** aviso «Aprobación del remate a decisión del letrado» (puja máxima por
+   debajo de 76.000 €, 50 %); sigue en naranja.
+3. **Régimen posterior, vivienda habitual «No» y cantidad reclamada 60.000 €:** aviso «Aprobación del
+   remate sujeta a mejora», «No limita el semáforo: es una condición»; semáforo **amarillo** e ítem
+   no bloqueante.
+4. **AEAT o notarial:** sin aviso.
+5. **Cesión de remate** (Estrategia de puja → riesgos de ejecución): «el ejecutante y los acreedores
+   posteriores (LEC, art. 647, apdo. 3, LO 1/2025)»; con «Antes del 3-4-2025», «solo el ejecutante».
+6. **Reglas sincronizadas:** tras `python -m scripts.init_db` sobre una base sembrada antes, la pantalla
+   de Reglas muestra SEM-EJEC-01 **2026.10.07**. **No lo ejecutes sobre `seis_dev.db` si no quieres
+   actualizar sus reglas**; para probarlo, usa una copia.
+
+Lo recorren `backend/tests/test_aviso_aprobacion_5j3.py`, `backend/tests/test_sincronizar_reglas_5j3.py`
+y la e2e `frontend/e2e/procedimiento.mjs` (franja sujeta a mejora en el panel).
+
+### Pruebas del veredicto de la puja (Fase 5J-4, ADR-0028)
+
+Cambian cifras y el semáforo. Panel **«Veredicto de la puja»** en el resumen del detalle y en el
+asistente, con «Ver cálculo»; el mismo texto en el §1 del informe y en el PDF.
+
+1. **Caso §19 tal cual:** **inviable**, **rojo** (mínima 106.400 € > límite 78.529 €), segunda línea
+   «No aprobable», sin puja recomendada y con «Qué tendría que cambiar».
+2. **Vivienda habitual «No»:** mínima **76.000 €** (50 %), inviable pero dentro del límite: **naranja**
+   con la condición «solo se plantearía aceptando por escrito un margen menor…»; segunda línea
+   «Aprobación discrecional… del letrado»; «qué tendría que cambiar» sugiere informar la cantidad
+   reclamada.
+3. **Régimen «Antes del 3-4-2025» y vivienda habitual «No»:** mínima **76.001 €** (hay que superar el
+   50 %); naranja.
+4. **Procedimiento AEAT:** mínima 76.000 €, naranja; «…de la Mesa de la subasta… Por debajo del 50 %
+   del valor de subasta no hay precio mínimo legal».
+5. **Régimen posterior, vivienda habitual «No» y cantidad reclamada 60.000 €:** **viable**, puja
+   recomendada **60.800 €** (la mínima: el objetivo de 59.605 € no se aprobaría); la rentabilidad se
+   calcula a 60.800 €; amarillo.
+6. **Valor de subasta 80.000 €:** viable, se mantiene el precio objetivo; nada cambia respecto a antes.
+7. **Concursal, notarial o «No aplica»:** «Sin puja mínima aprobable en la norma»; recomendación
+   económica.
+8. **Formulario:** la ayuda de «Cantidad reclamada» dice que informarla puede bajar la puja mínima
+   aprobable (hasta el 40 % con la LO 1/2025).
+
+Lo recorren `backend/tests/test_veredicto_puja_5j4.py`, `frontend/tests/calculos.test.ts`,
+`frontend/tests/markdown.test.ts` y la e2e `frontend/e2e/procedimiento.mjs` (caso viable, panel y
+ayuda del formulario).
 
 ### Pruebas de presentación (Fase 5K)
 
@@ -333,8 +400,8 @@ Solo cambia cómo se ve: ninguna cifra cambia. Con el caso §19 guardado, en su 
 4. **Resumen → «Ver cálculo»** en Costes, en la escalera, en Métricas de decisión, en Valoración y
    en Riesgos: fórmula, valores sustituidos y «Resultado del motor». Desde la 5J-2a, en un análisis
    nuevo también tienen cálculo P_ideal (margen 0,3375 en el §19), el escenario pesimista, P_límite
-   bruto, P_adj con sus ajustes, la TIR (flujos del mes 0 al 13), el VAN, el colchón (84,8 meses),
-   el plazo (7 + 3 + 3 meses) y el RA (máx(25,36, 40)). En un análisis guardado ANTES de la 5J-2a
+   bruto, P_adj con sus ajustes, la TIR (flujos del mes 0 al 16), el VAN, el colchón (84,8 meses),
+   el plazo (7 + 3 + 3 + 2,5 meses desde la 5J-2b) y el RA (máx(25,36, 40)). En un análisis guardado ANTES de la 5J-2a
    esos cálculos siguen diciendo «Cálculo no disponible aún» y qué dato falta: no se inventa.
 5. **Desglose del ICO**: «Rentabilidad 15,0 / 25»; el máximo sale del catálogo del análisis.
 6. **Parámetros**: «Árbol completo vigente» en secciones plegables (Procedimiento muestra

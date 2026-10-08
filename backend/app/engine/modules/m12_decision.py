@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from app.engine import fiscal
 # Fase 5G.4-B: las razones se leen en el informe y en la interfaz (formato español).
-from app.engine.formato import decimal, pct
+from app.engine.formato import eur, decimal, pct
 from app.engine.contracts import (AnalisisInput, CostesResultado, DecisionFinal,
                                   EscaleraPrecios, ICIResultado, ICUResultado,
                                   RAResultado, RentabilidadResultado, RiesgoOut,
@@ -260,7 +260,8 @@ def decidir_semaforo(params, ico: int, ra_res: RAResultado, rent: RentabilidadRe
                      ms_valor: float, rvc: float, ici: int, ici_techo: str | None,
                      escalera: EscaleraPrecios, vetos: list[VetoOut], techos: list[str],
                      inp: AnalisisInput, *,
-                     metodo_valoracion: str = "comparables_ajustados") -> tuple[str, list[str]]:
+                     metodo_valoracion: str = "comparables_ajustados",
+                     aviso_aprobacion=None, veredicto=None) -> tuple[str, list[str]]:
     razones: list[str] = []
     # Fase 2 (puente captación → análisis, corte de valoración): sin comparables,
     # M03 no tiene ancla de mercado independiente — VM=VS=VT degenerado,
@@ -279,6 +280,14 @@ def decidir_semaforo(params, ico: int, ra_res: RAResultado, rent: RentabilidadRe
         return "rojo", ["Escalera de precios degenerada: la estructura de costes consume el valor (§9.3)"]
     if any(r.nivel == "critico" and not r.mitigable for r in ra_res.dimensiones):
         return "rojo", ["Riesgo crítico no mitigable"]
+    # Fase 5J-4 (ADR-0028, diseño C): inviable y la mínima aprobable supera P_límite ⇒ rojo; si cabe
+    # en P_límite, techo naranja con condición (abajo). No es un veto: el veredicto es informativo y
+    # el usuario puede seguir simulando.
+    inviable = veredicto is not None and veredicto.estado == "inviable"
+    if inviable and not veredicto.cabe_en_limite:
+        return "rojo", [f"Inviable con estas condiciones: la puja mínima aprobable "
+                        f"({eur(veredicto.puja_minima_efectiva)}) supera el precio máximo económico "
+                        f"({eur(veredicto.p_max)}) y el precio límite absoluto ({eur(escalera.p_limite)})"]
 
     b_pes = next(e.beneficio for e in rent.escenarios if e.nombre == "pesimista")
     i_base = rent.inversion_total
@@ -312,6 +321,16 @@ def decidir_semaforo(params, ico: int, ra_res: RAResultado, rent: RentabilidadRe
     if ici_techo:
         techos = techos + [ici_techo]
         razones.append(f"ICI {ici} impone techo {ici_techo} (§6.2)")
+    # Fase 5J-3 (ADR-0027): a decisión del letrado o por debajo del suelo ⇒ techo naranja, nunca
+    # veto. Sujeta a mejora (entre la mínima aprobable y la segura): solo condición, sin techo.
+    if aviso_aprobacion is not None and aviso_aprobacion.techo_naranja:
+        techos = techos + ["naranja"]
+        razones.append(f"{aviso_aprobacion.titulo} ⇒ techo Naranja con condición")
+    if inviable:
+        techos = techos + ["naranja"]
+        razones.append(f"Inviable con estas condiciones: la puja mínima aprobable "
+                       f"({eur(veredicto.puja_minima_efectiva)}) supera el precio máximo económico y cabe en "
+                       f"el límite absoluto ⇒ techo Naranja con condición")
     for t in techos:
         if _ORDEN_SEM[t] > _ORDEN_SEM[candidato]:
             razones.append(f"Techo aplicado: {t}")

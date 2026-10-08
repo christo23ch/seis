@@ -31,9 +31,10 @@ def _con_tenencia(mensual: float):
 
 
 def test_colchon_del_caso_dorado(dorado):
-    # B_obj = 35.348,68 €; 240 + 0,015 · 141.395,76 / 12 = 416,74 €/mes ⇒ 84,8 meses.
+    # B_obj = 35.348,77 €; 240 + 0,015 · 141.395,67 / 12 = 416,74 €/mes ⇒ 84,8 meses.
+    # A P_max (5J-2b): 61,5 meses (antes 60,9; P_max baja al sumar la inmovilización al plazo).
     assert dorado.decision.colchon_plazo_meses == 84.8
-    assert dorado.decision.colchon_plazo_meses_p_max == 60.9
+    assert dorado.decision.colchon_plazo_meses_p_max == 61.5
 
 
 def _formula(r, entrada, p: float) -> float:
@@ -149,7 +150,7 @@ def test_cash_con_ltv_informado_es_como_cash(dorado):
     from app.engine.contracts import FinanciacionInput
     d = ejecutar_analisis(entrada_caso_19().model_copy(update={"financiacion": FinanciacionInput(
         tipo="cash", ltv=0.7)})).decision
-    assert (d.colchon_plazo_meses, d.colchon_plazo_meses_p_max) == (84.8, 60.9)
+    assert (d.colchon_plazo_meses, d.colchon_plazo_meses_p_max) == (84.8, 61.5)
 
 
 def test_con_hipoteca_cuenta_los_intereses_y_solo_el_capital_propio():
@@ -171,7 +172,7 @@ def test_un_resultado_antiguo_sin_el_campo_se_lee_igual(dorado):
 
 def test_el_informe_da_el_colchon(dorado):
     seccion = dorado.informe_markdown.split("## 7 · Análisis financiero")[1].split("## 8")[0]
-    assert ("Colchón de plazo: 84,8 meses a precio objetivo (60,9 a precio máximo), "
+    assert ("Colchón de plazo: 84,8 meses a precio objetivo (61,5 a precio máximo), "
             "hasta beneficio cero por tenencia y coste de capital") in seccion
 
 
@@ -197,8 +198,10 @@ def test_sin_colchon_a_p_max_el_informe_omite_el_parentesis(dorado):
 
 
 def test_un_valor_existente_no_cambia(dorado):
-    """El colchón es nuevo: la guarda de la 5H.1 (`test_invariante_5h1.py`) vigila el resto."""
-    assert dorado.decision.margen_seguridad_valor == 0.248 and dorado.decision.ico == 64
+    """El colchón es nuevo: la guarda de la 5H.1 (`test_invariante_5h1.py`) vigila el resto. Desde
+    la 5J-4 (ADR-0028) el margen y el ICO del §19 se calculan a la puja evaluada (la mínima
+    aprobable, 106.400 €); el colchón sigue a P_objetivo y P_max (deuda anotada)."""
+    assert dorado.decision.margen_seguridad_valor == 0.0 and dorado.decision.ico == 49
 
 
 def test_la_comparacion_trae_el_colchon(api, headers):

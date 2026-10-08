@@ -57,6 +57,16 @@ def resultado(caso_19):
     return ejecutar_analisis(caso_19)
 
 
+@pytest.fixture(scope="module")
+def a_precio_objetivo(caso_19):
+    """El §19 sin umbral legal de aprobación (venta no reglada: los mismos 2,5 meses de cierre, la
+    misma escalera y los mismos costes), evaluado al precio objetivo como en el documento. Desde la
+    5J-4 (ADR-0028) el §19 es inviable con estas condiciones y su rentabilidad se evalúa a la puja
+    mínima aprobable (106.400 €); esta variante conserva la regresión fundacional de la economía."""
+    return ejecutar_analisis(caso_19.model_copy(update={
+        "subasta": caso_19.subasta.model_copy(update={"procedimiento": "no_aplica"})}))
+
+
 def test_ici_en_banda(resultado):
     # Doc: ICI 62 (banda 60–79 ⇒ +2pp de prudencia, sin techo)
     assert 58 <= resultado.ici.ici <= 68
@@ -100,37 +110,54 @@ def test_costes(resultado):
     # Doc: C_F(P50) ≈ 77.460 · C_F(P80) ≈ 86.800 · c_v = 6,4%
     assert resultado.costes.c_v == pytest.approx(0.064, abs=0.0005)
     assert resultado.costes.c_f_p50 == pytest.approx(77460, rel=0.02)
-    assert resultado.costes.c_f_p80 == pytest.approx(86800, rel=0.02)
-    assert resultado.costes.plazo_meses_p50 == pytest.approx(13, abs=0.5)
+    # P80: + 240 €/mes · 2,5 meses · 1,4 = 840 € de tenencia por la inmovilización (5J-2b).
+    assert resultado.costes.c_f_p80 == pytest.approx(86800 + 840, rel=0.02)
+    # Doc: 13 meses. La 5J-2b suma el cierre → pago del resto (ADR-0026): sin fecha de inicio
+    # del procedimiento judicial, 2,5 meses (el régimen más largo) ⇒ 15,5.
+    assert resultado.costes.plazo_desglose["inmovilizacion"] == 2.5
+    assert resultado.costes.plazo_meses_p50 == pytest.approx(13 + 2.5, abs=0.5)
     assert resultado.costes.contingencia_pct == pytest.approx(0.10, abs=0.001)
     assert resultado.costes.regimen_fiscal == "itp"
 
 
 def test_escalera_precios(resultado):
-    # Doc §19: ideal 51.100 · objetivo 60.100 · máx 69.100 · límite ~80–84 k
+    # Doc §19: ideal 51.100 · objetivo 60.100 · máx 69.100 · límite ~80–84 k. La 5J-2b alarga
+    # el plazo 2,5 meses (más tenencia y coste de capital): ideal 50.753 · objetivo 59.447 ·
+    # máx 67.941 · límite 78.529 (ADR-0026).
     p = resultado.decision.precios
-    assert p.p_ideal == pytest.approx(51100, abs=800)
-    assert p.p_objetivo == pytest.approx(60100, abs=800)
-    assert p.p_max == pytest.approx(69100, abs=900)
+    assert p.p_ideal == pytest.approx(50750, abs=800)
+    assert p.p_objetivo == pytest.approx(59450, abs=800)
+    assert p.p_max == pytest.approx(67950, abs=900)
     assert 78000 <= p.p_limite <= 84500
     assert p.p_ideal < p.p_objetivo < p.p_max < p.p_limite
     assert not p.degenerada
 
 
-def test_rentabilidad(resultado):
-    # Doc: ROI 25% base a P_objetivo · ROI anualizado ≈ 23% · pesimista positivo
-    r = resultado.rentabilidad
+def test_rentabilidad(a_precio_objetivo, resultado):
+    # Doc: ROI 25% base a P_objetivo · ROI anualizado ≈ 23% · pesimista positivo. Con la 5J-2b
+    # el mismo ROI se reparte en 15,5 meses: anualizado ≈ 18,9 % (ADR-0026).
+    assert a_precio_objetivo.decision.precios == resultado.decision.precios
+    assert a_precio_objetivo.costes == resultado.costes
+    r = a_precio_objetivo.rentabilidad
     assert r.roi == pytest.approx(0.25, abs=0.005)
-    assert r.roi_anualizado == pytest.approx(0.229, abs=0.015)
+    assert r.roi_anualizado == pytest.approx(0.189, abs=0.015)
     assert 0.15 <= r.tir_anual <= 0.35
     pes = next(e for e in r.escenarios if e.nombre == "pesimista")
     assert pes.beneficio > 0
     assert r.valor_esperado == pytest.approx(34000, rel=0.15)
+    # 5J-4 (ADR-0028): el §19 real se evalúa a la puja mínima aprobable, 106.400 € (70 %, vivienda
+    # habitual supuesta), por encima del precio máximo económico: ROI −7,6 %, TIR −7,4 %.
+    v = resultado.rentabilidad
+    assert resultado.decision.veredicto.puja_evaluada == 106400.0
+    assert v.roi == pytest.approx(-0.0763, abs=0.001)
+    assert v.tir_anual == pytest.approx(-0.074, abs=0.002)
 
 
-def test_margen_seguridad(resultado):
+def test_margen_seguridad(a_precio_objetivo, resultado):
     # Doc: MS ≈ 25% de caída de VS soportable a P_objetivo
-    assert resultado.decision.margen_seguridad_valor == pytest.approx(0.248, abs=0.02)
+    assert a_precio_objetivo.decision.margen_seguridad_valor == pytest.approx(0.248, abs=0.02)
+    # 5J-4: a la puja evaluada (106.400 €) no hay margen (decisión del responsable).
+    assert resultado.decision.margen_seguridad_valor == 0.0
 
 
 def test_puja_y_rvc(resultado):
@@ -140,12 +167,22 @@ def test_puja_y_rvc(resultado):
     assert resultado.puja.banda_rvc == "alcanzable"
 
 
-def test_ico_y_semaforo(resultado):
-    # Doc: ICO en banda amarilla (60–74); techo Amarillo por ocupación alta (SEM-OCU-02)
+def test_ico_y_semaforo(a_precio_objetivo, resultado):
+    # Doc: ICO en banda amarilla (60–74); techo Amarillo por ocupación alta (SEM-OCU-02). Desde la
+    # 5J-3 (ADR-0027), P_max queda por debajo del suelo de la vivienda habitual supuesta (60 %):
+    # techo naranja, con su condición. Desde la 5J-4 (ADR-0028, diseño C) la puja mínima aprobable
+    # (106.400 €) supera P_límite (78.529 €): inviable con estas condiciones y rojo, sin veto. El
+    # ICO se calcula a la puja evaluada: 49.
+    assert 60 <= a_precio_objetivo.decision.ico <= 74
+    assert a_precio_objetivo.decision.semaforo == "amarillo"
     d = resultado.decision
-    assert 60 <= d.ico <= 74
-    assert d.semaforo == "amarillo"
-    assert "amarillo" in d.techos_aplicados
+    assert d.ico == 49
+    assert d.semaforo == "rojo"
+    assert d.veredicto.estado == "inviable" and not d.veredicto.cabe_en_limite
+    assert d.veredicto.aprobacion == "no_aprobable" and d.veredicto.puja_recomendada is None
+    assert d.razones[0].startswith("Inviable con estas condiciones: la puja mínima aprobable (106.400 €)")
+    assert {"amarillo", "naranja"} <= set(d.techos_aplicados)
+    assert any(c.startswith("Remate no aprobable si es la vivienda habitual") for c in d.condiciones)
     assert any("posesoria" in c or "posesión" in c.lower() for c in d.condiciones)
     assert not d.vetos
 
@@ -161,7 +198,7 @@ def test_checklist_bloqueantes(resultado):
 def test_informe_sin_cifras_nuevas(resultado):
     # El informe debe contener las cifras clave del snapshot (regla M14)
     inf = resultado.informe_markdown
-    assert "AMARILLO" in inf
+    assert "ROJO" in inf and "**Veredicto: inviable con estas condiciones.**" in inf
     for etiqueta in ("Precio ideal", "Precio objetivo", "Precio máximo", "Precio límite",
                      "Margen de seguridad", "TIR", "Checklist"):
         assert etiqueta in inf

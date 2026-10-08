@@ -100,10 +100,14 @@ try {
     const verCostes = p.locator("[data-ver-calculo]", { has: p.locator('[data-calculo="cf_p50"]') });
     await verCostes.locator("summary").click();
     const cf = plano(await p.locator('[data-calculo="cf_p50"]').innerText());
-    comprobar(cf.includes("suma de las partidas") && cf.includes("77.544"), `D · C_F P50: fórmula y resultado del motor («${cf.slice(0, 70)}…»)`);
+    comprobar(cf.includes("suma de las partidas") && cf.includes("78.144"), `D · C_F P50: fórmula y resultado del motor («${cf.slice(0, 70)}…»)`);
+    // 5J-2b (ADR-0026): el plazo suma la inmovilización entre el cierre y la posesión.
+    const plazo = plano(await p.locator('[data-calculo="plazo"]').innerText());
+    comprobar(plazo.includes("inmovilización") && plazo.includes("P50 = 7 + 3 + 3 + 2,5") && plazo.includes("15,5 × 1,4"),
+      `D · plazo con la inmovilización sustituida (5J-2b) («${plazo.slice(0, 90)}…»)`);
     const verEscalera = p.locator("[data-ver-calculo]", { has: p.locator('[data-calculo="p_max"]') });
     await verEscalera.locator("summary").click();
-    comprobar(plano(await p.locator('[data-calculo="p_max"]').innerText()).includes("69.097"), "D · P_max con sus dos candidatos sustituidos");
+    comprobar(plano(await p.locator('[data-calculo="p_max"]').innerText()).includes("68.533"), "D · P_max con sus dos candidatos sustituidos");
     // 5J-2a: el motor emite el margen excepcional: P_ideal ya tiene su cálculo.
     comprobar(await p.locator('[data-calculo="p_ideal"] [data-no-disponible]').count() === 0
               && plano(await p.locator('[data-calculo="p_ideal"]').innerText()).includes("0,3375"),

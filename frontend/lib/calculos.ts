@@ -113,12 +113,21 @@ export function calculoPlazo(costes: Resultado["costes"]): Calculo {
   const d = costes.plazo_desglose;
   const titulo = "Plazo de la operación";
   if (!d) return noDisponible("plazo", titulo, `su composición (ocupación, obra y comercialización) ${SIN_DATO_5J2A}`, "m06_costes.py");
+  // 5J-2b (ADR-0026): el cierre → pago del resto → posesión entra en el plazo. Un resultado
+  // anterior no trae el término y se explica con la fórmula de entonces.
+  const inmov = d.inmovilizacion;
+  const p80 = "Plazo P80 = Plazo P50 × multiplicador del escenario pesimista";
   return {
     clave: "plazo", titulo, disponible: true, origen: "m06_costes.py",
-    formula: "Plazo P50 = meses de ocupación + meses de obra + meses de comercialización; Plazo P80 = Plazo P50 × multiplicador del escenario pesimista",
-    sustitucion: `P50 = ${num(d.ocupacion, 1)} + ${num(d.obra, 1)} + ${num(d.comercializacion, 1)}; `
-      + `P80 = ${num(costes.plazo_meses_p50, 1)} × ${num(d.multiplicador_p80, 2)}`,
+    formula: inmov == null
+      ? `Plazo P50 = meses de ocupación + meses de obra + meses de comercialización; ${p80}`
+      : `Plazo P50 = meses de ocupación + meses de obra + meses de comercialización + meses de inmovilización (cierre → pago del resto); ${p80}`,
+    sustitucion: `P50 = ${num(d.ocupacion, 1)} + ${num(d.obra, 1)} + ${num(d.comercializacion, 1)}`
+      + (inmov == null ? "" : ` + ${num(inmov, 1)}`)
+      + `; P80 = ${num(costes.plazo_meses_p50, 1)} × ${num(d.multiplicador_p80, 2)}`,
     resultado: `${num(costes.plazo_meses_p50, 1)} meses (P50) / ${num(costes.plazo_meses_p80, 1)} meses (P80)`,
+    nota: inmov == null ? undefined
+      : "Los meses de inmovilización salen del procedimiento; su origen (plazo legal máximo, régimen más largo o estimación sin base legal) y sus avisos están en «Procedimiento y umbrales legales». El P80 se redondea a un decimal.",
   };
 }
 
@@ -347,6 +356,17 @@ function calculosPuja(res: Resultado): Calculo[] {
 
 /* ── métricas de decisión ─────────────────────────────────────────────────── */
 
+/** Fase 5J-4 (ADR-0028): a qué puja evalúa el motor la rentabilidad (`pipeline.py`). Sin veredicto
+ * (resultado anterior a la fase, o sin escalera) es máx(P_objetivo, 1 €), como antes. */
+export function definicionPEval(res: Resultado): string {
+  const v = res.decision.veredicto;
+  if (!v || v.estado === "sin_umbral") return "P_eval = máx(P_objetivo, 1 €)";
+  if (v.estado === "inviable") return "P_eval = puja mínima aprobable (inviable: supera P_max)";
+  return v.puja_evaluada === v.p_objetivo
+    ? "P_eval = P_objetivo (alcanza la puja mínima aprobable)"
+    : "P_eval = puja mínima aprobable (P_objetivo no la alcanza)";
+}
+
 export function calculosMetricas(res: Resultado): Calculo[] {
   const r = res.rentabilidad;
   const c = res.costes;
@@ -355,15 +375,15 @@ export function calculosMetricas(res: Resultado): Calculo[] {
   return [
     {
       clave: "roi", titulo: "ROI (base)", disponible: true, origen: origen11,
-      formula: "ROI = beneficio / inversión total, a P_objetivo",
+      formula: "ROI = beneficio / inversión total, a la puja evaluada P_eval",
       sustitucion: `ROI = ${eur(r.beneficio)} / ${eur(r.inversion_total)}`,
       resultado: pct(r.roi),
     },
     {
-      clave: "inversion", titulo: "Inversión total a P_objetivo", disponible: true, origen: "fiscal.py (inversion)",
-      // El motor evalúa en P_eval = máx(P_objetivo, 1) (pipeline.py), que viaja como `precio_evaluado`; por
-      // debajo de la base mínima B suma el sobrecoste t × (B − P) del impuesto.
-      formula: `I = P_eval × (1 + c_v) + C_F P50${bajoBase ? " + t × (B − P_eval)" : ""}, con P_eval = máx(P_objetivo, 1 €)`,
+      clave: "inversion", titulo: "Inversión total a la puja evaluada", disponible: true, origen: "fiscal.py (inversion)",
+      // El motor evalúa en P_eval (pipeline.py), que viaja como `precio_evaluado`: desde la 5J-4, la puja
+      // del veredicto; por debajo de la base mínima B suma el sobrecoste t × (B − P) del impuesto.
+      formula: `I = P_eval × (1 + c_v) + C_F P50${bajoBase ? " + t × (B − P_eval)" : ""}, con ${definicionPEval(res)}`,
       sustitucion: r.precio_evaluado != null
         ? `I = ${eur(r.precio_evaluado)} × (1 + ${num(c.c_v, 4)}) + ${eur(c.c_f_p50)}`
           + (bajoBase ? ` + ${num(c.tipo_base_minima ?? 0, 4)} × (${eur(c.base_fiscal_minima ?? 0)} − ${eur(r.precio_evaluado)})` : "")
@@ -424,6 +444,44 @@ function calculoColchon(res: Resultado): Calculo {
     formula: "Colchón = máx(0, beneficio) / (tenencia + intereses + coste de capital), todo mensual; beneficio = VS_p − inversión total",
     sustitucion: `Colchón = ${eur(Math.max(0, c.beneficio))} / (${eur(c.tenencia_mensual)} + ${eur(c.intereses_mensuales)} + ${eur(c.coste_capital_mensual)})`,
     resultado: `${num(res.decision.colchon_plazo_meses, 1)} meses`,
+  };
+}
+
+/* ── veredicto de la puja (5J-4) ──────────────────────────────────────────── */
+
+/** Fase 5J-4 (ADR-0028): la comparación que decide el veredicto y el semáforo C, con las cifras
+ * del resultado. No recalcula: el motor ya dio el estado; aquí se escribe la regla. */
+export function calculoVeredicto(res: Resultado): Calculo {
+  const v = res.decision.veredicto;
+  const origen = "procedimiento.py (veredicto_puja) · m12_decision.py";
+  const titulo = "Veredicto de la puja";
+  if (!v) return noDisponible("veredicto", titulo, "el veredicto (resultado anterior a la 5J-4 o escalera degenerada)", origen);
+  if (v.estado === "sin_umbral" || v.puja_minima_efectiva == null) {
+    return { clave: "veredicto", titulo, disponible: true, origen,
+      formula: "Sin puja mínima aprobable en la norma: puja recomendada = P_objetivo",
+      resultado: v.titulo };
+  }
+  const p = res.procedimiento;
+  const estricta = v.puja_minima_aprobable != null && v.puja_minima_efectiva !== v.puja_minima_aprobable;
+  const filas: FilaCalculo[] = [
+    { etiqueta: "Valor de subasta", valor: p ? eur(p.valor_subasta) : "—" },
+    { etiqueta: "Umbral aplicado", valor: p?.umbral_aprobacion_pct != null ? pct(p.umbral_aprobacion_pct, 0) : "—" },
+    { etiqueta: "Puja mínima aprobable", valor: eur(v.puja_minima_efectiva) + (estricta ? " (hay que superar el umbral: +1 €)" : "") },
+    { etiqueta: "P_objetivo", valor: eur(v.p_objetivo) },
+    { etiqueta: "P_max (precio máximo económico)", valor: eur(v.p_max) },
+    ...(v.p_limite != null ? [{ etiqueta: "P_límite", valor: eur(v.p_limite) }] : []),
+    { etiqueta: "Puja evaluada (P_eval)", valor: eur(v.puja_evaluada) },
+  ];
+  // Los signos salen del estado que dio el motor (`estado`, `cabe_en_limite`), no de recomparar aquí.
+  const inviable = v.estado === "inviable";
+  const limite = inviable && v.p_limite != null ? ` y ${v.cabe_en_limite ? "≤" : ">"} P_límite ${eur(v.p_limite)}` : "";
+  return {
+    clave: "veredicto", titulo, disponible: true, origen,
+    formula: "Viable si mínima aprobable ≤ P_max (recomendada = máx(P_objetivo, mínima)); si no, inviable: "
+      + "semáforo rojo si mínima > P_límite y, si cabe, como máximo naranja",
+    sustitucion: `mínima ${eur(v.puja_minima_efectiva)} ${inviable ? ">" : "≤"} P_max ${eur(v.p_max)}${limite}`,
+    resultado: v.titulo,
+    filas,
   };
 }
 

@@ -7,7 +7,7 @@ afirmación, de una regla disparada o de un hecho. La narrativa LLM opcional
 from __future__ import annotations
 
 from app.engine.conservacion import NO_CONSTA
-from app.engine.contracts import (AnalisisInput, AnalisisResult, ChecklistItem,
+from app.engine.contracts import (AnalisisInput, AnalisisResult, ChecklistItem, ProcedimientoResultado,
                                   DecisionFinal)
 # Fase 5G.2: un único formato de importes para M13 y M14 (`app/engine/formato.py`).
 from app.engine.formato import eur as _eur
@@ -18,6 +18,14 @@ from app.engine.formato import pct as _pct
 # Fase 5J-2a: el informe nombra los códigos y símbolos del motor con su texto legible.
 from app.engine.textos import etiqueta as _et
 from app.engine.textos import legible as _leg
+from app.engine.procedimiento import bloque_aviso_aprobacion, bloque_veredicto, texto_deposito
+
+
+def _meses(x: float) -> str:
+    """Fase 5J-2b: un plazo entero sin decimales («13»), uno fraccionario con uno («15,5»).
+    Con la inmovilización el plazo deja de ser entero y `:.0f` lo redondeaba a par (16)."""
+    return _dec(x, 0) if float(x).is_integer() else _dec(x, 1)
+
 
 _SEM_ICONO = {"verde": "🟢 VERDE", "amarillo": "🟡 AMARILLO",
               "naranja": "🟠 NARANJA", "rojo": "🔴 ROJO"}
@@ -25,7 +33,8 @@ _SEM_ICONO = {"verde": "🟢 VERDE", "amarillo": "🟡 AMARILLO",
 
 # ───────────────────────────── CHECKLIST (§13) ─────────────────────────────
 def construir_checklist(inp: AnalisisInput, dec: DecisionFinal, hechos: dict, *,
-                        metodo_valoracion: str = "comparables_ajustados") -> list[ChecklistItem]:
+                        metodo_valoracion: str = "comparables_ajustados",
+                       procedimiento: ProcedimientoResultado | None = None) -> list[ChecklistItem]:
     d = inp.documentos
     items: list[ChecklistItem] = []
     n = [0]
@@ -82,8 +91,14 @@ def construir_checklist(inp: AnalisisInput, dec: DecisionFinal, hechos: dict, *,
     add("C. Fiscal", "Vehículo de compra decidido (persona física / sociedad) y coherente", False, "pendiente")
 
     # D. Económico-financiero
-    deposito = inp.subasta.deposito_pct * inp.subasta.valor_subasta
-    add("D. Económico", "Depósito disponible y transferido en plazo", True, "pendiente", _eur(deposito))
+    # Fase 5J-2b (ADR-0024): el depósito exigido por el régimen del procedimiento.
+    if procedimiento is not None and procedimiento.procedimiento == "no_aplica":
+        detalle_dep = "Según las condiciones del vendedor"
+    elif procedimiento is not None:
+        detalle_dep = _eur(procedimiento.deposito_eur) if procedimiento.deposito_eur is not None else "No consta en la norma"
+    else:
+        detalle_dep = _eur(inp.subasta.deposito_pct * inp.subasta.valor_subasta)
+    add("D. Económico", "Depósito disponible y transferido en plazo", True, "pendiente", detalle_dep)
     add("D. Económico", "Plan de pago del remate cubierto sin condición suspensiva de financiación", True,
         "ok" if inp.financiacion.tipo == "cash" or inp.financiacion.preaprobada else "pendiente")
     # Cierre de Fase 2: sin comparables no hay ancla de mercado independiente
@@ -101,6 +116,15 @@ def construir_checklist(inp: AnalisisInput, dec: DecisionFinal, hechos: dict, *,
         # límites que cargar; mismo patrón que «sin comparables».
         add("D. Económico", "Escalera de precios cargada en la interfaz de puja", True, "pendiente",
             "Escalera de precios degenerada (§9.3): no hay escalera utilizable para pujar.")
+    elif getattr(dec, "veredicto", None) is not None and dec.veredicto.estado == "inviable":
+        # Fase 5J-4 (ADR-0028): sin puja recomendable no hay escalera que cargar.
+        ver = dec.veredicto
+        limite = ("cabe en el límite absoluto, pero solo aceptando por escrito un margen menor que el del perfil"
+                  if ver.cabe_en_limite else "supera también el límite absoluto")
+        add("D. Económico", "Escalera de precios cargada en la interfaz de puja", True, "pendiente",
+            f"Inviable con estas condiciones: la puja mínima aprobable ({_eur(ver.puja_minima_efectiva)}) "
+            f"supera el precio máximo económico ({_eur(dec.precios.p_max)}) y {limite} "
+            f"({_eur(dec.precios.p_limite)}).")
     else:
         add("D. Económico", "Escalera de precios cargada en la interfaz de puja", True, "ok",
             f"Objetivo {_eur(dec.precios.p_objetivo)} · Máx {_eur(dec.precios.p_max)} · Límite {_eur(dec.precios.p_limite)}")
@@ -125,6 +149,12 @@ def construir_checklist(inp: AnalisisInput, dec: DecisionFinal, hechos: dict, *,
     add("F. Ejecución", "Calendario de cierre con extensiones entendido; responsable de puja designado", False, "pendiente")
     add("F. Ejecución", "Regla de retirada acordada (qué información nueva aborta la puja)", False, "pendiente")
     add("F. Ejecución", "Post-adjudicación: lista de primeras 72 h preparada", False, "pendiente")
+    # Fase 5J-3 (ADR-0027): la aprobación del remate no es automática. Tras los de §13 y antes
+    # del de la 5I-D, que sigue siendo el último: no desplaza ninguna numeración anterior.
+    aviso = procedimiento.aviso_aprobacion if procedimiento is not None else None
+    if aviso is not None:
+        add("F. Ejecución", "Riesgo de aprobación del remate asumido por escrito", aviso.techo_naranja,
+            "pendiente", aviso.condicion)
     # Fase 5I-D (ADR-0020): estado de conservación «No consta». AL FINAL para no
     # desplazar la numeración de §13. No bloqueante: en subasta judicial la visita
     # interior casi nunca es posible, y el presupuesto ya usa el estado prudente.
@@ -143,11 +173,15 @@ def construir_checklist(inp: AnalisisInput, dec: DecisionFinal, hechos: dict, *,
 # ───────────────────────────── INFORME (§12) ─────────────────────────────
 def construir_informe(inp: AnalisisInput, res_parciales: dict, dec: DecisionFinal,
                       checklist: list[ChecklistItem], *, estado_asumido: str | None = None,
-                      seccion_procedimiento: str = "") -> str:
+                      seccion_procedimiento: str = "",
+                      procedimiento: ProcedimientoResultado | None = None) -> str:
     """`seccion_procedimiento` (Fase 5J-1, ADR-0022): subapartado informativo que cierra
     el §8, ya redactado por `app/engine/procedimiento.py`. Vacío ⇒ informe idéntico al
     anterior a la fase."""
     val, icu, ref = res_parciales["valoracion"], res_parciales["icu"], res_parciales["reforma"]
+    # Fase 5J-2b (ADR-0024): el §2 cita el depósito exigido por el régimen.
+    texto_dep = (texto_deposito(procedimiento) if procedimiento is not None
+                 else _pct(inp.subasta.deposito_pct, 0))
     costes, ra, rent = res_parciales["costes"], res_parciales["riesgos"], res_parciales["rentabilidad"]
     puja, ici = res_parciales["puja"], res_parciales["ici"]
     a = inp.activo
@@ -163,7 +197,7 @@ def construir_informe(inp: AnalisisInput, res_parciales: dict, dec: DecisionFina
         f"{_leg('; '.join(r.condiciones)) or '—'} |" for r in ra.dimensiones)
     filas_esc = "\n".join(
         f"| {e.nombre} | {_pct(e.probabilidad, 0)} | {_eur(e.vs)} | {_eur(e.coste_total)} | "
-        f"{_eur(e.beneficio)} | {_pct(e.roi)} | {_pct(e.roi_anualizado)} | {e.plazo_meses:.0f} m |"
+        f"{_eur(e.beneficio)} | {_pct(e.roi)} | {_pct(e.roi_anualizado)} | {_meses(e.plazo_meses)} m |"
         for e in rent.escenarios)
     filas_c50 = "\n".join(f"| {_et(k)} | {_eur(v)} |" for k, v in costes.desglose_p50.items())
     if costes.base_fiscal_minima > 0:
@@ -233,12 +267,27 @@ def construir_informe(inp: AnalisisInput, res_parciales: dict, dec: DecisionFina
         + ", hasta beneficio cero por tenencia y coste de capital."
         if colchon is not None else "")
 
+    # Fase 5J-3 (ADR-0027): la franja del letrado, destacada bajo el semáforo.
+    aviso = procedimiento.aviso_aprobacion if procedimiento is not None else None
+    bloque_aviso = f"\n{bloque_aviso_aprobacion(aviso)}\n" if aviso is not None else ""
+    # Fase 5J-4 (ADR-0028): las tres cifras de la puja y el veredicto.
+    ver = getattr(dec, "veredicto", None)
+    bloque_ver = f"\n{bloque_veredicto(ver)}\n" if ver is not None else ""
+    filas_puja = ""
+    if ver is not None and ver.estado != "sin_umbral":
+        filas_puja = (f"\n| **Puja mínima aprobable** | {_eur(ver.puja_minima_efectiva)} |"
+                      f"\n| Puja de aprobación segura | "
+                      f"{_eur(ver.puja_aprobacion_segura) if ver.puja_aprobacion_segura is not None else 'no consta'} |"
+                      f"\n| **Veredicto** | {ver.titulo} |")
+    a_que = ("P objetivo" if ver is None or ver.puja_evaluada == dec.precios.p_objetivo
+             else f"puja {'recomendada' if ver.estado == 'viable' else 'mínima aprobable'} {_eur(ver.puja_evaluada)}")
+
     return f"""# Informe de análisis SEIS
 
 ## 1 · Página de decisión
 
 # {_SEM_ICONO[dec.semaforo]}
-
+{bloque_aviso}{bloque_ver}
 | Métrica | Valor |
 |---|---|
 | **ICO** (calidad de la oportunidad) | **{dec.ico} / 100** |
@@ -247,9 +296,9 @@ def construir_informe(inp: AnalisisInput, res_parciales: dict, dec: DecisionFina
 | ICU (calidad de ubicación) | {dec.icu} / 100 |
 | **Precio ideal** | {_eur(dec.precios.p_ideal)} |
 | **Precio objetivo** | {_eur(dec.precios.p_objetivo)} |
-| **Precio máximo recomendado** | {_eur(dec.precios.p_max)} |
-| **Precio límite absoluto** | {fila_limite} |
-| ROI base (a P objetivo) | {_pct(rent.roi)} ({_pct(rent.roi_anualizado)} anualizado) |
+| **Precio máximo económico** | {_eur(dec.precios.p_max)} |
+| **Precio límite absoluto** | {fila_limite} |{filas_puja}
+| ROI base (a {a_que}) | {_pct(rent.roi)} ({_pct(rent.roi_anualizado)} anualizado) |
 | TIR anual | {_pct(rent.tir_anual)} |
 | Margen de seguridad (caída de VS soportable) | {_pct(dec.margen_seguridad_valor)} |
 | Valor esperado (3 escenarios) | {_eur(rent.valor_esperado)} |
@@ -264,7 +313,7 @@ def construir_informe(inp: AnalisisInput, res_parciales: dict, dec: DecisionFina
 {vetos}
 
 ## 2 · Activo y subasta
-{a.tipologia.capitalize()} de {a.superficie_m2:.0f} m² en {a.municipio or "—"} ({a.provincia or "—"}), {texto_estado}. Subasta {_et(inp.subasta.fuente)}, valor de subasta {_eur(inp.subasta.valor_subasta)}, depósito {_pct(inp.subasta.deposito_pct, 0)}. Ocupación declarada: {_et(inp.ocupacion.estado)}.
+{a.tipologia.capitalize()} de {a.superficie_m2:.0f} m² en {a.municipio or "—"} ({a.provincia or "—"}), {texto_estado}. Subasta {_et(inp.subasta.fuente)}, valor de subasta {_eur(inp.subasta.valor_subasta)}, depósito {texto_dep}. Ocupación declarada: {_et(inp.ocupacion.estado)}.
 
 ## 3 · Valoración
 {seccion_valoracion}
@@ -273,7 +322,7 @@ def construir_informe(inp: AnalisisInput, res_parciales: dict, dec: DecisionFina
 ICU {icu.icu} (macro {icu.macro_score:.0f} · micro {icu.micro_score:.0f}). Tendencia {_dec(icu.tendencia_5a_pct, 1, signo=True)} %/a · DOM venta {icu.dom_venta_dias:.0f} d · DOM alquiler {icu.dom_alquiler_dias:.0f} d · Potencial de revalorización {icu.potencial_revalorizacion}/100.
 
 ## 5 · Plan de obra y costes
-Reforma nivel **{ref.nivel}**: {_eur(ref.total_p50)} (P50) / {_eur(ref.total_p80)} (P80), {ref.plazo_obra_meses:.0f} meses de obra. Costes proporcionales al precio: {_pct(costes.c_v, 2)} ({costes.regimen_fiscal.upper()}).{base_fiscal} Plazo total {costes.plazo_meses_p50:.0f} m (P50) / {costes.plazo_meses_p80:.0f} m (P80). Contingencia {_pct(costes.contingencia_pct, 0)}.
+Reforma nivel **{ref.nivel}**: {_eur(ref.total_p50)} (P50) / {_eur(ref.total_p80)} (P80), {ref.plazo_obra_meses:.0f} meses de obra. Costes proporcionales al precio: {_pct(costes.c_v, 2)} ({costes.regimen_fiscal.upper()}).{base_fiscal} Plazo total {_meses(costes.plazo_meses_p50)} m (P50) / {_meses(costes.plazo_meses_p80)} m (P80). Contingencia {_pct(costes.contingencia_pct, 0)}.
 
 | Partida de costes fijos (P50) | Importe |
 |---|---|
@@ -287,7 +336,7 @@ Reforma nivel **{ref.nivel}**: {_eur(ref.total_p50)} (P50) / {_eur(ref.total_p80
 
 Riesgo agregado **RA {dec.ra}** (banda {_et(ra.banda)}{", dominancia: " + _et(ra.dominancia_aplicada) if ra.dominancia_aplicada else ""}).
 
-## 7 · Análisis financiero (a precio objetivo {_eur(dec.precios.p_objetivo)})
+## 7 · Análisis financiero (a {"precio objetivo " + _eur(dec.precios.p_objetivo) if a_que == "P objetivo" else a_que})
 | Escenario | Prob. | VS | Coste total | Beneficio | ROI | ROI anual | Plazo |
 |---|---|---|---|---|---|---|---|
 {filas_esc}{nota_coste_capital}{nota_van}{nota_colchon}

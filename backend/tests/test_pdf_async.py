@@ -20,7 +20,7 @@ def test_analisis_async_eager(api, headers):
     assert r.status_code == 202
     body = r.json()
     assert body["estado"] == "SUCCESS"
-    assert body["resultado"]["semaforo"] == "amarillo"
+    assert body["resultado"]["semaforo"] == "rojo"  # 5J-4 (ADR-0028): inviable, la mínima aprobable (106.400 €) supera P_límite ⇒ rojo
     # la tarea persistió de verdad: el análisis aparece en el listado
     listado = api.get("/api/v1/analisis", headers=headers).json()
     assert any(a["id"] == body["resultado"]["id"] for a in listado)

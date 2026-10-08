@@ -7,6 +7,8 @@ sigue validando (todos son opcionales).
 """
 from __future__ import annotations
 
+import copy
+
 import json
 from pathlib import Path
 
@@ -161,16 +163,28 @@ def test_colchon_con_sus_operandos(r):
 
 def test_plazo_con_su_desglose(r):
     d, c = r.costes.plazo_desglose, r.costes
-    assert d["ocupacion"] + d["obra"] + d["comercializacion"] == c.plazo_meses_p50
+    # Fase 5J-2b (ADR-0026): el plazo suma además la inmovilización entre el cierre y la posesión.
+    assert d["ocupacion"] + d["obra"] + d["comercializacion"] + d["inmovilizacion"] == c.plazo_meses_p50
     assert c.plazo_meses_p50 * d["multiplicador_p80"] == pytest.approx(c.plazo_meses_p80)
 
 
 # ─────────────────────────── compatibilidad ───────────────────────────
 
+def _sin_campos_5j2a(foto: dict) -> dict:
+    d = copy.deepcopy(foto)
+    d["decision"]["precios"].pop("tramos_fiscales", None)
+    d["decision"].pop("colchon_detalle", None)
+    d["riesgos"].pop("pesos", None)
+    d["puja"].pop("ajustes_ratio", None)
+    d["rentabilidad"].pop("flujos_base", None)
+    return d
+
+
 @pytest.mark.parametrize("caso", ["caso19", "hipoteca"])
 def test_un_resultado_anterior_sin_los_campos_nuevos_sigue_validando(caso):
-    """La foto del §19 es un resultado de antes de la fase: no trae ningún campo nuevo."""
-    antiguo = AnalisisResult.model_validate({**FOTO[caso], "informe_markdown": ""})
+    """Un resultado de antes de la fase no trae ningún campo nuevo. La foto del §19 lo era
+    hasta que la 5J-2b la regeneró: ahora se le quitan los campos de la 5J-2a."""
+    antiguo = AnalisisResult.model_validate({**_sin_campos_5j2a(FOTO[caso]), "informe_markdown": ""})
     assert antiguo.decision.precios.tramos_fiscales is None
     assert antiguo.riesgos.pesos is None and antiguo.puja.ajustes_ratio is None
     assert antiguo.rentabilidad.flujos_base is None and antiguo.decision.colchon_detalle is None

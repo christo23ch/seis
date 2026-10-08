@@ -106,6 +106,34 @@ describe("informe real del caso §19", () => {
   });
 });
 
+describe("aviso de la franja del letrado (5J-3) en el informe real del §19", () => {
+  it("se maqueta como párrafos con negrita, sin «>» ni marcas en crudo, justo bajo el semáforo", () => {
+    const bloques = analizarMarkdown(INFORME);
+    // 5J-4 (ADR-0028): el §19 es inviable y rojo; el aviso sigue justo bajo el semáforo.
+    const i = bloques.findIndex((b) => b.tipo === "titulo" && textoPlano(b.contenido) === "🔴 ROJO");
+    const aviso = bloques[i + 1] as Extract<Bloque, { tipo: "parrafo" }>;
+    expect(aviso.tipo).toBe("parrafo");
+    expect(aviso.lineas[0][0]).toMatchObject({ tipo: "negrita" });
+    expect(textoPlano(aviso.lineas[0])).toMatch(/^Atención: remate no aprobable si es la vivienda habitual del ejecutado\. /);
+    expect(textoPlano((bloques[i + 2] as Extract<Bloque, { tipo: "parrafo" }>).lineas[0])).toMatch(/^Umbrales aplicados: /);
+    expect(INFORME).not.toMatch(/^>/m);
+  });
+});
+
+describe("veredicto de la puja (5J-4) en el informe real del §19", () => {
+  it("el veredicto y su segunda línea son párrafos con negrita, con «qué tendría que cambiar» como lista", () => {
+    const bloques = analizarMarkdown(INFORME);
+    const i = bloques.findIndex((b) => b.tipo === "parrafo"
+      && textoPlano(b.lineas[0]) === "Veredicto: inviable con estas condiciones.");
+    expect(i).toBeGreaterThan(0);
+    const segunda = bloques[i + 1] as Extract<Bloque, { tipo: "parrafo" }>;
+    expect(segunda.lineas[0][0]).toMatchObject({ tipo: "negrita" });
+    expect(textoPlano(segunda.lineas[0])).toMatch(/^No aprobable: el precio máximo económico \(67\.941\s€\)/);
+    expect(INFORME).toContain("Qué tendría que cambiar:\n- Que el precio máximo económico llegue a 106.400 €");
+    expect(INFORME).toContain("| **Puja mínima aprobable** | 106.400 € |");
+  });
+});
+
 describe("correcciones de la revisión de código (5K)", () => {
   it("una fila de «-» en el cuerpo de una tabla es un dato, no un separador", () => {
     const [t] = analizarMarkdown("| A | B |\n|---|---|\n| - | - |\n| 1 | 2 |") as Extract<Bloque, { tipo: "tabla" }>[];

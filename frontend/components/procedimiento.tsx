@@ -3,8 +3,9 @@ import { etiquetaEstado, filasProcedimiento } from "@/lib/procedimiento";
 import type { ProcedimientoResultado } from "@/lib/types";
 import { Badge, Card, CardContent, CardHeader, CardTitle } from "./ui";
 
-/** Fase 5J-1 (ADR-0022): datos del procedimiento de subasta. Informativo: no altera
- * la escalera, el RVC, el semáforo ni la rentabilidad, y lo dice. Un resultado
+/** Fase 5J-1 (ADR-0022): datos del procedimiento de subasta. Los umbrales son
+ * informativos; desde la 5J-2b el depósito, la forma de puja y los meses de
+ * inmovilización entran en el cálculo, y el aviso del motor lo dice. Un resultado
  * anterior a la fase no trae el bloque: se explica en vez de inventarlo. */
 export function ProcedimientoPanel({ datos }: { datos: ProcedimientoResultado | null | undefined }) {
   return (
@@ -26,8 +27,26 @@ export function ProcedimientoPanel({ datos }: { datos: ProcedimientoResultado | 
 }
 
 function Contenido({ datos }: { datos: ProcedimientoResultado }) {
+  const aviso = datos.aviso_aprobacion;
   return (
     <>
+      {/* 5J-3 (ADR-0027): la franja del letrado, destacada. El texto lo redacta el motor. */}
+      {aviso && (
+        <div role="alert" data-aviso-aprobacion={aviso.franja}
+             className={`rounded-md border px-3 py-2.5 ${aviso.techo_naranja
+               ? "border-sem-naranja/40 bg-sem-naranjabg" : "border-sem-amarillo/40 bg-sem-amarillobg"}`}>
+          <p className="text-sm font-semibold text-tinta">{aviso.titulo}</p>
+          <p className="mt-1 text-[13px] text-slate-700">{aviso.riesgo}</p>
+          {aviso.umbrales && aviso.umbrales.length > 0 && (
+            <ul aria-label="Umbrales aplicados" className="mt-1.5 space-y-0.5 text-[12px] text-slate-600">
+              {aviso.umbrales.map((u) => <li key={u}>· {u}</li>)}
+            </ul>
+          )}
+          <p className="mt-1.5 text-[12px] text-slate-500">
+            {aviso.alcance} La escalera de precios y el RVC no cambian.
+          </p>
+        </div>
+      )}
       <dl className="grid gap-x-6 gap-y-2.5 sm:grid-cols-2">
         {filasProcedimiento(datos).map((f) => (
           <div key={f.clave} data-fila={f.clave} className="min-w-0 border-b border-slate-50 pb-1.5">
@@ -55,7 +74,7 @@ function Contenido({ datos }: { datos: ProcedimientoResultado }) {
           <ul className="mt-2 space-y-1.5">
             {datos.datos_legales.map((d) => (
               <li key={d.dato} className="flex flex-wrap items-baseline gap-x-2">
-                <span className="font-medium text-tinta">{d.dato}:</span>
+                <span className="font-medium text-tinta">{d.dato}{d.texto ? ` (${d.texto})` : ""}:</span>
                 <span className="text-slate-600">{d.articulo}</span>
                 <Badge tono={d.estado === "confirmado" ? "verde" : "amarillo"}>{etiquetaEstado(d.estado)}</Badge>
                 {d.nota && <span className="basis-full text-[12px] text-slate-500">{d.nota}</span>}

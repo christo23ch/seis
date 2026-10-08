@@ -64,7 +64,10 @@ def test_veto_inf01_sin_informacion_y_cierre_inminente():
 
 def test_ocupacion_desconocida_asume_precario_y_techo():
     res = ejecutar_analisis(entrada_base(ocupacion=OcupacionInput(estado="desconocida")))
-    assert res.decision.semaforo == "amarillo"               # techo por SEM-OCU-03
+    # Techo amarillo por SEM-OCU-03; desde la 5J-3 manda el naranja de la franja del letrado, y desde
+    # la 5J-4 (ADR-0028) el rojo del veredicto: la mínima aprobable supera P_límite. Nunca hay veto.
+    assert "amarillo" in res.decision.techos_aplicados and res.decision.semaforo == "rojo"
+    assert res.decision.veredicto.estado == "inviable" and not res.decision.vetos
     codigos = {r.codigo for r in res.reglas_disparadas}
     assert "SEM-OCU-03" in codigos
     # el coste de desalojo del precario está provisionado (P5)

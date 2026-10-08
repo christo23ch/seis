@@ -117,6 +117,20 @@ describe("filasProcedimiento: presenta lo que calcula el backend, sin calcular",
     }
   });
 
+  it("5J-2b: los meses que se suman al plazo y su origen, como en el informe (ADR-0026)", () => {
+    // BASE es un resultado anterior a la fase: solo el plazo legal.
+    expect(fila(BASE, "inmovilizacion")).toMatchObject({ valor: "1,8 meses", detalle: "Plazo legal máximo" });
+    const sinFecha = { ...BASE, meses_inmovilizacion_aplicados: 2.5, meses_inmovilizacion_asumidos: false };
+    expect(fila(sinFecha, "inmovilizacion")).toMatchObject(
+      { valor: "2,5 meses", detalle: "Régimen judicial más largo: no consta la fecha de inicio" });
+    const conFecha = { ...sinFecha, regimen_asumido: false, meses_inmovilizacion_aplicados: 1.8 };
+    expect(fila(conFecha, "inmovilizacion")).toMatchObject({ valor: "1,8 meses", detalle: "Plazo legal máximo" });
+    const sinNorma = { ...BASE, procedimiento: "no_aplica", regimen_asumido: false, meses_inmovilizacion: null,
+                       meses_inmovilizacion_aplicados: 2.5, meses_inmovilizacion_asumidos: true };
+    expect(fila(sinNorma, "inmovilizacion")).toMatchObject(
+      { valor: "2,5 meses", detalle: "Estimación prudente, sin base legal" });
+  });
+
   it("mantiene el orden de la tabla del informe", () => {
     expect(filasProcedimiento(BASE).map((f) => f.clave))
       .toEqual(["regimen", "deposito", "capital", "plazo", "inmovilizacion", "minima", "segura", "suelo"]);

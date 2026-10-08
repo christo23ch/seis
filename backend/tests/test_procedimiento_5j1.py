@@ -4,8 +4,10 @@ Vigila tres cosas:
 1. Los importes que calcula `app/engine/procedimiento.py` con los parámetros T3, para
    cada procedimiento y supuesto (régimen «No sé», vivienda habitual «No consta»,
    cantidad reclamada, depósito mínimo, datos ausentes).
-2. Que es INFORMATIVO: cambiar cualquier dato del procedimiento no mueve ni una hoja
-   del resto del resultado (la guarda del §19 está en `test_invariante_5h1.py`).
+2. Que los UMBRALES son informativos: cambiar la cantidad reclamada o la vivienda habitual
+   no mueve ni una hoja del resto del resultado (la guarda del §19 está en
+   `test_invariante_5h1.py`). Desde la Fase 5J-2b el depósito, la forma de puja y los meses
+   de inmovilización SÍ entran en el cálculo; eso lo vigila `test_deposito_plazo_5j2b.py`.
 3. El texto del subapartado del informe: aviso orientativo, sin claves internas y en
    formato español.
 """
@@ -46,6 +48,8 @@ def test_caso19_aplica_el_regimen_desfavorable_y_lo_declara():
     assert r.deposito_pct == 0.20 and r.deposito_eur == 30400.0 == r.capital_para_pujar
     assert (r.plazo_pago_dias, r.plazo_pago_unidad) == (20, "naturales")
     assert r.meses_inmovilizacion == 1.8
+    # Fase 5J-2b: sin fecha de inicio, el plazo suma el del régimen más largo (2015: 2,5 meses).
+    assert r.meses_inmovilizacion_aplicados == 2.5 and not r.meses_inmovilizacion_asumidos
     assert any(a.startswith("No consta cuándo se inició el procedimiento judicial") for a in r.avisos)
     assert any("el depósito es del 5 % y el plazo de 40 días" in a for a in r.avisos)
 
@@ -191,7 +195,7 @@ def test_entrada_anterior_a_la_fase_usa_el_booleano():
     assert _calc(activo={"es_vivienda_habitual": False}).vivienda_habitual == "no_consta"
 
 
-# ─────────────────────────── informativo ───────────────────────────
+# ─────────────────── informativo: los umbrales de aprobación ───────────────────
 
 def _sin_procedimiento(r) -> dict:
     d = r.model_dump(mode="json")
@@ -199,21 +203,35 @@ def _sin_procedimiento(r) -> dict:
     return d
 
 
-@pytest.mark.parametrize("cambio", [
-    {"procedimiento": "aeat"}, {"procedimiento": "concursal"},
-    {"procedimiento": "judicial", "regimen_judicial": "anterior", "cantidad_reclamada": 30000.0},
-    {"procedimiento": "no_aplica"},
-])
-def test_los_datos_del_procedimiento_no_mueven_nada_mas(cambio):
+def test_el_procedimiento_declarado_igual_al_deducido_no_mueve_nada_mas():
     base = _sin_procedimiento(ejecutar_analisis(entrada_caso_19()))
-    otro = _sin_procedimiento(ejecutar_analisis(_entrada(**cambio)))
+    otro = _sin_procedimiento(ejecutar_analisis(_entrada(procedimiento="judicial")))
     assert otro == base
+
+
+@pytest.mark.parametrize("cantidad,minima", [(30000.0, 91200.0), (200000.0, 106400.0)])
+def test_la_cantidad_reclamada_no_mueve_la_escalera_ni_los_costes(cantidad, minima):
+    """Desde la 5J-4 (ADR-0028) la puja mínima aprobable decide el veredicto y la puja a la que se
+    evalúa la rentabilidad; la escalera, los costes y el RVC siguen sin moverse. Con la vivienda
+    habitual supuesta, una deuda pequeña baja la mínima al suelo del 60 % (91.200 €)."""
+    base, otro = ejecutar_analisis(entrada_caso_19()), ejecutar_analisis(_entrada(cantidad_reclamada=cantidad))
+    assert otro.decision.precios == base.decision.precios
+    assert otro.costes == base.costes and otro.decision.rvc == base.decision.rvc
+    assert otro.decision.veredicto.puja_minima_efectiva == minima
+    assert otro.decision.veredicto.estado == "inviable" and otro.decision.semaforo == "rojo"
 
 
 def test_vivienda_habitual_no_mueve_nada_mas():
+    """«Sí» y «no consta» (se asume que sí) dan lo mismo; desde la 5J-4 el veredicto del supuesto
+    añade la mínima aprobable si no fuera la vivienda habitual y lo dice en la segunda línea."""
     base = _sin_procedimiento(ejecutar_analisis(entrada_caso_19()))
     otro = _sin_procedimiento(ejecutar_analisis(_entrada(activo={"vivienda_habitual_ejecutado": "si"})))
+    v_base, v_otro = base["decision"].pop("veredicto"), otro["decision"].pop("veredicto")
     assert otro == base
+    assert v_base["puja_minima_sin_vivienda"] == 76000.0 and v_otro["puja_minima_sin_vivienda"] is None
+    assert v_base["aprobacion_texto"].endswith("No consta si es la vivienda habitual: se asume que sí.")
+    distintos = {"puja_minima_sin_vivienda", "alternativa_vivienda", "aprobacion_texto"}
+    assert {k for k in v_base if v_base[k] != v_otro[k]} == distintos
 
 
 def test_el_resultado_lleva_el_procedimiento_y_es_determinista():
@@ -261,7 +279,8 @@ def test_el_informe_lleva_el_subapartado_al_final_del_8(informe):
     for fragmento in ("| Depósito exigido | 30.400 € (20 % del valor de subasta) |",
                       "| Capital necesario para pujar | 30.400 € |",
                       "| Pago del resto del precio | 20 días naturales |",
-                      "| Inmovilización estimada del depósito | 1,8 meses (plazo legal máximo) |",
+                      "| Inmovilización estimada del depósito | 2,5 meses (régimen judicial más "
+                      "largo: no consta la fecha de inicio) |",
                       "| Puja de aprobación segura | 106.400 € (70 % del valor de subasta) |",
                       "| Suelo absoluto | 91.200 € (60 % del valor de subasta) |",
                       "- Depósito para pujar: LEC, art. 669, apdo. 1 (LO 1/2025) (confirmado)"):
@@ -271,7 +290,11 @@ def test_el_informe_lleva_el_subapartado_al_final_del_8(informe):
 def test_el_informe_lleva_el_aviso_orientativo(informe):
     assert "_Cálculo orientativo con los parámetros legales de SEIS (versión 2026.07): no es " \
            "asesoramiento jurídico." in informe
-    assert "no modifican la escalera de precios, el RVC, el semáforo ni la rentabilidad._" in informe
+    # Fase 5J-2b: el aviso ya no dice que nada del procedimiento mueve las cifras.
+    assert ("Los umbrales de aprobación no modifican la escalera de precios, el RVC ni el semáforo; "
+            "el depósito exigido sí se usa en el plan de puja, y los meses de inmovilización, en el "
+            "plazo de la operación._") in informe
+    assert "ni la rentabilidad" not in informe
 
 
 def _seccion(informe: str) -> str:

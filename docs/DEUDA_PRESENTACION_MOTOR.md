@@ -20,7 +20,7 @@ solo del frontend.
 | 1-13 (datos para «Ver cálculo») | ✅ **Resueltos.** El resultado emite cada operando como campo nuevo y opcional, y «Ver cálculo» los usa (ADR-0023) |
 | 14 (pesos del ICO anteriores a la 0014) | ⏸️ Sin solución posible, por diseño |
 | 15-17 (textos con códigos y sin tilde) | ✅ **Resueltos en el informe y el PDF** de los análisis nuevos: M14 redacta con `app/engine/textos.py`. Los **informes oficiales ya emitidos** conservan su texto congelado. Los 7 textos de la foto del §19 (3 ítems del checklist y 4 condiciones «Subsanar: …») se redactan legibles, pero el dato no cambia (ver ADR-0023) |
-| 18 (depósito del alta frente al legal) | ⏳ Pendiente: mueve cifras |
+| 18 (depósito del alta frente al legal) | ✅ **Resuelto en la 5J-2b** (ADR-0024): el plan de puja, el §2 y el checklist usan el depósito del régimen |
 | 19-20 (catálogo global y su cobertura) | ⏳ Pendiente (backend) |
 | §4 (frontend fuera de alcance) | ⏳ Pendiente |
 

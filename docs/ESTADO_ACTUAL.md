@@ -10,8 +10,8 @@
 
 ## Frentes abiertos
 
-**Actualizado:** 2026-10-07 · **Rama de trabajo:** `fase/5j-2a-textos-y-datos` (sale de `main`, `13941d9`, con la 5K fusionada; sin PR) · **Suite (SQLite):** 1100 passed, 18 skipped, 0 failed · **Frontend:** 141 tests unitarios (vitest, `npm test`) · **E2E:** alta, simulaciones, alta de inversión, validación guiada, datos del procedimiento y presentación (1440 y 390 px) en la CI (job `e2e`) · **Migraciones:** hasta `0016`; la siguiente libre es la `0017`
-**Última fase cerrada:** 5K, presentación (PR #33) · **En curso:** 5J-2a, textos legibles en el informe y el PDF y operandos de «Ver cálculo» como campos opcionales del resultado (ADR-0023), sin mover ninguna cifra · **Siguiente:** 5J-2b, lo que sí mueve cifras (depósito legal, táctica de puja por régimen, reglas del diseño B) · **Puerta: ABIERTA**
+**Actualizado:** 2026-10-09 · **Rama de trabajo:** `fase/5j-4-puja-aprobable` (apilada sobre `fase/5j-3-avisos`, PR #36, que va sobre la 5J-2b, PR #35) · **Suite (SQLite):** 1224 passed, 18 skipped, 0 failed · **Frontend:** 148 tests unitarios (vitest, `npm test`) · **E2E:** alta, simulaciones, alta de inversión, validación guiada, datos del procedimiento (con el panel del veredicto) y presentación (1440 y 390 px) en la CI (job `e2e`) · **Migraciones:** hasta `0016`; la siguiente libre es la `0017`
+**Última fase cerrada:** 5J-2a (PR #34) · **En revisión:** 5J-2b (PR #35) y 5J-3 (PR #36) · **En curso:** 5J-4, puja mínima aprobable como recomendación y veredicto de la puja (ADR-0028), que **cambia cifras y el veredicto** con la tabla aprobada (semáforo C) · **Siguiente:** lo que queda del diseño C (comparativa, lista y mapa sin el veredicto) · **Puerta: ABIERTA**
 
 ### 🟡 Requisito de PRODUCTO registrado, sin implementar: perfil de inversor por cuestionario
 
@@ -410,14 +410,13 @@ Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VER
 
 15. *(Resuelta en 5G.4-B: ver «Cerrada» arriba.)*
 16. *(Resuelta en 5H.1-B: ver «Cerrada» arriba.)*
-17. **El «depósito del 5%» de la condición de la regla T2 `SEM-EJEC-01`** sale sin espacio
-    antes de «%». Es texto de una regla versionada (`rules/catalogo.yaml`), no de un módulo:
-    corregirlo exige una versión nueva de la regla. `test_formato_espanol_5g4.py` lo tiene
-    localizado como única excepción.
+17. *(Resuelta en 5J-2b: `SEM-EJEC-01` 2026.10 dice el depósito según el régimen, con espacio
+    antes de «%», ADR-0024.)*
 18. **Puntos de la auditoría que quedan para la 5H.2** (todos cambian el caso dorado o
     necesitan decisión): calendario de la TIR con los plazos reales de M06 (E3), nueva
     definición del precio límite (E2 b), coste del depósito (E5), perfil rentista según §9.2
-    (E4) y rentabilidad del ICO (E8). Estado punto a punto en
+    (E4) y rentabilidad del ICO (E8). El calendario real (E3) resolverá además el redondeo al
+    par del horizonte de la TIR que expuso la 5J-2b (ADR-0026). Estado punto a punto en
     `docs/AUDITORIA_MOTOR_ESPECIFICACION.md`.
 19. **Los intereses del préstamo se calculan a plazo P50 dentro de un precio límite estresado a
     P80** (`m06_costes.py:78`): −774 € de P_límite bruto en el caso con hipoteca si se usara P80.
@@ -530,17 +529,18 @@ Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VER
 
 **Datos del procedimiento (5J-1, ADR-0022)**
 
-1. **El depósito del alta sigue en el 5 % por defecto** y alimenta el plan de puja de M13
-   («Depósito requerido…»): el resultado muestra el legal (20 % en el régimen de la LO 1/2025) y
-   avisa de la diferencia, pero no lo corrige, porque cambiaría cifras. Para la 5J-2/5J-3.
-2. **La táctica de puja de M13 no distingue el régimen** («la extensión automática del cierre…»),
-   incorrecta en el judicial de la LO 1/2025 (pujas secretas, sin prórroga). Ídem.
+1. *(Resuelta en 5J-2b, ADR-0024: el plan de puja, el §2 y el checklist usan el depósito del
+   régimen. El alta conserva su 5 % por defecto y el aviso de que no coincide; ver el punto 6.)*
+2. *(Resuelta en 5J-2b, ADR-0025: la táctica depende de la forma de puja del régimen.)*
 3. **Los parámetros `procedimiento.regimenes` no son simulables** (el catálogo de la 5C solo cubre
    M12 y M13) y **`defaults.yaml` sigue en `2026.07`** aunque gana una sección: subir la versión
    cambiaría `version_parametros`, que es hoja de la foto del §19.
 4. **Toda la TGSS, los meses de inmovilización, la venta extrajudicial y el concursal están sin
    confirmar** en la investigación: se muestran con su aviso o como «no consta». Ninguno puede
-   convertirse en bloqueo sin la validación jurídica (D8).
+   convertirse en bloqueo sin la validación jurídica (D8). **Desde la 5J-2b los meses de
+   inmovilización mueven cifras** (plazo, tenencia, coste de capital, escalera): siguen marcados
+   «sin confirmar» y el informe lo dice. La forma de puja sí está contrastada con el BOE salvo en
+   la venta extrajudicial y el concursal (ADR-0025).
 5. **Una base de desarrollo creada con `create_all` necesita `alembic stamp 0015` y `upgrade head`**
    para recibir las columnas de la `0016` (`MANUAL_DE_PRUEBAS.md` §1 bis).
 6. **Avisos de la revisión que se dejan** (LOW): con el alta por defecto (depósito 5 %, judicial,
@@ -556,8 +556,8 @@ Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VER
    `docs/DEUDA_PRESENTACION_MOTOR.md`. La **5J-2a** resolvió los puntos 1-13 (operandos de «Ver
    cálculo») y 15-17 (el informe y el PDF de los análisis nuevos salen sin claves internas ni
    palabras sin tilde, ADR-0023). Quedan: los **informes oficiales ya emitidos** conservan su texto
-   congelado con los códigos de antes; el depósito del alta (18, mueve cifras); el catálogo global
-   (19-20); y las pantallas de reglas y simulaciones.
+   congelado con los códigos de antes; el catálogo global (19-20); y las pantallas de reglas y
+   simulaciones. El depósito del alta (18) lo resolvió la 5J-2b (ADR-0024).
    **Decidido por el responsable (2026-10-07): se dejan como están.** Los 7 textos de la foto del
    §19 (3 ítems del checklist con `C_F`/`c_v` y 4 condiciones «Subsanar: …») se redactan legibles
    en el informe, pero el dato no cambia y la foto no se regenera (ADR-0023).
@@ -570,6 +570,68 @@ Cada punto se ha comprobado en el código el 2026-09-30, salvo los marcados [VER
 4. **`m12_decision.calcular_escalera` sigue creciendo** (pasa con mucho de 50 líneas): los
    candidatos del rentista y los tramos fiscales podrían ir en funciones propias. Anotado en la
    revisión de la 5J-2a; no se refactoriza sin autorización para tocar el motor.
+
+**Veredicto de la puja (5J-4, ADR-0028)**
+
+1. **El colchón de plazo sigue a P_objetivo y a P_max** (decisión del responsable): no se mueve a la
+   puja evaluada. En un inviable el colchón describe una puja que no se aprobaría.
+2. **La lista, el mapa, la comparativa y la comparación de simulaciones no muestran el veredicto**:
+   solo el detalle, el asistente, el informe y el PDF. `ListItem` sigue con `p_objetivo` y `p_max`.
+3. **La e2e recorre el panel del veredicto en un caso viable**; el inviable (con «qué tendría que
+   cambiar») lo cubren las pruebas del motor, vitest y la vista previa del informe.
+4. **Los umbrales de la TGSS siguen «sin confirmar»** (5J-1) y deciden su veredicto: en la TGSS la
+   mínima es superar el 60 % (+1 €). Validarlos antes de fiarse del veredicto en ese procedimiento.
+5. **Con más meses, la TIR de un inviable sale menos negativa**: anualizar una pérdida sobre más
+   tiempo reduce su tasa (`test_deposito_plazo_5j2b.py`). El ROI total sí empeora. Aritmética, no error.
+6. **El aviso de la 5J-3 y el veredicto se solapan** en el §1 cuando el veredicto es inviable: los dos
+   hablan de P_max frente a la aprobación. Se mantienen los dos (el aviso trae los umbrales con su
+   artículo); unificarlos queda para una revisión de textos.
+7. **Revisión de código (pendientes deliberados):**
+   - **Rojo de C en la AEAT y la TGSS** (M-2): en la AEAT el 50 % no impide adjudicar (decide la
+     Mesa) y los umbrales de la TGSS están sin confirmar, pero si la mínima supera P_límite el
+     semáforo es rojo, como se aprobó. La segunda subasta de la TGSS (50 %) no se modela.
+   - **El RVC se calcula sobre la escalera** (P_objetivo) y entra en el umbral del naranja, mientras
+     el ICO y el margen van a la puja evaluada (M-4).
+   - **Plan de puja del viable a la mínima** (L-1): antepone «Puja recomendada: X», pero la táctica
+     siguiente sigue citando el objetivo y el máximo de la escalera.
+   - **Condición y razón dobles** en el judicial inviable dentro del límite (L-2): la del aviso de la
+     5J-3 y la del veredicto.
+   - **`_minima_estricta` compara cifras** (L-6): una deuda exactamente igual al 50 % se marcaría
+     estricta (+1 €). Caso marginal.
+
+**Franja del letrado y reglas sincronizadas (5J-3, ADR-0027)**
+
+1. **Muchas subastas judiciales llevarán el aviso**: la puja máxima casi siempre queda por debajo del
+   70 % del valor de subasta. El techo naranja solo se aplica por debajo del suelo de la vivienda
+   habitual y en la franja a decisión del letrado; en la sujeta a mejora es una condición.
+2. **Solo el procedimiento judicial** tiene aviso. La Mesa de la AEAT (por debajo del 50 %) y las
+   demás autoridades quedan como posible ampliación.
+3. **Las bases ya sembradas reciben las reglas nuevas en el siguiente `init_db`.** Una regla que
+   desaparece del YAML no se borra de la base. Una versión editada por la API manda siempre.
+4. **La frecuencia real con que los letrados aprueban remates por debajo del 50 %** no está
+   contrastada (investigación §2.5): el aviso dice que «puede denegarla», sin estimar la probabilidad.
+
+**Depósito, táctica y plazo (5J-2b, ADR-0024 a ADR-0026)**
+
+1. *(Resuelta en 5J-3: SEM-EJEC-01 2026.10.07 y M13 dicen la cesión de remate según el régimen,
+   LEC 647.3, ADR-0027.)*
+2. **La TIR no tiene un tramo propio para la inmovilización** (ADR-0026, punto 5): el pago del
+   resto sigue en el mes 0 y el tramo posesorio en el 45 % del horizonte. Aproximación aceptada.
+   **Y su horizonte se redondea al par** (`n = round(plazo_P50)`: `round(14,5) = 14`,
+   `round(15,5) = 16`), así que medio mes de plazo puede sumar o restar un mes entero a la TIR.
+   **Decisión del responsable (2026-10-08): no se toca.** Deuda vinculada al calendario real de la
+   TIR de la 5H.2 (auditoría E3, punto 18 de la lista de arriba).
+6. **Deuda de diseño para la 5M: la TIR con hipoteca sale idéntica a la TIR sin hipoteca** (26,41 %
+   en el §19). M11 la calcula sobre flujos sin apalancar (precio entero en el mes 0, intereses
+   dentro de `c_v`, sin entrada del préstamo ni amortización) y la escalera fija el mismo ROI
+   objetivo, así que no mide el apalancamiento (ADR-0026, punto 7). Anterior a la 5J-2b.
+3. **El §19 de la especificación** (`docs/SEIS_Especificacion_Funcional_y_Tecnica.md`) conserva el
+   ejemplo con las cifras de la 5H.1-D y una nota que remite a las de la 5J-2b; la salida completa
+   vigente es `docs/SEIS_informe_ejemplo_caso19.md`, regenerada en esta fase.
+4. **La TGSS presencial está confirmada en la norma, no en la práctica**: no se ha comprobado si
+   sus subastas se celebran ya en el Portal del BOE.
+5. **Los análisis guardados conservan su resultado**: hasta reanalizarlos, muestran el depósito del
+   alta, la táctica anterior y el plazo sin inmovilización. Los informes oficiales, por diseño.
 
 **Entorno**
 

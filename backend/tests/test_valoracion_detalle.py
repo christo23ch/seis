@@ -233,7 +233,7 @@ def test_caso_dorado_persiste_detalle_y_el_resultado_numerico_no_cambia(api):
 
         # El resultado numérico del motor no cambia por haber pasado por
         # persistencia — exactamente igual a la garantía ya probada en Fase 3.
-        assert resultado.decision.semaforo == referencia.decision.semaforo == "amarillo"
+        assert resultado.decision.semaforo == referencia.decision.semaforo == "rojo"  # 5J-4 (ADR-0028): inviable, la mínima aprobable (106.400 €) supera P_límite ⇒ rojo
         assert resultado.decision.ico == referencia.decision.ico
         assert resultado.valoracion.vm == referencia.valoracion.vm
         assert resultado.valoracion.vs == referencia.valoracion.vs

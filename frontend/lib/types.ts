@@ -20,6 +20,24 @@ export interface Decision {
   /** Fase 5J-2a: operandos del colchón a P_objetivo. */
   colchon_detalle?: { beneficio: number; inversion: number; tenencia_mensual: number; intereses_mensuales: number;
                       coste_capital_mensual: number; coste_mensual: number } | null;
+  /** Fase 5J-4 (ADR-0028): veredicto de la puja; ausente en resultados anteriores o sin escalera. */
+  veredicto?: VeredictoPuja | null;
+}
+
+/** Fase 5J-4 (ADR-0028) — las tres cifras de la puja y si los números merecen la pena. Los textos
+ * los redacta el motor (iguales que en el informe). Informativo: no veta nada. */
+export interface VeredictoPuja {
+  estado: "viable" | "inviable" | "sin_umbral";
+  p_max: number; p_objetivo: number; p_limite?: number | null;
+  /** Inviable: la mínima aprobable cabe en P_límite (semáforo como máximo naranja) o no (rojo). */
+  cabe_en_limite?: boolean | null;
+  aprobacion?: "no_aprobable" | "solo_si_cubre_deuda" | "discrecional" | null;
+  aprobacion_texto?: string | null; condicion?: string | null;
+  puja_minima_aprobable?: number | null; puja_minima_efectiva?: number | null;
+  puja_aprobacion_segura?: number | null; puja_recomendada?: number | null; puja_evaluada: number;
+  puja_minima_sin_vivienda?: number | null; alternativa_vivienda?: string | null;
+  autoridad?: string | null; titulo: string; texto: string; cambios: string[];
+  aviso_rentabilidad?: string | null;
 }
 
 export interface Resultado {
@@ -38,7 +56,9 @@ export interface Resultado {
     desglose_p80?: Record<string, number>; c_v_desglose?: Record<string, number>;
     base_fiscal_minima?: number; tipo_base_minima?: number;
     /** Fase 5J-2a: meses de ocupación, obra y comercialización, y el multiplicador del P80. */
-    plazo_desglose?: { ocupacion: number; obra: number; comercializacion: number; multiplicador_p80: number } | null };
+    /** `inmovilizacion` (5J-2b, ADR-0026): cierre → pago del resto → posesión; ausente en resultados anteriores. */
+    plazo_desglose?: { ocupacion: number; obra: number; comercializacion: number; inmovilizacion?: number;
+                       multiplicador_p80: number } | null };
   riesgos: { ra: number; ra_base: number; banda: string; dominancia_aplicada: string | null; dimensiones: RiesgoDim[];
     /** Fase 5J-2a: pesos de agregación y suelo de la dominancia aplicada. */
     pesos?: Record<string, number> | null; suelo_dominancia?: number | null };
@@ -59,9 +79,23 @@ export interface Resultado {
 }
 
 /** Fase 5J-1 — un dato legal aplicado, con su artículo y si está confirmado. */
-export interface DatoLegal { dato: string; valor: number | null; articulo: string; estado: "confirmado" | "sin_confirmar"; nota?: string | null; }
+export interface DatoLegal { dato: string; valor: number | null; articulo: string; estado: "confirmado" | "sin_confirmar"; nota?: string | null;
+  /** 5J-2b: valor descriptivo de un dato que no es una cifra (la forma de puja). */
+  texto?: string | null; }
+/** Fase 5J-3 (ADR-0027) — la puja máxima no alcanza la aprobación segura del remate. */
+export interface AvisoAprobacion {
+  franja: "sujeta_a_mejora" | "discrecional" | "bajo_suelo"; techo_naranja: boolean;
+  p_max: number; p_max_pct: number; puja_aprobacion_segura: number; umbral_aprobacion_segura_pct: number;
+  puja_minima_aprobable: number | null; umbral_aprobacion_pct: number | null;
+  suelo_absoluto: number | null; suelo_absoluto_pct: number | null;
+  vivienda_habitual_asumida: boolean; regimen_asumido: boolean;
+  titulo: string; riesgo: string; condicion: string; datos_legales: DatoLegal[];
+  /** Redactados por el motor, iguales que en el informe. */
+  alcance?: string; umbrales?: string[];
+}
 /** Fase 5J-1 — datos del procedimiento (`app/engine/procedimiento.py`). Importes `null`
- * = dato ausente (P4). No alteran escalera, RVC, semáforo ni rentabilidad. */
+ * = dato ausente (P4). Los umbrales son informativos; desde la 5J-2b el depósito, la forma
+ * de puja y los meses de inmovilización entran en el cálculo (ADR-0024 a ADR-0026). */
 export interface ProcedimientoResultado {
   procedimiento: string; procedimiento_deducido: boolean;
   regimen: string | null; regimen_nombre: string | null; regimen_asumido: boolean;
@@ -70,10 +104,15 @@ export interface ProcedimientoResultado {
   deposito_pct: number | null; deposito_eur: number | null; deposito_declarado_pct: number;
   capital_para_pujar: number | null;
   plazo_pago_dias: number | null; plazo_pago_unidad: string | null; meses_inmovilizacion: number | null;
+  /** 5J-2b: meses sumados al plazo; `asumidos` = estimación sin base legal. Ausentes antes de la fase. */
+  meses_inmovilizacion_aplicados?: number | null; meses_inmovilizacion_asumidos?: boolean | null;
+  forma_puja?: string | null;
   umbral_aprobacion_pct: number | null; puja_minima_aprobable: number | null;
   umbral_aprobacion_segura_pct: number | null; puja_aprobacion_segura: number | null;
   suelo_absoluto_pct: number | null; suelo_absoluto: number | null;
   datos_legales: DatoLegal[]; avisos: string[]; aviso_orientativo: string;
+  /** 5J-3: ausente en resultados anteriores y cuando P_max alcanza la aprobación segura. */
+  aviso_aprobacion?: AvisoAprobacion | null;
 }
 
 export interface ListItem {

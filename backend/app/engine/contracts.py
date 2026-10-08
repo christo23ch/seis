@@ -446,6 +446,33 @@ class DatoLegal(BaseModel):
     articulo: str
     estado: Literal["confirmado", "sin_confirmar"]
     nota: str | None = None
+    # Fase 5J-2b: valor descriptivo de un dato que no es una cifra (la forma de puja).
+    texto: str | None = None
+
+
+class AvisoAprobacion(BaseModel):
+    """Fase 5J-3 (ADR-0027): la puja máxima recomendada cae por debajo de la aprobación segura
+    del remate y su aprobación ya no es automática. Informativo: no cambia ningún número; añade
+    una condición y, solo en las franjas «discrecional» y «bajo_suelo», un techo naranja al
+    semáforo (nunca un veto)."""
+    franja: Literal["sujeta_a_mejora", "discrecional", "bajo_suelo"]
+    techo_naranja: bool = False                       # decisión del responsable: no en «sujeta_a_mejora»
+    p_max: float
+    p_max_pct: float                                  # sobre el valor de subasta
+    puja_aprobacion_segura: float
+    umbral_aprobacion_segura_pct: float
+    puja_minima_aprobable: float | None = None
+    umbral_aprobacion_pct: float | None = None
+    suelo_absoluto: float | None = None
+    suelo_absoluto_pct: float | None = None
+    vivienda_habitual_asumida: bool = False
+    regimen_asumido: bool = False
+    titulo: str
+    riesgo: str
+    condicion: str
+    alcance: str = ""                                 # qué hace con el semáforo, redactado por el motor
+    umbrales: list[str] = []                          # los umbrales aplicados, redactados (informe e interfaz)
+    datos_legales: list[DatoLegal] = []               # los umbrales aplicados, con su estado
 
 
 class ProcedimientoResultado(BaseModel):
@@ -468,6 +495,13 @@ class ProcedimientoResultado(BaseModel):
     plazo_pago_dias: int | None
     plazo_pago_unidad: str | None              # naturales | habiles
     meses_inmovilizacion: float | None
+    # Fase 5J-2b (ADR-0026): meses que se suman al plazo de la operación. Si la norma no los da,
+    # los de `procedimiento.meses_inmovilizacion_si_no_consta` (asumidos = True, sin base legal);
+    # si no consta el régimen judicial, los del régimen judicial más largo.
+    meses_inmovilizacion_aplicados: float | None = None
+    meses_inmovilizacion_asumidos: bool | None = None
+    # Fase 5J-2b (ADR-0025): cómo se puja en este régimen; decide la táctica de M13.
+    forma_puja: str | None = None
     umbral_aprobacion_pct: float | None        # umbral aplicable a la puja mínima aprobable
     puja_minima_aprobable: float | None        # sin depender de la decisión de la autoridad
     umbral_aprobacion_segura_pct: float | None
@@ -477,6 +511,11 @@ class ProcedimientoResultado(BaseModel):
     datos_legales: list[DatoLegal]
     avisos: list[str]
     aviso_orientativo: str
+    # Fase 5J-3 (revisión, M1): la norma exige SUPERAR la mínima aprobable, no igualarla
+    # (régimen anterior: «supere el 50 %»). Falso si la rebaja la deuda («cubra») o la vivienda habitual.
+    puja_minima_estricta: bool | None = None
+    # Fase 5J-3 (ADR-0027): solo si la puja máxima no alcanza la aprobación segura.
+    aviso_aprobacion: AvisoAprobacion | None = None
 
 
 class ChecklistItem(BaseModel):
@@ -486,6 +525,40 @@ class ChecklistItem(BaseModel):
     bloqueante: bool
     estado: Literal["ok", "pendiente", "no_aplica"]
     detalle: str | None = None
+
+
+class VeredictoPuja(BaseModel):
+    """Fase 5J-4 (ADR-0028): las tres cifras de la puja y si los números merecen la pena.
+
+    - `viable`: la puja mínima aprobable cabe en el precio máximo económico. Se recomienda la
+      mayor entre el precio objetivo y la mínima aprobable.
+    - `inviable`: la mínima aprobable supera el precio máximo económico. No se recomienda ninguna
+      puja; la rentabilidad se muestra a la mínima aprobable, con aviso.
+    - `sin_umbral`: la norma no da una mínima aprobable; la recomendación es la económica.
+    Informativo: no veta nada y el usuario puede seguir simulando. Semáforo (diseño C): un
+    inviable es rojo si la mínima aprobable supera P_límite y, si cabe, como máximo naranja."""
+    estado: Literal["viable", "inviable", "sin_umbral"]
+    p_max: float
+    p_objetivo: float
+    p_limite: float | None = None
+    cabe_en_limite: bool | None = None                # inviable: mínima aprobable ≤ P_límite
+    # Inviable: qué pasaría con una puja de P_máx (segunda línea del veredicto; no lo cambia).
+    aprobacion: Literal["no_aprobable", "solo_si_cubre_deuda", "discrecional"] | None = None
+    aprobacion_texto: str | None = None
+    condicion: str | None = None                      # inviable dentro del límite: la del naranja
+    # Vivienda habitual «no consta» (se asume que sí): la mínima si no lo fuera.
+    puja_minima_sin_vivienda: float | None = None
+    alternativa_vivienda: str | None = None
+    puja_minima_aprobable: float | None = None        # tal como la calcula la 5J-1
+    puja_minima_efectiva: float | None = None         # +1 € si la norma exige superarla
+    puja_aprobacion_segura: float | None = None
+    puja_recomendada: float | None = None             # None si inviable
+    puja_evaluada: float                              # la de la rentabilidad
+    autoridad: str | None = None
+    titulo: str
+    texto: str
+    cambios: list[str] = []                           # qué tendría que cambiar (si inviable)
+    aviso_rentabilidad: str | None = None
 
 
 class DecisionFinal(BaseModel):
@@ -512,6 +585,8 @@ class DecisionFinal(BaseModel):
     # Fase 5J-2a (informativo, opcional): operandos del colchón a P_objetivo.
     colchon_detalle: ColchonDetalle | None = None
     colchon_plazo_meses_p_max: float | None = None
+    # Fase 5J-4 (ADR-0028): veredicto de la puja; `None` en resultados anteriores o sin escalera.
+    veredicto: VeredictoPuja | None = None
 
 
 class AnalisisResult(BaseModel):

@@ -57,19 +57,22 @@ def inviable():
 
 # ─────────────── M13: solo texto, ni un número distinto ───────────────
 
-# Capturados con el código ANTERIOR a 5G.2 (commit a1591bc).
+# Capturados con el código ANTERIOR a 5G.2 (commit a1591bc) y recapturados en la Fase 5J-2b,
+# que cambia cifras con aprobación del responsable (el plazo suma la inmovilización, ADR-0026).
+# Antes de la 5J-2b: RVC 1,077 / 1,077 / −1,809; escaleras (51.317, 60.011, 68.731, 80.022),
+# (…, 8.061) y (−25.242, −24.153, −23.272, −20.842).
 NUMEROS_M13_ANTES = {
-    "dorado": {"p_adj_esperado": 63840.0, "ratio_base": 0.42, "rvc": 1.077,
+    "dorado": {"p_adj_esperado": 63840.0, "ratio_base": 0.42, "rvc": 1.064,
                "banda_rvc": "alcanzable"},
-    "dorado_degenerado": {"p_adj_esperado": 63840.0, "ratio_base": 0.42, "rvc": 1.077,
+    "dorado_degenerado": {"p_adj_esperado": 63840.0, "ratio_base": 0.42, "rvc": 1.064,
                           "banda_rvc": "alcanzable"},
-    "inviable": {"p_adj_esperado": 12865.45, "ratio_base": 0.55, "rvc": -1.809,
+    "inviable": {"p_adj_esperado": 12865.45, "ratio_base": 0.55, "rvc": -1.85,
                  "banda_rvc": "inviable"},
 }
 ESCALERA_ANTES = {
-    "dorado": (51317.0, 60011.0, 68731.0, 80022.0, False),
-    "dorado_degenerado": (51317.0, 60011.0, 68731.0, 8061.0, True),
-    "inviable": (-25242.0, -24153.0, -23272.0, -20842.0, True),
+    "dorado": (50753.0, 59447.0, 67941.0, 78529.0, False),
+    "dorado_degenerado": (50753.0, 59447.0, 67941.0, -7271.0, True),
+    "inviable": (-25622.0, -24533.0, -23804.0, -21421.0, True),
 }
 
 
@@ -180,6 +183,156 @@ TEXTOS_5J2A = [
 ]
 
 
+# Fase 5J-2b: la fase CAMBIA CIFRAS con aprobación expresa del responsable (ADR-0024 depósito,
+# ADR-0025 táctica de puja, ADR-0026 plazo). Cada par es un fragmento EXACTO del texto anterior
+# y su sustituto; aquí sí cambian dígitos, y la tabla antes/después aprobada es la referencia.
+CAMBIOS_5J2B = [
+    # §1 página de decisión: la escalera baja (más tenencia y coste de capital, ADR-0026)
+    ("| **Precio ideal** | 51.317 € |", "| **Precio ideal** | 50.753 € |", 1),
+    ("| **Precio objetivo** | 60.011 € |", "| **Precio objetivo** | 59.447 € |", 1),
+    ("| **Precio máximo recomendado** | 68.731 € |", "| **Precio máximo recomendado** | 67.941 € |", 1),
+    ("| **Precio límite absoluto** | 80.022 € — infranqueable |",
+     "| **Precio límite absoluto** | 78.529 € — infranqueable |", 1),
+    ("(22,9 % anualizado)", "(18,9 % anualizado)", 1),
+    ("| TIR anual | 33,9 % |", "| TIR anual | 26,4 % |", 1),
+    ("| Valor esperado (3 escenarios) | 32.361 € |", "| Valor esperado (3 escenarios) | 32.301 € |", 1),
+    ("63.840 € · **1,08** (alcanzable)", "63.840 € · **1,06** (alcanzable)", 1),
+    # §1 condiciones: SEM-EJEC-01 2026.10 (ADR-0024)
+    ("depósito del 5% y pago del remate",
+     "depósito según el régimen del procedimiento (20 % con la LO 1/2025; 5 % si se inició antes del "
+     "3-4-2025) y pago del remate", 1),
+    # §2 activo y subasta: el depósito exigido por el régimen (ADR-0024)
+    ("depósito 5 %. Ocupación",
+     "depósito 30.400 € (20 % del valor de subasta); supuesto desfavorable: no consta cuándo se inició "
+     "el procedimiento judicial (si fue antes del 3-4-2025, es menor). Ocupación", 1),
+    # §5 costes: + 2,5 meses de inmovilización (ADR-0026)
+    # y desde la revisión de la fase, con su decimal: `:.0f` redondeaba 15,5 a 16 (a par).
+    ("Plazo total 13 m (P50) / 18 m (P80).", "Plazo total 15,5 m (P50) / 21,7 m (P80).", 1),
+    ("| Tenencia | 3.120 € |", "| Tenencia | 3.720 € |", 1),
+    ("**77.544 € / 87.708 €**", "**78.144 € / 88.548 €**", 1),
+    # §7 análisis financiero
+    ("(a precio objetivo 60.011 €)", "(a precio objetivo 59.447 €)", 1),
+    ("| pesimista | 25 % | 160.837 € | 151.559 € | 9.278 € | 6,1 % | 4,0 % | 18 m |",
+     "| pesimista | 25 % | 160.837 € | 151.799 € | 9.038 € | 5,9 % | 3,2 % | 21,7 m |", 1),
+    ("| base | 55 % | 176.744 € | 141.396 € | 35.349 € | 25,0 % | 22,9 % | 13 m |",
+     "| base | 55 % | 176.744 € | 141.396 € | 35.349 € | 25,0 % | 18,9 % | 15,5 m |", 1),
+    ("| optimista | 20 % | 186.996 € | 133.996 € | 53.000 € | 39,6 % | 43,6 % | 11 m |",
+     "| optimista | 20 % | 186.996 € | 133.996 € | 53.000 € | 39,6 % | 35,5 % | 13,2 m |", 1),
+    ("Importe aplicado: 3.659 €.", "Importe aplicado: 4.363 €.", 1),
+    ("(1,5 %): 33.230 € · TIR frente a coste de capital: +32,37 puntos",
+     "(1,5 %): 32.721 € · TIR frente a coste de capital: +24,91 puntos", 1),
+    ("(60,9 a precio máximo)", "(61,5 a precio máximo)", 1),
+    # §8 plan de puja: táctica por forma de puja (ADR-0025) y depósito del régimen (ADR-0024)
+    ("- Cargar límites en la interfaz antes de abrir la puja: objetivo 60.011 € · máximo 68.731 € · "
+     "límite absoluto 80.022 € (infranqueable por software)\n"
+     "- Pujar siempre el tramo mínimo; sin pujas psicológicas redondas\n"
+     "- Entrar tarde con límites precargados: la extensión automática del cierre neutraliza el sniping; "
+     "la ventaja es la disciplina\n"
+     "- Depósito requerido: 7.600 € (5 % del valor de subasta)\n",
+     "- Decidir la cifra antes de abrir la puja, entre objetivo 59.447 € · máximo 67.941 € · "
+     "límite absoluto 78.529 € (infranqueable por software)\n"
+     "- Pujas secretas y cierre improrrogable (LO 1/2025): no se ven las pujas ajenas ni hay prórroga, "
+     "así que no cabe reaccionar al final ni subir por tramos; se puja directamente la cifra decidida; "
+     "si el procedimiento se inició antes del 3-4-2025, las pujas se ven y el cierre se prorroga, y esta "
+     "táctica sigue siendo válida\n"
+     "- No apurar el cierre: sin prórroga, una puja que no llegue a tiempo por un fallo técnico queda fuera\n"
+     "- Depósito requerido: 30.400 € (20 % del valor de subasta); supuesto desfavorable: no consta cuándo "
+     "se inició el procedimiento judicial (si fue antes del 3-4-2025, es menor)\n", 1),
+    # §9 checklist y §10 trazabilidad
+    ("Depósito disponible y transferido en plazo — _7.600 €_",
+     "Depósito disponible y transferido en plazo — _30.400 €_", 1),
+    ("`SEM-EJEC-01` v2026.07", "`SEM-EJEC-01` v2026.10", 1),
+]
+
+
+# Fase 5J-3 (ADR-0027): aviso de la franja del letrado y cesión de remate. Ningún número cambia:
+# el semáforo pasa a naranja, se añade el bloque destacado (su texto lo fija
+# `tests/test_aviso_aprobacion_5j3.py`), una condición, un bloqueante y la cesión de remate.
+CESION_5J2B = "cesión de remate solo por el ejecutante (§3.2)"
+CESION_5J3 = ("cesión de remate solo por el ejecutante y, con la LO 1/2025, también por los acreedores "
+              "posteriores (LEC, art. 647, apdo. 3) (§3.2)")
+
+
+def _cambios_5j3(dorado) -> list[tuple[str, str, int]]:
+    aviso = dorado.procedimiento.aviso_aprobacion
+    condiciones = "; ".join(dorado.decision.condiciones)
+    return [
+        ("# 🟡 AMARILLO\n", f"# 🟠 NARANJA\n\n{procedimiento.bloque_aviso_aprobacion(aviso)}\n", 1),
+        ("o límites de Verde no alcanzados\n",
+         f"o límites de Verde no alcanzados · {aviso.titulo} ⇒ techo Naranja con condición · "
+         "Techo aplicado: naranja\n", 1),
+        (f"{CESION_5J2B}\n", f"{CESION_5J3}\n- {aviso.condicion}\n", 1),
+        ("- Cesión de remate solo disponible para el ejecutante: la estructura compradora final debe pujar "
+         "directamente\n", f"- {dorado.puja.riesgo_ejecucion[-1]}\n", 1),
+        ("Depósito disponible y transferido en plazo — _30.400 €_\n",
+         "Depósito disponible y transferido en plazo — _30.400 €_\n"
+         "- [ ] **[B]** Semáforo Verde/Amarillo, o Naranja con todas sus condiciones verificadas y firmadas "
+         f"— _{condiciones}_\n"
+         f"- [ ] **[B]** Riesgo de aprobación del remate asumido por escrito — _{aviso.condicion}_\n", 1),
+        ("`SEM-EJEC-01` v2026.10 ", "`SEM-EJEC-01` v2026.10.07 ", 1),
+    ]
+
+
+# Fase 5J-4 (ADR-0028): la fase CAMBIA CIFRAS Y EL VEREDICTO, con la tabla antes/después aprobada.
+# El §19 es inviable con estas condiciones (mínima aprobable 106.400 € > P_límite 78.529 €): rojo,
+# veredicto destacado (su texto lo fija `tests/test_veredicto_puja_5j4.py`), tres cifras, la
+# rentabilidad a la mínima aprobable, «No pujar» en el plan y la escalera como bloqueante pendiente.
+def _cambios_5j4(dorado) -> list[tuple[str, str, int]]:
+    aviso = procedimiento.bloque_aviso_aprobacion(dorado.procedimiento.aviso_aprobacion)
+    veredicto = procedimiento.bloque_veredicto(dorado.decision.veredicto)
+    return [
+        ("# 🟠 NARANJA\n", "# 🔴 ROJO\n", 1),
+        (f"{aviso}\n", f"{aviso}\n\n{veredicto}\n", 1),
+        ("| **64 / 100** |", "| **49 / 100** |", 1),
+        ("| **Precio máximo recomendado** | 67.941 € |", "| **Precio máximo económico** | 67.941 € |", 1),
+        ("| **Precio límite absoluto** | 78.529 € — infranqueable |\n"
+         "| ROI base (a P objetivo) | 25,0 % (18,9 % anualizado) |\n"
+         "| TIR anual | 26,4 % |\n"
+         "| Margen de seguridad (caída de VS soportable) | 24,8 % |\n"
+         "| Valor esperado (3 escenarios) | 32.301 € |\n",
+         "| **Precio límite absoluto** | 78.529 € — infranqueable |\n"
+         "| **Puja mínima aprobable** | 106.400 € |\n"
+         "| Puja de aprobación segura | 106.400 € |\n"
+         "| **Veredicto** | Inviable con estas condiciones |\n"
+         "| ROI base (a puja mínima aprobable 106.400 €) | -7,6 % (-6,0 % anualizado) |\n"
+         "| TIR anual | -7,4 % |\n"
+         "| Margen de seguridad (caída de VS soportable) | 0,0 % |\n"
+         "| Valor esperado (3 escenarios) | -17.657 € |\n", 1),
+        ("**Razones principales:** ICO 64 en banda 60–74 o límites de Verde no alcanzados · Remate no "
+         "aprobable si es la vivienda habitual del ejecutado ⇒ techo Naranja con condición · Techo aplicado: "
+         "naranja\n",
+         "**Razones principales:** Inviable con estas condiciones: la puja mínima aprobable (106.400 €) "
+         "supera el precio máximo económico (67.941 €) y el precio límite absoluto (78.529 €)\n", 1),
+        ("## 7 · Análisis financiero (a precio objetivo 59.447 €)",
+         "## 7 · Análisis financiero (a puja mínima aprobable 106.400 €)", 1),
+        ("| pesimista | 25 % | 160.837 € | 151.799 € | 9.038 € | 5,9 % | 3,2 % | 21,7 m |\n"
+         "| base | 55 % | 176.744 € | 141.396 € | 35.349 € | 25,0 % | 18,9 % | 15,5 m |\n"
+         "| optimista | 20 % | 186.996 € | 133.996 € | 53.000 € | 39,6 % | 35,5 % | 13,2 m |\n",
+         "| pesimista | 25 % | 160.837 € | 201.757 € | -40.920 € | -20,3 % | -11,8 % | 21,7 m |\n"
+         "| base | 55 % | 176.744 € | 191.354 € | -14.609 € | -7,6 % | -6,0 % | 15,5 m |\n"
+         "| optimista | 20 % | 186.996 € | 183.954 € | 3.042 € | 1,7 % | 1,5 % | 13,2 m |\n", 1),
+        ("VAN al coste de capital (1,5 %): 32.721 € · TIR frente a coste de capital: +24,91 puntos",
+         "VAN al coste de capital (1,5 %): -17.237 € · TIR frente a coste de capital: -8,94 puntos", 1),
+        ("- Decidir la cifra antes de abrir la puja, entre objetivo 59.447 € · máximo 67.941 € · límite "
+         "absoluto 78.529 € (infranqueable por software)\n"
+         "- Pujas secretas y cierre improrrogable (LO 1/2025): no se ven las pujas ajenas ni hay prórroga, "
+         "así que no cabe reaccionar al final ni subir por tramos; se puja directamente la cifra decidida; "
+         "si el procedimiento se inició antes del 3-4-2025, las pujas se ven y el cierre se prorroga, y esta "
+         "táctica sigue siendo válida\n"
+         "- No apurar el cierre: sin prórroga, una puja que no llegue a tiempo por un fallo técnico queda fuera\n",
+         f"- {PLAN_INVIABLE_5J4}\n", 1),
+        ("Depósito disponible y transferido en plazo — _30.400 €_\n",
+         "Depósito disponible y transferido en plazo — _30.400 €_\n"
+         f"- [ ] **[B]** {TEXTO_CHECKLIST} — _{DETALLE_CHECKLIST_5J4}_\n", 1),
+    ]
+
+
+PLAN_INVIABLE_5J4 = ("No pujar con estas condiciones: la puja mínima aprobable (106.400 €) supera el precio máximo "
+                     "económico (67.941 €); el informe dice qué tendría que cambiar")
+DETALLE_CHECKLIST_5J4 = ("Inviable con estas condiciones: la puja mínima aprobable (106.400 €) supera el precio "
+                         "máximo económico (67.941 €) y supera también el límite absoluto (78.529 €).")
+
+
 def test_sin_escalera_degenerada_el_informe_es_el_de_antes_salvo_el_formato(dorado):
     """Diferencias permitidas con el texto anterior, y ninguna más:
     - 5G.2: las cuatro cifras del plan de puja que salían con separador inglés;
@@ -190,7 +343,11 @@ def test_sin_escalera_degenerada_el_informe_es_el_de_antes_salvo_el_formato(dora
     - 5J-1: el subapartado informativo del procedimiento, al final del §8 y antes del
       §9. Su texto lo fijan `tests/test_procedimiento_5j1.py`; aquí se vigila que sea
       lo ÚNICO añadido y que esté en su sitio;
-    - 5J-2a: los fragmentos de `TEXTOS_5J2A` (nombres de códigos y símbolos, mismos dígitos)."""
+    - 5J-2a: los fragmentos de `TEXTOS_5J2A` (nombres de códigos y símbolos, mismos dígitos);
+    - 5J-2b: los fragmentos de `CAMBIOS_5J2B`, que sí cambian cifras (tabla aprobada);
+    - 5J-3: `_cambios_5j3` (semáforo, aviso de la franja del letrado y cesión de remate);
+    - 5J-4: `_cambios_5j4` (veredicto, tres cifras, rentabilidad a la mínima aprobable, plan y
+      checklist; sí cambian cifras, tabla aprobada)."""
     antes = ANTES.read_text(encoding="utf-8")
     corregido = MILES_INGLES.sub(lambda m: m.group(0).replace(",", "."), antes)
     assert corregido != antes, "premisa: el texto anterior tenía cifras en formato inglés"
@@ -207,6 +364,12 @@ def test_sin_escalera_degenerada_el_informe_es_el_de_antes_salvo_el_formato(dora
         assert corregido.count(viejo) == veces, viejo
         assert re.findall(r"\d", viejo) == re.findall(r"\d", nuevo), viejo
         corregido = corregido.replace(viejo, nuevo)
+    for viejo, nuevo, veces in CAMBIOS_5J2B:
+        assert corregido.count(viejo) == veces, viejo
+        corregido = corregido.replace(viejo, nuevo)
+    for viejo, nuevo, veces in _cambios_5j3(dorado) + _cambios_5j4(dorado):
+        assert corregido.count(viejo) == veces, viejo
+        corregido = corregido.replace(viejo, nuevo)
     ancla = "\n\n## 9 · Checklist"
     assert corregido.count(ancla) == 1
     corregido = corregido.replace(ancla, procedimiento.seccion_informe(dorado.procedimiento) + ancla)
@@ -214,17 +377,16 @@ def test_sin_escalera_degenerada_el_informe_es_el_de_antes_salvo_el_formato(dora
 
 
 def test_sin_escalera_degenerada_el_plan_es_el_de_antes_salvo_el_formato(dorado):
+    # Fase 5J-2b: régimen judicial sin fecha de inicio ⇒ depósito del 20 % (ADR-0024). Fase 5J-4
+    # (ADR-0028): inviable con estas condiciones ⇒ «No pujar» en lugar de la táctica.
     assert dorado.puja.plan == [
-        "Cargar límites en la interfaz antes de abrir la puja: objetivo 60.011 € · "
-        "máximo 68.731 € · límite absoluto 80.022 € (infranqueable por software)",
-        "Pujar siempre el tramo mínimo; sin pujas psicológicas redondas",
-        "Entrar tarde con límites precargados: la extensión automática del cierre neutraliza "
-        "el sniping; la ventaja es la disciplina",
-        "Depósito requerido: 7.600 € (5 % del valor de subasta)",   # 5G.4-B
+        PLAN_INVIABLE_5J4,
+        "Depósito requerido: 30.400 € (20 % del valor de subasta); supuesto desfavorable: no consta "
+        "cuándo se inició el procedimiento judicial (si fue antes del 3-4-2025, es menor)",
         "Si aparece información nueva durante la subasta, re-análisis exprés; si el semáforo "
         "cae, retirada",
     ]
-    assert "| **Precio límite absoluto** | 80.022 € — infranqueable |" in dorado.informe_markdown
+    assert "| **Precio límite absoluto** | 78.529 € — infranqueable |" in dorado.informe_markdown
 
 
 # ─────────────── escalera degenerada ───────────────
@@ -240,15 +402,16 @@ def test_con_escalera_degenerada_no_se_instruye_cargar_el_limite(caso, request):
     assert f"- {TEXTO_PLAN_DEGENERADA}" in inf
     # Las instrucciones de cómo pujar desaparecen; lo informativo se queda.
     assert r.puja.plan[0] == TEXTO_PLAN_DEGENERADA
-    assert not any(p.startswith(("Pujar siempre", "Entrar tarde")) for p in r.puja.plan)
+    assert not any(p.startswith(("Pujar siempre", "Entrar tarde", "Decidir la cifra", "Pujas secretas",
+                                 "No apurar")) for p in r.puja.plan)
     assert any(p.startswith("Depósito requerido:") for p in r.puja.plan)
     assert any(p.startswith("Si aparece información nueva") for p in r.puja.plan)
 
 
 def test_con_escalera_degenerada_el_limite_no_aparece_como_cifra(dorado_degenerado):
     """El valor calculado sigue en el resultado; el texto no lo ofrece."""
-    assert dorado_degenerado.decision.precios.p_limite == 8061.0
-    assert "8.061 €" not in dorado_degenerado.informe_markdown
+    assert dorado_degenerado.decision.precios.p_limite == -7271.0      # 8.061 antes de la 5J-2b
+    assert "7.271 €" not in dorado_degenerado.informe_markdown
 
 
 def test_con_escalera_degenerada_la_escalera_es_un_bloqueante_pendiente(dorado_degenerado):
@@ -261,7 +424,20 @@ def test_con_escalera_degenerada_la_escalera_es_un_bloqueante_pendiente(dorado_d
     assert DETALLE_CHECKLIST_DEGENERADA in seccion
 
 
-def test_sin_escalera_degenerada_la_escalera_sigue_ok(dorado):
-    item = next(c for c in dorado.checklist if c.texto == TEXTO_CHECKLIST)
+def test_sin_escalera_degenerada_la_escalera_sigue_ok(caso_19):  # noqa: F811
+    """Con una puja viable (valor de subasta de 80.000 €), la escalera se carga."""
+    r = ejecutar_analisis(caso_19.model_copy(update={
+        "subasta": caso_19.subasta.model_copy(update={"valor_subasta": 80000.0})}))
+    assert r.decision.veredicto.estado == "viable"
+    item = next(c for c in r.checklist if c.texto == TEXTO_CHECKLIST)
+    p = r.decision.precios
     assert item.estado == "ok"
-    assert item.detalle == "Objetivo 60.011 € · Máx 68.731 € · Límite 80.022 €"
+    assert item.detalle == (f"Objetivo {p.p_objetivo:,.0f} € · Máx {p.p_max:,.0f} € · "
+                            f"Límite {p.p_limite:,.0f} €").replace(",", ".")
+
+
+def test_inviable_la_escalera_es_un_bloqueante_pendiente(dorado):
+    """5J-4 (ADR-0028): sin puja recomendable no hay escalera que cargar."""
+    item = next(c for c in dorado.checklist if c.texto == TEXTO_CHECKLIST)
+    assert item.bloqueante and item.estado == "pendiente"
+    assert item.detalle == DETALLE_CHECKLIST_5J4

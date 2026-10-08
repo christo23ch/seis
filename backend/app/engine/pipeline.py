@@ -61,7 +61,14 @@ def ejecutar_analisis(inp: AnalisisInput, params: Parametros | None = None,
     hechos["ra"] = ra_res.ra
 
     # ── Costes (contingencia = f(banda RA, ICI)) ─────────────────────────
-    costes = m06_costes.ejecutar(inp, params, hechos, reforma, valoracion, ici, ra_res.banda)
+    # Fase 5J-2b: el procedimiento se resuelve antes de los costes: sus meses de inmovilización
+    # entran en el plazo (ADR-0026) y su depósito y su forma de puja, en M13 (ADR-0024, ADR-0025).
+    datos_procedimiento = procedimiento.calcular(inp, params)
+    meses = datos_procedimiento.meses_inmovilizacion_aplicados
+    if meses is None:                                   # P4: nunca 0 por defecto
+        meses = float(params.get("procedimiento.meses_inmovilizacion_si_no_consta.valor"))
+    costes = m06_costes.ejecutar(inp, params, hechos, reforma, valoracion, ici, ra_res.banda,
+                                 meses_inmovilizacion=meses)
 
     # ── VS prudente y escalera de precios (§9) ───────────────────────────
     delta_v = m12_decision.calcular_delta_v(params, ra_res.banda, valoracion.dispersion_cv, ici)
@@ -87,11 +94,14 @@ def ejecutar_analisis(inp: AnalisisInput, params: Parametros | None = None,
     escenarios = m11_rentabilidad.construir_escenarios(inp, params, hechos, valoracion, costes,
                                                        vs_p, ra_res.banda,
                                                        icu.potencial_revalorizacion, ici.ici)
-    p_eval = max(escalera.p_objetivo, 1.0)
+    # Fase 5J-4 (ADR-0028): la rentabilidad se calcula sobre una puja que se puede aprobar.
+    veredicto = procedimiento.veredicto_puja(inp, params, datos_procedimiento, escalera)
+    p_eval = veredicto.puja_evaluada if veredicto is not None else max(escalera.p_objetivo, 1.0)
     rentabilidad = m11_rentabilidad.evaluar(p_eval, escenarios, costes, inp, params)
 
     # ── Estrategia de puja y viabilidad competitiva ──────────────────────
-    puja = m13_puja.ejecutar(inp, params, hechos, escalera, valoracion.vm)
+    puja = m13_puja.ejecutar(inp, params, hechos, escalera, valoracion.vm, procedimiento=datos_procedimiento,
+                             veredicto=veredicto)
 
     # ── Reglas T2: vetos, techos y condiciones (una sola pasada, determinista) ──
     motor = RuleEngine(reglas)
@@ -103,10 +113,20 @@ def ejecutar_analisis(inp: AnalisisInput, params: Parametros | None = None,
     ms_valor = m12_decision.margen_seguridad(p_eval, costes, costes.c_f_p50, valoracion.vs)
     ico, ico_desglose = m12_decision.calcular_ico(inp, params, ra_res, rentabilidad, icu,
                                                   ici.ici, escalera, costes.plazo_meses_p50)
+    # Fase 5J-3 (ADR-0027): franja del letrado. Solo condición y techo naranja; ningún número cambia.
+    aviso = procedimiento.aviso_aprobacion(datos_procedimiento, escalera)
+    if aviso is not None:
+        datos_procedimiento = datos_procedimiento.model_copy(update={"aviso_aprobacion": aviso})
+        condiciones.append(aviso.condicion)
+    # Fase 5J-4 (ADR-0028, diseño C): inviable dentro de P_límite ⇒ condición y techo naranja.
+    if veredicto is not None and veredicto.condicion:
+        condiciones.append(veredicto.condicion)
     semaforo, razones = m12_decision.decidir_semaforo(
         params, ico, ra_res, rentabilidad, ms_valor, puja.rvc, ici.ici,
         ici.techo_semaforo, escalera, vetos, techos, inp,
-        metodo_valoracion=valoracion.metodo)
+        metodo_valoracion=valoracion.metodo, aviso_aprobacion=aviso, veredicto=veredicto)
+    if (aviso is not None and aviso.techo_naranja) or (veredicto is not None and veredicto.condicion):
+        techos = techos + ["naranja"]
 
     decision = DecisionFinal(
         semaforo=semaforo, ico=ico, ico_desglose=ico_desglose, ra=ra_res.ra, ici=ici.ici,
@@ -123,6 +143,7 @@ def ejecutar_analisis(inp: AnalisisInput, params: Parametros | None = None,
         rvc=puja.rvc, p_adj_esperado=puja.p_adj_esperado, vetos=vetos,
         condiciones=sorted(set(condiciones)), techos_aplicados=sorted(set(techos)),
         razones=razones, version_reglas=version_reglas, version_parametros=params.version,
+        veredicto=veredicto,
     )
 
     reglas_out = [ReglaDisparadaOut(codigo=d.codigo, version=d.version, categoria=d.categoria,
@@ -135,14 +156,13 @@ def ejecutar_analisis(inp: AnalisisInput, params: Parametros | None = None,
                  # explicativa del coste de capital en M14 (solo redacción).
                  "coste_capital_anual": params.get("capital.coste_capital_anual")}
     checklist = m14_informe.construir_checklist(inp, decision, hechos,
-                                                metodo_valoracion=valoracion.metodo)
-    # Fase 5J-1 (ADR-0022): datos del procedimiento, INFORMATIVOS. Se calculan
-    # después de decidir y sin pizarra de hechos: nada de lo anterior los lee.
-    datos_procedimiento = procedimiento.calcular(inp, params)
+                                                metodo_valoracion=valoracion.metodo,
+                                                procedimiento=datos_procedimiento)
     informe = m14_informe.construir_informe(
         inp, parciales, decision, checklist,
         estado_asumido=hechos.get("activo.estado_conservacion_asumido"),
-        seccion_procedimiento=procedimiento.seccion_informe(datos_procedimiento))
+        seccion_procedimiento=procedimiento.seccion_informe(datos_procedimiento),
+        procedimiento=datos_procedimiento)
 
     return AnalisisResult(
         decision=decision, ici=ici, valoracion=valoracion, icu=icu, reforma=reforma,

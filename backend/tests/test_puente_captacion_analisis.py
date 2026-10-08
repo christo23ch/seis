@@ -106,7 +106,7 @@ def test_analisis_manual_sin_subasta_id_sigue_funcionando(api, headers):
     payload = json.loads(entrada_base().model_dump_json())
     r = api.post("/api/v1/analisis", json=payload, headers=headers)
     assert r.status_code == 200, r.text
-    assert r.json()["resultado"]["decision"]["semaforo"] == "amarillo"
+    assert r.json()["resultado"]["decision"]["semaforo"] == "rojo"  # 5J-4 (ADR-0028): inviable, la mínima aprobable (106.400 €) supera P_límite ⇒ rojo
 
     db = SessionLocal()
     try:

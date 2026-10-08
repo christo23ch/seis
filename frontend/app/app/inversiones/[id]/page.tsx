@@ -13,6 +13,7 @@ import { AvisoConfiguracion } from "@/components/simulaciones/aviso-configuracio
 import { ListaSimulaciones } from "@/components/simulaciones/lista";
 import { InformesOficiales } from "@/components/informes/informes-oficiales";
 import { ProcedimientoPanel } from "@/components/procedimiento";
+import { VeredictoPanel } from "@/components/veredicto";
 import { Markdown } from "@/components/markdown";
 import { DatosEntrada } from "@/components/datos-entrada";
 import { TextoFormulas } from "@/components/texto-formulas";
@@ -73,6 +74,8 @@ export default function DetalleInversion() {
               <EscaleraPrecios d={d} res={res} />
               <MetricasClave res={res} />
             </div>
+            {/* Fase 5J-4 (ADR-0028): las tres cifras de la puja y el veredicto. */}
+            <VeredictoPanel res={res} />
             <CondicionesVetos d={d} />
             <div className="grid gap-4 xl:grid-cols-2">
               <EscenariosPanel r={res.rentabilidad} />

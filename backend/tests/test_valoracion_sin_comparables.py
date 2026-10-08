@@ -110,8 +110,10 @@ def test_sin_comparables_checklist_escalera_aparece_entre_los_bloqueantes_pendie
 
 
 def test_con_comparables_checklist_escalera_sigue_igual_que_antes(base_input):
-    """Regresión: con comparables válidos, el ítem no cambia de estado ni de texto."""
-    r = ejecutar_analisis(base_input)
+    """Regresión: con comparables válidos, el ítem no cambia de estado ni de texto. Desde la 5J-4
+    (ADR-0028) el §19 es inviable y su escalera queda pendiente; sin umbral legal se carga."""
+    r = ejecutar_analisis(base_input.model_copy(update={
+        "subasta": base_input.subasta.model_copy(update={"procedimiento": "no_aplica"})}))
     item = _item_escalera(r.checklist)
     assert item.estado == "ok"
     assert item.detalle is not None

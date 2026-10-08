@@ -27,8 +27,9 @@ _SECCION = re.compile(r"§\d+(?:\.\d+)*")
 _VERSION = re.compile(r"(?<!\d)v?\d{4}\.\d{2}(?:\+\d+ov)?(?!\d)")   # «v2026.07», «2026.07+1ov»
 _DECIMAL_CON_PUNTO = re.compile(r"\d\.\d")
 # Única cifra con «%» pegado que queda: el texto de la regla SEM-EJEC-01 del
-# catálogo T2 («depósito del 5%»). Es una regla versionada, no texto de un
-# módulo; se anota como deuda en vez de tocar la regla (ESTADO_ACTUAL §4).
+# catálogo T2 («depósito del 5%»). Era una regla versionada, no texto de un
+# módulo, y se anotó como deuda. La 5J-2b la corrigió (SEM-EJEC-01 2026.10, ADR-0024):
+# el depósito depende del régimen y el texto ya escribe «20 %» y «5 %» con espacio.
 _PORCENTAJE_DE_REGLA = "depósito del 5%"
 
 
@@ -38,7 +39,7 @@ def _decimales_con_punto(texto: str) -> list[str]:
 
 
 def _porcentajes_sin_espacio(texto: str) -> list[str]:
-    return re.findall(r".{0,15}\d%", texto.replace(_PORCENTAJE_DE_REGLA, ""))
+    return re.findall(r".{0,15}\d%", texto)
 
 
 # ─────────────────────────── formato.py ───────────────────────────
@@ -84,6 +85,10 @@ def casos(caso_19):  # noqa: F811
     vacio["ocupacion"] = {"estado": "vacio"}
     vacio["documentos"].update(posesion_verificada=True, fotos_interior_o_visita=True,
                                cert_comunidad=True, ite_cee=True)
+    # 5J-3 (ADR-0027): sin vivienda habitual y con la deuda informada, P_max queda en la franja
+    # «sujeta a mejora», que no pone techo; si no, el techo naranja impediría el verde.
+    vacio["activo"]["vivienda_habitual_ejecutado"] = "no"
+    vacio["subasta"].update(procedimiento="judicial", regimen_judicial="posterior", cantidad_reclamada=60000.0)
     sin_naranja = cargar_defaults().con_overrides({f"semaforo.{c}.ico_min": 99
                                                    for c in ("verde", "amarillo", "naranja")})
     return {
@@ -97,7 +102,10 @@ def casos(caso_19):  # noqa: F811
             renta_mensual_estimada=950, ibi_anual=350, comunidad_mensual=60))),
         "verde": ejecutar_analisis(AnalisisInput(**vacio), params=cargar_defaults().con_overrides(
             {"semaforo.verde.ico_min": 60})),
-        "no_alcanza_naranja": ejecutar_analisis(caso_19, params=sin_naranja),
+        # 5J-4 (ADR-0028): el §19 es inviable (rojo antes de evaluar el ICO); sin umbral legal (venta
+        # no reglada: misma escalera y costes) se llega a la razón «No alcanza Naranja».
+        "no_alcanza_naranja": ejecutar_analisis(_con(caso_19, subasta=caso_19.subasta.model_copy(
+            update={"procedimiento": "no_aplica"})), params=sin_naranja),
     }
 
 
@@ -126,10 +134,10 @@ def test_las_razones_de_m12_con_cifras_salen_en_formato_espanol(casos):
     verde = casos["verde"].decision.razones[0]
     assert re.search(r"MS \d+ %; RVC \d+,\d{2}$", verde), verde
     assert casos["no_alcanza_naranja"].decision.razones == [
-        "No alcanza Naranja: ICO insuficiente (ICO 64, RVC 1,08)"]
+        "No alcanza Naranja: ICO insuficiente (ICO 64, RVC 1,06)"]     # 1,08 antes de la 5J-2b
 
 
-def test_la_deuda_de_la_regla_sigue_localizada(casos):
-    """El único «%» pegado que queda viene de la regla SEM-EJEC-01 (T2): si
-    alguien la corrige, este test avisa de que la excepción ya sobra."""
-    assert _PORCENTAJE_DE_REGLA in casos["dorado"].informe_markdown
+def test_la_deuda_de_la_regla_esta_saldada(casos):
+    """La regla SEM-EJEC-01 (T2) era el único «%» pegado; desde la 5J-2b no queda ninguno."""
+    assert _PORCENTAJE_DE_REGLA not in casos["dorado"].informe_markdown
+    assert _porcentajes_sin_espacio(casos["dorado"].informe_markdown) == []

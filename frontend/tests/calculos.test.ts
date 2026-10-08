@@ -2,7 +2,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { calculoCf, calculoCv, calculoIci, calculoPlazo, calculoReforma, calculoRiesgos, calculoValoracion,
-         calculosEscalera, calculosMetricas, puntosPenalizacion, type Calculo } from "@/lib/calculos";
+         calculosEscalera, calculosMetricas, calculoVeredicto, definicionPEval, puntosPenalizacion,
+         type Calculo } from "@/lib/calculos";
 import type { Resultado } from "@/lib/types";
 
 /** Resultados REALES del motor (`tests/datos/LEEME.md`): §19, rentista con hipoteca y dos tramos fiscales. */
@@ -74,13 +75,15 @@ describe("las fórmulas reproducen el resultado del motor (§19)", () => {
     expect(npv(f, (1 + r.tasa_van!) ** (1 / 12) - 1)).toBeCloseTo(r.van_coste_capital!, 0);
   });
 
-  it("colchón = máx(0, beneficio) / coste mensual; plazo = ocupación + obra + comercialización", () => {
+  it("colchón = máx(0, beneficio) / coste mensual; plazo = ocupación + obra + comercialización + inmovilización", () => {
     const k = RES.decision.colchon_detalle!;
     expect(Math.round(Math.max(0, k.beneficio) / (k.tenencia_mensual + k.intereses_mensuales + k.coste_capital_mensual) * 10) / 10)
       .toBe(RES.decision.colchon_plazo_meses);
     const pd = c.plazo_desglose!;
-    expect(pd.ocupacion + pd.obra + pd.comercializacion).toBe(c.plazo_meses_p50);
-    expect(c.plazo_meses_p50 * pd.multiplicador_p80).toBeCloseTo(c.plazo_meses_p80, 6);
+    // 5J-2b (ADR-0026): el cierre → pago del resto entra en el plazo; el P80 sale redondeado a un decimal.
+    expect(pd.inmovilizacion).toBe(2.5);
+    expect(pd.ocupacion + pd.obra + pd.comercializacion + pd.inmovilizacion!).toBe(c.plazo_meses_p50);
+    expect(Math.round(c.plazo_meses_p50 * pd.multiplicador_p80 * 10) / 10).toBe(c.plazo_meses_p80);
   });
 
   it("ROI, inversión total y margen de seguridad", () => {
@@ -117,14 +120,15 @@ describe("lo que muestra «Ver cálculo» (§19)", () => {
     const cf = calculoCf(RES.costes, "p50");
     expect(cf.disponible).toBe(true);
     expect(cf.sustitucion).toMatch(/^C_F = 50\.053\s€ \+ 6\.500\s€ \+/);
-    expect(cf.resultado).toMatch(/^77\.544\s€$/);
+    expect(cf.resultado).toMatch(/^78\.144\s€$/);
     expect(cf.filas!.map((f) => f.etiqueta)).toContain("Ocupación y desalojo");
   });
 
   it("c_v, reforma y plazo", () => {
     expect(calculoCv(RES.costes)).toMatchObject({ sustitucion: "c_v = 6,00 % + 0,40 %" });
     expect(calculoReforma(RES.reforma).resultado).toMatch(/^50\.053\s€ \(P80: 61\.064\s€\)$/);
-    expect(calculoPlazo(RES.costes)).toMatchObject({ disponible: true, sustitucion: "P50 = 7 + 3 + 3; P80 = 13 × 1,4" });
+    expect(calculoPlazo(RES.costes)).toMatchObject({ disponible: true, sustitucion: "P50 = 7 + 3 + 3 + 2,5; P80 = 15,5 × 1,4" });
+    expect(calculoPlazo(RES.costes).formula).toContain("+ meses de inmovilización (cierre → pago del resto)");
   });
 
   it("ICI con sus carencias legibles", () => {
@@ -142,11 +146,12 @@ describe("lo que muestra «Ver cálculo» (§19)", () => {
     const e = calculosEscalera(RES);
     for (const c of e) expect(c.disponible, c.clave).toBe(true);
     expect(por(e, "p_ideal").sustitucion).toContain("(1 + 0,3375)");
-    expect(por(e, "p_max").sustitucion).toMatch(/^P_max = mín\(69\.097\s€, 68\.731\s€\)$/);
+    // 5J-2b (ADR-0026): el plazo suma la inmovilización ⇒ más C_F y más coste de capital.
+    expect(por(e, "p_max").sustitucion).toMatch(/^P_max = mín\(68\.533\s€, 67\.941\s€\)$/);
     expect(por(e, "p_pesimista").nota).toContain("VS_pes = VS_p × (1 − estrés)");
-    expect(por(e, "p_limite").sustitucion).toMatch(/^P_limite = 83\.681\s€ − 3\.659\s€;/);
+    expect(por(e, "p_limite").sustitucion).toMatch(/^P_limite = 82\.892\s€ − 4\.363\s€;/);
     expect(por(e, "p_adj").sustitucion).toMatch(/^ratio = 0,42 = 0,42; P_adj = 152\.000\s€ × 0,42$/);
-    expect(por(e, "rvc").resultado).toBe("1,08");
+    expect(por(e, "rvc").resultado).toBe("1,06");
   });
 
   it("métricas: TIR, VAN y colchón ya disponibles", () => {
@@ -196,6 +201,14 @@ describe("resultados anteriores a la 5J-2a: nunca se inventa", () => {
     expect(calculoRiesgos(viejo(RES).riesgos).nota).toContain("Cálculo no disponible aún para el RA");
   });
 
+  it("un resultado de la 5J-2a, sin la inmovilización, se explica con la fórmula de entonces", () => {
+    const { inmovilizacion: _, ...pd } = RES.costes.plazo_desglose!;
+    const c = calculoPlazo({ ...RES.costes, plazo_meses_p50: 13, plazo_meses_p80: 18.2, plazo_desglose: pd });
+    expect(c.sustitucion).toBe("P50 = 7 + 3 + 3; P80 = 13 × 1,4");
+    expect(c.formula).not.toContain("inmovilización");
+    expect(c.nota).toBeUndefined();
+  });
+
   it("dos tramos sin el tramo resuelto ⇒ no se sustituye ningún precio, P_limite tampoco", () => {
     const e = calculosEscalera(viejo(DOS));
     for (const k of ["p_objetivo", "p_margen_min", "p_limite"]) expect(por(e, k).disponible, k).toBe(false);
@@ -232,7 +245,35 @@ describe("correcciones de la revisión de código (5K)", () => {
 
   it("inversión total con P_eval y margen de seguridad acotado a 0", () => {
     const m = calculosMetricas(RES);
-    expect(por(m, "inversion").formula).toContain("P_eval = máx(P_objetivo, 1 €)");
+    // 5J-4 (ADR-0028): el §19 es inviable y el motor evalúa a la puja mínima aprobable.
+    expect(por(m, "inversion").formula).toContain("P_eval = puja mínima aprobable (inviable: supera P_max)");
     expect(por(m, "margen").formula).toBe("MS_valor = máx(0, 1 − inversión total / VS)");
+  });
+});
+
+describe("veredicto de la puja (5J-4)", () => {
+  const v = RES.decision.veredicto!;
+
+  it("P_eval es la puja del veredicto, y la que viaja como precio evaluado", () => {
+    expect(v.estado).toBe("inviable");
+    expect(RES.rentabilidad.precio_evaluado).toBe(v.puja_evaluada);
+    expect(v.puja_evaluada).toBe(106400);
+    const sin = { ...RES, decision: { ...RES.decision, veredicto: undefined } };
+    expect(definicionPEval(sin)).toBe("P_eval = máx(P_objetivo, 1 €)");
+    const viable = { ...RES, decision: { ...RES.decision, veredicto: { ...v, estado: "viable" as const, puja_evaluada: v.p_objetivo } } };
+    expect(definicionPEval(viable)).toBe("P_eval = P_objetivo (alcanza la puja mínima aprobable)");
+  });
+
+  it("«Ver cálculo» escribe la comparación con P_max y P_límite sin recalcular el estado", () => {
+    const c = calculoVeredicto(RES);
+    expect(c.disponible).toBe(true);
+    expect(c.sustitucion).toBe("mínima 106.400 € > P_max 67.941 € y > P_límite 78.529 €");
+    expect(c.resultado).toBe("Inviable con estas condiciones");
+    expect(c.filas!.map((f) => f.etiqueta)).toContain("P_límite");
+  });
+
+  it("un resultado anterior a la fase no trae veredicto: no se inventa", () => {
+    const c = calculoVeredicto({ ...RES, decision: { ...RES.decision, veredicto: undefined } });
+    expect(c.disponible).toBe(false);
   });
 });
